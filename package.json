@@ -1,0 +1,13 @@
+{
+  "name": "conferencia-lotes",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "vite": "^4.0.0",
+    "vitest": "^0.34.0"
+  },
+  "type": "module"
+}
