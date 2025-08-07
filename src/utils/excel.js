@@ -64,13 +64,46 @@ export async function processarPlanilha(file) {
     });
 
     // Alias das colunas aceitando diversos nomes
+    // para tornar o parser mais tolerante a planilhas variadas
     const aliases = {
-      codigoML: ['Código ML', 'ML', 'Cod. ML', 'Código', 'Código do Produto'],
-      descricao: ['Descrição', 'Produto', 'Item', 'Descrição do Item'],
-      quantidade: ['Qtd', 'Quantidade', 'Qtde'],
-      rz: ['RZ', 'Palete', 'Paletização', 'Paletizacao', 'Código RZ'],
+      // Código do produto no Mercado Livre. Aceita variações comuns
+      codigoML: [
+        'Código ML',
+        'ML',
+        'Cod. ML',
+        'Código',
+        'Código do Produto',
+        'SKU',
+        'Código Mercado Livre',
+      ],
+      // Texto descritivo do item
+      descricao: [
+        'Descrição',
+        'Descrição do Produto',
+        'Descrição do Item',
+        'Produto',
+        'Item',
+      ],
+      // Quantidade esperada do produto
+      quantidade: [
+        'Qtd',
+        'Quantidade',
+        'Qtde',
+        'Quantidade Esperada',
+        'Qtd Esperada',
+      ],
+      // Identificador do palete ou RZ onde o item está armazenado
+      rz: [
+        'RZ',
+        'Código RZ',
+        'Palete',
+        'Código do Palete',
+        'Paletização',
+        'Paletizacao',
+      ],
     };
 
+    let lastMissingFields = [];
     for (const sheetName of workbook.SheetNames) {
       const sheet = workbook.Sheets[sheetName];
       if (!sheet || !sheet['!ref']) {
@@ -139,6 +172,7 @@ export async function processarPlanilha(file) {
       );
 
       if (headerRow === -1) {
+        lastMissingFields = missingFields;
         console.warn(
           `⚠️ Cabeçalho não detectado nas primeiras linhas da aba '${sheetName}'.`,
           missingFields,
@@ -187,14 +221,21 @@ export async function processarPlanilha(file) {
         produtos.push({ codigoML, descricao, quantidade, rz });
       }
 
-      return { produtos, headerRow: headerRow + 1, missingFields: [] };
+      const rzs = Array.from(new Set(produtos.map(p => p.rz)));
+      return {
+        produtos,
+        totalItens: produtos.length,
+        rzs,
+        headerRow: headerRow + 1,
+        missingFields: [],
+      };
     }
 
     console.warn('⚠️ Planilha lida, mas está vazia ou sem colunas esperadas.');
-    return { produtos: [], headerRow: null, missingFields: [] };
+    return { produtos: [], totalItens: 0, rzs: [], headerRow: null, missingFields: lastMissingFields };
   } catch (error) {
     console.error('❌ Erro ao processar planilha:', error);
-    return { produtos: [], headerRow: null, missingFields: [] };
+    return { produtos: [], totalItens: 0, rzs: [], headerRow: null, missingFields: [] };
   }
 }
 
