@@ -65,14 +65,13 @@ function renderExcedentes() {
 function handleFile(evt) {
   const file = evt.target.files[0];
   if (!file) return;
+
   const reader = new FileReader();
   reader.onload = async e => {
     try {
-      const { produtos, headerRow, missingFields } = await processarPlanilha(
-        e.target.result,
-      );
+      const { produtos, headerRow, missingFields } = await processarPlanilha(e.target.result);
 
-      if (headerRow == null) {
+      if (!headerRow) {
         alert('Nenhum cabeçalho foi detectado na planilha.');
         console.error('Cabeçalho não encontrado. Campos ausentes:', missingFields);
         return;
@@ -84,14 +83,15 @@ function handleFile(evt) {
         return;
       }
 
-      console.log('Produtos carregados:', produtos.length);
-      console.log('Cabeçalho detectado na linha:', headerRow);
-      if (missingFields.length) {
-        console.warn('Campos não encontrados:', missingFields);
+      const produtosValidos = produtos.filter(p => p.codigoML && p.rz && p.quantidade !== undefined);
+      if (produtosValidos.length === 0) {
+        alert('Os produtos lidos estão incompletos (falta código, RZ ou quantidade).');
+        console.warn('Produtos com dados ausentes:', produtos);
+        return;
       }
 
       const pallets = {};
-      produtos.forEach(({ codigoML, quantidade, rz }) => {
+      produtosValidos.forEach(({ codigoML, quantidade, rz }) => {
         if (!pallets[rz]) pallets[rz] = {};
         pallets[rz][codigoML] = (pallets[rz][codigoML] || 0) + quantidade;
       });
@@ -99,6 +99,8 @@ function handleFile(evt) {
       init(pallets);
       populateRZs();
       render();
+      console.log('Produtos válidos carregados:', produtosValidos.length);
+
     } catch (err) {
       alert('Erro ao ler a planilha. Veja o console para detalhes.');
       console.error('Erro no processamento da planilha:', err);
