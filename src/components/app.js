@@ -9,7 +9,7 @@ import store, {
   finalizeCurrent,
   load as loadState,
 } from '../store/index.js';
-import { readPlanilha, exportResult } from '../utils/excel.js';
+import { processarPlanilha, exportResult } from '../utils/excel.js';
 
 function render() {
   const prog = progress();
@@ -66,11 +66,43 @@ function handleFile(evt) {
   const file = evt.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => {
-    const pallets = readPlanilha(new Uint8Array(e.target.result));
-    init(pallets);
-    populateRZs();
-    render();
+  reader.onload = async e => {
+    try {
+      const { produtos, headerRow, missingFields } = await processarPlanilha(
+        e.target.result,
+      );
+
+      if (headerRow == null) {
+        alert('Nenhum cabeçalho foi detectado na planilha.');
+        console.error('Cabeçalho não encontrado. Campos ausentes:', missingFields);
+        return;
+      }
+
+      if (!produtos || produtos.length === 0) {
+        alert('Nenhum produto foi encontrado na planilha. Verifique os nomes das colunas.');
+        console.warn('processarPlanilha retornou vazio.');
+        return;
+      }
+
+      console.log('Produtos carregados:', produtos.length);
+      console.log('Cabeçalho detectado na linha:', headerRow);
+      if (missingFields.length) {
+        console.warn('Campos não encontrados:', missingFields);
+      }
+
+      const pallets = {};
+      produtos.forEach(({ codigoML, quantidade, rz }) => {
+        if (!pallets[rz]) pallets[rz] = {};
+        pallets[rz][codigoML] = (pallets[rz][codigoML] || 0) + quantidade;
+      });
+
+      init(pallets);
+      populateRZs();
+      render();
+    } catch (err) {
+      alert('Erro ao ler a planilha. Veja o console para detalhes.');
+      console.error('Erro no processamento da planilha:', err);
+    }
   };
   reader.readAsArrayBuffer(file);
 }

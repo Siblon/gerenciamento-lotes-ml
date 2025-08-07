@@ -21,7 +21,7 @@ describe('processarPlanilha', () => {
       ['TOTAL', '', { f: 'SUM(C4:C5)' }, 'RZ-123'],
     ];
     const buf = createXlsxBuffer(data);
-    const produtos = await processarPlanilha(buf);
+    const { produtos } = await processarPlanilha(buf);
     expect(produtos).toEqual([
       { codigoML: 'AAA123', descricao: 'Produto A', quantidade: 2, rz: 'RZ-123' },
       { codigoML: 'BBB456', descricao: 'Produto B', quantidade: 1, rz: 'RZ-124' },
