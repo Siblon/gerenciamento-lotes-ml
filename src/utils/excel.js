@@ -1,5 +1,25 @@
 import * as XLSX from 'xlsx';
 
+// Remove acentos, espaços e coloca tudo em minúsculas
+function normalize(str) {
+  return String(str)
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+// Encontra o índice de uma coluna dado o cabeçalho e uma lista de aliases
+export function getColIndex(headers, aliases) {
+  const normHeaders = headers.map(h => normalize(h));
+  for (const alias of aliases) {
+    const idx = normHeaders.indexOf(normalize(alias));
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
+
 // Lê a planilha do Mercado Livre e retorna um mapeamento
 // de RZ -> { codigo: quantidade }.
 // Espera-se que as colunas estejam na ordem:
@@ -20,6 +40,113 @@ export function readPlanilha(data) {
   });
 
   return pallets;
+}
+
+// Processa uma planilha possivelmente bagunçada e retorna
+// um array de objetos padronizados
+export async function processarPlanilha(file) {
+  let data;
+  if (file instanceof ArrayBuffer) {
+    data = file;
+  } else if (Buffer.isBuffer(file)) {
+    data = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+  } else if (file?.arrayBuffer) {
+    data = await file.arrayBuffer();
+  } else {
+    throw new Error('Formato de arquivo não suportado');
+  }
+
+  const workbook = XLSX.read(data, {
+    type: 'array',
+    raw: true,
+    cellFormula: false,
+  });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+  // Converte a planilha para uma matriz ignorando colunas ocultas e fórmulas
+  const range = XLSX.utils.decode_range(sheet['!ref']);
+  const hiddenCols = new Set();
+  (sheet['!cols'] || []).forEach((col, idx) => {
+    if (col && col.hidden) hiddenCols.add(idx);
+  });
+
+  const rows = [];
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    const row = [];
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      if (hiddenCols.has(C)) {
+        row.push(null);
+        continue;
+      }
+      const cell = sheet[XLSX.utils.encode_cell({ r: R, c: C })];
+      if (!cell || cell.f) {
+        row.push(null);
+        continue;
+      }
+      row.push(cell.v);
+    }
+    rows.push(row);
+  }
+
+  // Busca cabeçalho nas primeiras 10 linhas
+  const aliases = {
+    codigoML: ['Código ML', 'ML', 'Cod. ML', 'Código'],
+    descricao: ['Descrição', 'Produto', 'Item', 'Descrição do Item'],
+    quantidade: ['Qtd', 'Quantidade', 'Qtde'],
+    rz: ['RZ', 'Palete', 'Paletização', 'Paletizacao'],
+  };
+
+  let headerRow = -1;
+  let indices = {};
+  for (let i = 0; i < Math.min(10, rows.length); i++) {
+    const row = rows[i];
+    const headerIndices = {
+      codigoML: getColIndex(row, aliases.codigoML),
+      descricao: getColIndex(row, aliases.descricao),
+      quantidade: getColIndex(row, aliases.quantidade),
+      rz: getColIndex(row, aliases.rz),
+    };
+
+    if (
+      headerIndices.codigoML !== -1 &&
+      headerIndices.quantidade !== -1 &&
+      headerIndices.rz !== -1
+    ) {
+      headerRow = i;
+      indices = headerIndices;
+      console.log(`Cabeçalho detectado na linha ${i + 1}`);
+      break;
+    }
+  }
+
+  if (headerRow === -1) return [];
+
+  const produtos = [];
+  for (let i = headerRow + 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row) continue;
+    const filled = row.filter(c => c !== null && String(c).trim() !== '');
+    if (filled.length < 2) continue; // ignora linhas vazias
+
+    const codigoML = row[indices.codigoML] ? String(row[indices.codigoML]).trim() : '';
+    const descricao =
+      indices.descricao !== -1 && row[indices.descricao]
+        ? String(row[indices.descricao]).trim()
+        : '';
+    const quantidadeRaw = row[indices.quantidade];
+    let quantidade = Number(quantidadeRaw);
+    if (!quantidade || Number.isNaN(quantidade)) quantidade = 1;
+    const rz = row[indices.rz] ? String(row[indices.rz]).trim() : '';
+
+    if (!codigoML || !descricao || !rz) {
+      console.log(`Linha ${i + 1} ignorada por falta de dados essenciais`);
+      continue;
+    }
+
+    produtos.push({ codigoML, descricao, quantidade, rz });
+  }
+
+  return produtos;
 }
 
 // Exporta os resultados finais em um arquivo .xlsx com três abas:
