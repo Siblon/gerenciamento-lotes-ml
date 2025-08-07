@@ -1,22 +1,62 @@
-import store, { init, conferir, marcarFaltante, progress, load as loadState } from '../store/index.js';
-import { readCodesFromXlsx, exportResult } from '../utils/excel.js';
+import store, {
+  init,
+  selectRZ,
+  conferir,
+  progress,
+  listarConferidos,
+  listarFaltantes,
+  listarExcedentes,
+  finalizeCurrent,
+  load as loadState,
+} from '../store/index.js';
+import { readPlanilha, exportResult } from '../utils/excel.js';
 
 function render() {
-  const { conferidos, faltantes, excedentes } = store.state;
   const prog = progress();
-  document.getElementById('progresso').textContent = `${prog.done} de ${prog.total} conferidos`;
-  renderList('conferidosTable', conferidos);
-  renderList('faltantesTable', faltantes);
-  renderList('excedentesTable', excedentes);
+  const rz = store.state.currentRZ ? `RZ: ${store.state.currentRZ} - ` : '';
+  document.getElementById('progresso').textContent = `${rz}${prog.done} de ${prog.total} conferidos`;
+  renderConferidos();
+  renderFaltantes();
+  renderExcedentes();
 }
 
-function renderList(id, list) {
-  const tbody = document.getElementById(id);
+function renderConferidos() {
+  const list = listarConferidos();
+  const tbody = document.getElementById('conferidosTable');
   tbody.innerHTML = '';
-  list.forEach(codigo => {
+  list.forEach(item => {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
-    td.textContent = codigo;
+    const esperado = item.esperado;
+    const conf = Math.min(item.conferido, esperado);
+    td.textContent = esperado > 1 ? `${item.codigo} (${conf}/${esperado})` : item.codigo;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  });
+}
+
+function renderFaltantes() {
+  const list = listarFaltantes();
+  const tbody = document.getElementById('faltantesTable');
+  tbody.innerHTML = '';
+  list.forEach(item => {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    const esperado = item.esperado;
+    td.textContent = esperado > 1 ? `${item.codigo} (${item.conferido}/${esperado})` : item.codigo;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  });
+}
+
+function renderExcedentes() {
+  const list = listarExcedentes();
+  const tbody = document.getElementById('excedentesTable');
+  tbody.innerHTML = '';
+  list.forEach(item => {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.textContent = item.quantidade > 1 ? `${item.codigo} (${item.quantidade})` : item.codigo;
     tr.appendChild(td);
     tbody.appendChild(tr);
   });
@@ -27,14 +67,38 @@ function handleFile(evt) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    const codes = readCodesFromXlsx(new Uint8Array(e.target.result));
-    init(codes);
+    const pallets = readPlanilha(new Uint8Array(e.target.result));
+    init(pallets);
+    populateRZs();
     render();
   };
   reader.readAsArrayBuffer(file);
 }
 
+function populateRZs() {
+  const select = document.getElementById('rzSelect');
+  select.innerHTML = '<option value="">Selecione o RZ</option>';
+  Object.keys(store.state.pallets).forEach(rz => {
+    const opt = document.createElement('option');
+    opt.value = rz;
+    opt.textContent = rz;
+    select.appendChild(opt);
+  });
+  if (store.state.currentRZ) {
+    select.value = store.state.currentRZ;
+  }
+}
+
+function handleRzChange(evt) {
+  const rz = evt.target.value;
+  if (rz) {
+    selectRZ(rz);
+    render();
+  }
+}
+
 function handleInput() {
+  if (!store.state.currentRZ) return;
   const input = document.getElementById('codigoInput');
   const codigo = input.value.trim();
   if (!codigo) return;
@@ -43,31 +107,31 @@ function handleInput() {
   render();
 }
 
-function handleFaltante() {
-  const input = document.getElementById('codigoInput');
-  const codigo = input.value.trim();
-  if (!codigo) return;
-  marcarFaltante(codigo);
-  input.value = '';
-  render();
-}
-
 function finalize() {
-  exportResult(store.state);
+  const result = finalizeCurrent();
+  const faltantesCount = result.faltantes.reduce((s, i) => s + i.quantidade, 0);
+  const excedentesCount = result.excedentes.reduce((s, i) => s + i.quantidade, 0);
+  const completo = faltantesCount === 0 ? 'completa' : 'parcial';
+  const resumo = `Conferência ${completo}\nFaltantes: ${faltantesCount}\nExcedentes: ${excedentesCount}\nDeseja encerrar?`;
+  if (confirm(resumo)) {
+    exportResult(result);
+  }
 }
 
 function setup() {
   document.getElementById('fileInput').addEventListener('change', handleFile);
+  document.getElementById('rzSelect').addEventListener('change', handleRzChange);
   document.getElementById('registrarBtn').addEventListener('click', handleInput);
-  document.getElementById('faltanteBtn').addEventListener('click', handleFaltante);
   document.getElementById('finalizarBtn').addEventListener('click', finalize);
   document.getElementById('codigoInput').addEventListener('keypress', e => {
     if (e.key === 'Enter') handleInput();
   });
   loadState();
+  populateRZs();
   render();
 }
 
 if (typeof window !== 'undefined') {
   window.addEventListener('DOMContentLoaded', setup);
 }
+
