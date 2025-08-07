@@ -98,6 +98,7 @@ export async function processarPlanilha(file) {
 
   let headerRow = -1;
   let indices = {};
+  let lastHeaderIndices = {};
   for (let i = 0; i < Math.min(10, rows.length); i++) {
     const row = rows[i];
     const headerIndices = {
@@ -106,6 +107,7 @@ export async function processarPlanilha(file) {
       quantidade: getColIndex(row, aliases.quantidade),
       rz: getColIndex(row, aliases.rz),
     };
+    lastHeaderIndices = headerIndices;
 
     if (
       headerIndices.codigoML !== -1 &&
@@ -119,7 +121,14 @@ export async function processarPlanilha(file) {
     }
   }
 
-  if (headerRow === -1) return [];
+  const missingFields = ['codigoML', 'quantidade', 'rz'].filter(
+    f => lastHeaderIndices[f] === -1,
+  );
+
+  if (headerRow === -1) {
+    console.warn('Cabeçalho não detectado nas primeiras linhas.', missingFields);
+    return { produtos: [], headerRow: null, missingFields };
+  }
 
   const produtos = [];
   for (let i = headerRow + 1; i < rows.length; i++) {
@@ -139,14 +148,14 @@ export async function processarPlanilha(file) {
     const rz = row[indices.rz] ? String(row[indices.rz]).trim() : '';
 
     if (!codigoML || !descricao || !rz) {
-      console.log(`Linha ${i + 1} ignorada por falta de dados essenciais`);
+      console.warn(`Linha ${i + 1} ignorada por falta de dados essenciais`);
       continue;
     }
 
     produtos.push({ codigoML, descricao, quantidade, rz });
   }
 
-  return produtos;
+  return { produtos, headerRow: headerRow + 1, missingFields: [] };
 }
 
 // Exporta os resultados finais em um arquivo .xlsx com três abas:
