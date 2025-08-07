@@ -2,3 +2,25 @@ body {
   font-family: Arial, sans-serif;
   padding: 20px;
 }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+input, button {
+  margin: 4px;
+  padding: 6px 10px;
+}
+
+#progresso {
+  margin: 10px 0;
+  font-weight: bold;
+}
