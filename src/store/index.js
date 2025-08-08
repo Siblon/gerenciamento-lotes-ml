@@ -23,7 +23,6 @@ export function init(items = []) {
       descricao,
     };
   });
-  save();
 }
 
 export function selectRZ(rz) {
@@ -31,7 +30,6 @@ export function selectRZ(rz) {
   if (!state.pallets[rz]) {
     state.pallets[rz] = { expected: {}, conferido: {}, excedentes: {} };
   }
-  save();
 }
 
 function getCurrent() {
@@ -46,7 +44,6 @@ export function conferir(codigo) {
     const conf = pallet.conferido[codigo] || 0;
     if (conf < esperado.qtd) {
       pallet.conferido[codigo] = conf + 1;
-      save();
       return { status: 'ok', conferido: conf + 1, esperado: esperado.qtd };
     }
     return { status: 'full', conferido: conf, esperado: esperado.qtd };
@@ -58,7 +55,6 @@ export function registrarExcedente(codigo) {
   const pallet = getCurrent();
   if (!pallet) return;
   pallet.excedentes[codigo] = (pallet.excedentes[codigo] || 0) + 1;
-  save();
 }
 
 export function registrarAjuste({
@@ -81,7 +77,6 @@ export function registrarAjuste({
   if (tipo === 'AJUSTE_PRECO' && pallet && pallet.expected[codigo]) {
     pallet.expected[codigo].precoAtual = precoAjustado;
   }
-  save();
 }
 
 export function listarAjustes() {
