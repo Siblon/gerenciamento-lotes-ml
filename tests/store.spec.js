@@ -6,6 +6,7 @@ import store, {
   progress,
   finalizeCurrent,
   save,
+  registrarExcedente,
 } from '../src/store/index.js';
 
 describe('store de conferência com RZ', () => {
@@ -17,7 +18,7 @@ describe('store de conferência com RZ', () => {
       removeItem: key => { delete storage[key]; },
       clear: () => { Object.keys(storage).forEach(k => delete storage[k]); },
     };
-    init({ RZ1: { A: 1, B: 1 } });
+    init({ RZ1: { A: 1, B: 1 } }, { A: { descricao: '', preco: 0 }, B: { descricao: '', preco: 0 } });
     selectRZ('RZ1');
   });
 
@@ -26,8 +27,10 @@ describe('store de conferência com RZ', () => {
     expect(progress()).toEqual({ done: 1, total: 2 });
   });
 
-  it('código desconhecido vai para excedentes', () => {
-    conferir('X');
+  it('código desconhecido vai para excedentes após registrar', () => {
+    const r = conferir('X');
+    expect(r.status).toBe('not-found');
+    registrarExcedente('X');
     const res = finalizeCurrent();
     expect(res.excedentes).toEqual([{ codigo: 'X', quantidade: 1 }]);
   });

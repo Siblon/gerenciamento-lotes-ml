@@ -7,9 +7,13 @@ import store, {
   listarFaltantes,
   listarExcedentes,
   finalizeCurrent,
+  registrarExcedente,
+  registrarAjuste,
   load as loadState,
 } from '../store/index.js';
 import { processarPlanilha, exportResult } from '../utils/excel.js';
+
+let consultaAtual = null;
 
 function render() {
   const prog = progress();
@@ -18,6 +22,7 @@ function render() {
   renderConferidos();
   renderFaltantes();
   renderExcedentes();
+  renderConsulta();
 }
 
 function renderConferidos() {
@@ -62,6 +67,32 @@ function renderExcedentes() {
   });
 }
 
+function renderConsulta() {
+  const container = document.getElementById('consultaCard');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!consultaAtual) return;
+  const div = document.createElement('div');
+  if (consultaAtual.encontrado) {
+    div.innerHTML = `
+      <p>SKU: ${consultaAtual.codigo}</p>
+      <p>${consultaAtual.descricao}</p>
+      <p>RZ: ${store.state.currentRZ}</p>
+      <p>Qtd: ${consultaAtual.conferido}/${consultaAtual.esperado}</p>
+      <label>Preço: <input type="number" id="precoAjustado" value="${consultaAtual.precoOriginal}" step="0.01"></label>
+      <input type="text" id="obsInput" placeholder="Observação" />
+    `;
+  } else {
+    div.innerHTML = `
+      <p>SKU ${consultaAtual.codigo} não encontrado</p>
+      <label>Preço Original: <input type="number" id="precoOriginal" step="0.01"></label>
+      <label>Preço Ajustado: <input type="number" id="precoAjustado" step="0.01"></label>
+      <input type="text" id="obsInput" placeholder="Observação" />
+    `;
+  }
+  container.appendChild(div);
+}
+
 function handleFile(evt) {
   const file = evt.target.files[0];
   if (!file) return;
@@ -91,12 +122,14 @@ function handleFile(evt) {
       }
 
       const pallets = {};
-      produtosValidos.forEach(({ codigoML, quantidade, rz }) => {
+      const catalog = {};
+      produtosValidos.forEach(({ codigoML, quantidade, rz, descricao, preco }) => {
         if (!pallets[rz]) pallets[rz] = {};
         pallets[rz][codigoML] = (pallets[rz][codigoML] || 0) + quantidade;
+        if (!catalog[codigoML]) catalog[codigoML] = { descricao, preco };
       });
 
-      init(pallets);
+      init(pallets, catalog);
       populateRZs();
       render();
       console.log('Produtos válidos carregados:', produtosValidos.length);
@@ -131,13 +164,63 @@ function handleRzChange(evt) {
   }
 }
 
-function handleInput() {
+function handleConsultar() {
   if (!store.state.currentRZ) return;
   const input = document.getElementById('codigoInput');
   const codigo = input.value.trim();
   if (!codigo) return;
-  conferir(codigo);
-  input.value = '';
+
+  const pallet = store.state.pallets[store.state.currentRZ];
+  const esperado = pallet.expected[codigo];
+  const conferido = pallet.conferido[codigo] || 0;
+  const produto = store.state.catalog[codigo];
+
+  consultaAtual = {
+    codigo,
+    encontrado: !!esperado,
+    esperado: esperado || 0,
+    conferido,
+    descricao: produto ? produto.descricao : '',
+    precoOriginal: produto ? produto.preco : 0,
+  };
+  renderConsulta();
+}
+
+function handleRegistrar() {
+  if (!store.state.currentRZ || !consultaAtual) return;
+  const codigo = consultaAtual.codigo;
+  const obs = document.getElementById('obsInput')?.value.trim() || '';
+  const precoAjEl = document.getElementById('precoAjustado');
+
+  if (consultaAtual.encontrado) {
+    const res = conferir(codigo);
+    if (res.status === 'ok') {
+      const precoAjustado = precoAjEl ? Number(precoAjEl.value) || 0 : 0;
+      if (precoAjustado !== consultaAtual.precoOriginal) {
+        registrarAjuste({
+          codigo,
+          observacao: obs,
+          precoOriginal: consultaAtual.precoOriginal,
+          precoAjustado,
+        });
+      }
+    } else if (res.status === 'full') {
+      alert('Quantidade já conferida');
+    }
+  } else {
+    const precoOriginal = Number(document.getElementById('precoOriginal')?.value) || 0;
+    const precoAjustado = precoAjEl ? Number(precoAjEl.value) || 0 : 0;
+    registrarExcedente(codigo);
+    registrarAjuste({
+      codigo,
+      observacao: obs,
+      precoOriginal,
+      precoAjustado,
+    });
+  }
+
+  consultaAtual = null;
+  document.getElementById('codigoInput').value = '';
   render();
 }
 
@@ -155,10 +238,14 @@ function finalize() {
 function setup() {
   document.getElementById('fileInput').addEventListener('change', handleFile);
   document.getElementById('rzSelect').addEventListener('change', handleRzChange);
-  document.getElementById('registrarBtn').addEventListener('click', handleInput);
+  document.getElementById('consultarBtn').addEventListener('click', handleConsultar);
+  document.getElementById('registrarBtn').addEventListener('click', handleRegistrar);
   document.getElementById('finalizarBtn').addEventListener('click', finalize);
-  document.getElementById('codigoInput').addEventListener('keypress', e => {
-    if (e.key === 'Enter') handleInput();
+  document.getElementById('codigoInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      if (e.ctrlKey) handleRegistrar();
+      else handleConsultar();
+    }
   });
   loadState();
   populateRZs();
