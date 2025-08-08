@@ -1,27 +1,28 @@
 const STORAGE_KEY = 'conferencia-state';
 
-// Estrutura principal do estado:
-// pallets: { RZ: { expected:{codigo:qtde}, conferido:{codigo:qtde}, excedentes:{codigo:qtde} } }
-// currentRZ: RZ atualmente selecionado para conferência
 export const state = {
   pallets: {},
   currentRZ: null,
-  catalog: {},
   ajustes: [],
 };
 
-export function init(pallets, catalog = {}) {
+export function init(items = []) {
   state.pallets = {};
-  Object.keys(pallets).forEach(rz => {
-    state.pallets[rz] = {
-      expected: { ...pallets[rz] },
-      conferido: {},
-      excedentes: {},
-    };
-  });
-  state.catalog = { ...catalog };
   state.ajustes = [];
   state.currentRZ = null;
+  items.forEach(it => {
+    const { sku, rz, qtd, preco = 0, valorTotal = 0, descricao = '' } = it;
+    if (!state.pallets[rz]) {
+      state.pallets[rz] = { expected: {}, conferido: {}, excedentes: {} };
+    }
+    state.pallets[rz].expected[sku] = {
+      qtd,
+      precoOriginal: preco,
+      precoAtual: preco,
+      valorTotalOriginal: valorTotal || preco * qtd,
+      descricao,
+    };
+  });
   save();
 }
 
@@ -43,12 +44,12 @@ export function conferir(codigo) {
   const esperado = pallet.expected[codigo];
   if (esperado) {
     const conf = pallet.conferido[codigo] || 0;
-    if (conf < esperado) {
+    if (conf < esperado.qtd) {
       pallet.conferido[codigo] = conf + 1;
       save();
-      return { status: 'ok', conferido: conf + 1, esperado };
+      return { status: 'ok', conferido: conf + 1, esperado: esperado.qtd };
     }
-    return { status: 'full', conferido: conf, esperado };
+    return { status: 'full', conferido: conf, esperado: esperado.qtd };
   }
   return { status: 'not-found' };
 }
@@ -61,14 +62,24 @@ export function registrarExcedente(codigo) {
 }
 
 export function registrarAjuste({
+  tipo = 'AJUSTE_PRECO',
   codigo,
-  observacao = '',
   precoOriginal = 0,
   precoAjustado = 0,
+  obs = '',
 }) {
-  state.ajustes.push({ codigo, observacao, precoOriginal, precoAjustado });
-  if (state.catalog[codigo]) {
-    state.catalog[codigo].preco = precoAjustado;
+  state.ajustes.push({
+    tipo,
+    sku: codigo,
+    rz: state.currentRZ,
+    precoOriginal,
+    precoAjustado,
+    obs,
+    timestamp: new Date().toISOString(),
+  });
+  const pallet = getCurrent();
+  if (tipo === 'AJUSTE_PRECO' && pallet && pallet.expected[codigo]) {
+    pallet.expected[codigo].precoAtual = precoAjustado;
   }
   save();
 }
@@ -80,9 +91,12 @@ export function listarAjustes() {
 export function progress() {
   const pallet = getCurrent();
   if (!pallet) return { done: 0, total: 0 };
-  const total = Object.values(pallet.expected).reduce((s, q) => s + q, 0);
+  const total = Object.values(pallet.expected).reduce((s, it) => s + it.qtd, 0);
   const done = Object.entries(pallet.conferido).reduce(
-    (s, [codigo, qtd]) => s + Math.min(qtd, pallet.expected[codigo] || 0),
+    (s, [codigo, qtd]) => {
+      const exp = pallet.expected[codigo];
+      return s + Math.min(qtd, exp ? exp.qtd : 0);
+    },
     0,
   );
   return { done, total };
@@ -94,7 +108,7 @@ export function listarConferidos() {
   return Object.keys(pallet.conferido).map(codigo => ({
     codigo,
     conferido: pallet.conferido[codigo],
-    esperado: pallet.expected[codigo] || 0,
+    esperado: pallet.expected[codigo]?.qtd || 0,
   }));
 }
 
@@ -103,7 +117,7 @@ export function listarFaltantes() {
   if (!pallet) return [];
   const faltantes = [];
   Object.keys(pallet.expected).forEach(codigo => {
-    const esperado = pallet.expected[codigo];
+    const esperado = pallet.expected[codigo].qtd;
     const conf = pallet.conferido[codigo] || 0;
     if (conf < esperado) {
       faltantes.push({
@@ -137,7 +151,7 @@ export function finalizeCurrent() {
     };
   const conferidos = [];
   Object.keys(pallet.expected).forEach(codigo => {
-    const esperado = pallet.expected[codigo];
+    const esperado = pallet.expected[codigo].qtd;
     const conf = pallet.conferido[codigo] || 0;
     const qtde = Math.min(conf, esperado);
     if (qtde > 0) {
@@ -147,6 +161,34 @@ export function finalizeCurrent() {
   const faltantes = listarFaltantes().map(f => ({ codigo: f.codigo, quantidade: f.quantidade }));
   const excedentes = listarExcedentes();
   return { conferidos, faltantes, excedentes, ajustes: state.ajustes };
+}
+
+export function calcResumoRZ(rz) {
+  const pallet = state.pallets[rz];
+  if (!pallet)
+    return { totalOriginal: 0, totalAjustado: 0, delta: 0, deltaPct: 0 };
+  let totalOriginal = 0;
+  let totalAjustado = 0;
+  Object.values(pallet.expected).forEach(it => {
+    totalOriginal += it.valorTotalOriginal;
+    totalAjustado += it.precoAtual * it.qtd;
+  });
+  const delta = totalAjustado - totalOriginal;
+  const deltaPct = totalOriginal ? delta / totalOriginal : 0;
+  return { totalOriginal, totalAjustado, delta, deltaPct };
+}
+
+export function calcResumoGeral() {
+  let totalOriginal = 0;
+  let totalAjustado = 0;
+  Object.keys(state.pallets).forEach(rz => {
+    const r = calcResumoRZ(rz);
+    totalOriginal += r.totalOriginal;
+    totalAjustado += r.totalAjustado;
+  });
+  const delta = totalAjustado - totalOriginal;
+  const deltaPct = totalOriginal ? delta / totalOriginal : 0;
+  return { totalOriginal, totalAjustado, delta, deltaPct };
 }
 
 export function save() {
@@ -162,7 +204,6 @@ export function load() {
     const data = JSON.parse(saved);
     state.pallets = data.pallets || {};
     state.currentRZ = data.currentRZ || null;
-    state.catalog = data.catalog || {};
     state.ajustes = data.ajustes || [];
   }
 }
@@ -180,6 +221,8 @@ export default {
   finalizeCurrent,
   registrarExcedente,
   registrarAjuste,
+  calcResumoRZ,
+  calcResumoGeral,
   save,
   load,
 };

@@ -23,8 +23,8 @@ describe('processarPlanilha', () => {
     const buf = createXlsxBuffer(data);
     const { produtos } = await processarPlanilha(buf);
     expect(produtos).toEqual([
-      { codigoML: 'AAA123', descricao: 'Produto A', quantidade: 2, rz: 'RZ-123', preco: 10.5 },
-      { codigoML: 'BBB456', descricao: 'Produto B', quantidade: 1, rz: 'RZ-124', preco: 5 },
+      { codigoML: 'AAA123', descricao: 'Produto A', quantidade: 2, rz: 'RZ-123', preco: 10.5, valorTotal: 21 },
+      { codigoML: 'BBB456', descricao: 'Produto B', quantidade: 1, rz: 'RZ-124', preco: 5, valorTotal: 5 },
     ]);
   });
 });

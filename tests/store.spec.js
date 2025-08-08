@@ -7,6 +7,7 @@ import store, {
   finalizeCurrent,
   save,
   registrarExcedente,
+  registrarAjuste,
 } from '../src/store/index.js';
 
 describe('store de conferência com RZ', () => {
@@ -18,7 +19,10 @@ describe('store de conferência com RZ', () => {
       removeItem: key => { delete storage[key]; },
       clear: () => { Object.keys(storage).forEach(k => delete storage[k]); },
     };
-    init({ RZ1: { A: 1, B: 1 } }, { A: { descricao: '', preco: 0 }, B: { descricao: '', preco: 0 } });
+    init([
+      { sku: 'A', rz: 'RZ1', qtd: 1, preco: 0, valorTotal: 0, descricao: '' },
+      { sku: 'B', rz: 'RZ1', qtd: 1, preco: 0, valorTotal: 0, descricao: '' },
+    ]);
     selectRZ('RZ1');
   });
 
@@ -31,8 +35,10 @@ describe('store de conferência com RZ', () => {
     const r = conferir('X');
     expect(r.status).toBe('not-found');
     registrarExcedente('X');
+    registrarAjuste({ tipo: 'EXCEDENTE', codigo: 'X', precoOriginal: 0, precoAjustado: 0 });
     const res = finalizeCurrent();
     expect(res.excedentes).toEqual([{ codigo: 'X', quantidade: 1 }]);
+    expect(res.ajustes).toHaveLength(1);
   });
 
   it('salva estado no localStorage', () => {
