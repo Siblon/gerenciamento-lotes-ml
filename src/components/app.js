@@ -89,11 +89,17 @@ function renderConsulta() {
   if (!container) return;
   const precoInput = document.getElementById('precoInput');
   const obsInput = document.getElementById('obsInput');
+  const registrarBtn = document.getElementById('registrarBtn');
+  const excedenteBtn = document.getElementById('excedenteBtn');
   precoInput.value = '';
   obsInput.value = '';
+  precoInput.placeholder = 'Preço ajustado';
+  registrarBtn.disabled = true;
+  excedenteBtn.disabled = true;
   container.innerHTML = '';
   if (!consultaAtual) return;
   if (consultaAtual.encontrado) {
+    registrarBtn.disabled = false;
     precoInput.value = consultaAtual.precoAtual;
     container.innerHTML = `
       <p>SKU: ${consultaAtual.codigo}</p>
@@ -104,6 +110,8 @@ function renderConsulta() {
       <p>Edite o preço se necessário e informe observação.</p>
     `;
   } else {
+    excedenteBtn.disabled = false;
+    precoInput.placeholder = 'Preço ajustado (obrigatório p/ excedente)';
     container.innerHTML = `
       <p>SKU ${consultaAtual.codigo} não está neste RZ, se registrar entra como Excedente.</p>
     `;
@@ -205,43 +213,64 @@ function handleConsultar() {
 }
 
 function handleRegistrar() {
-  if (!store.state.currentRZ || !consultaAtual) return;
+  if (!store.state.currentRZ || !consultaAtual || !consultaAtual.encontrado) return;
   const codigo = consultaAtual.codigo;
   const precoInput = document.getElementById('precoInput');
   const obsInput = document.getElementById('obsInput');
   const obs = obsInput.value.trim();
   const precoAjustado = Number(precoInput.value) || 0;
 
-  if (consultaAtual.encontrado) {
-    const res = conferir(codigo);
-    if (res.status === 'ok') {
-      if (precoAjustado !== consultaAtual.precoOriginal || obs) {
-        registrarAjuste({
-          codigo,
-          precoOriginal: consultaAtual.precoOriginal,
-          precoAjustado,
-          obs,
-        });
-      }
-    } else if (res.status === 'full') {
-      alert('Quantidade já conferida');
+  const res = conferir(codigo);
+  if (res.status === 'ok') {
+    if (precoAjustado !== consultaAtual.precoAtual || obs) {
+      registrarAjuste({
+        codigo,
+        precoOriginal: consultaAtual.precoOriginal,
+        precoAjustado,
+        obs,
+      });
     }
-  } else {
-    registrarExcedente(codigo);
-    registrarAjuste({
-      tipo: 'EXCEDENTE',
-      codigo,
-      precoOriginal: 0,
-      precoAjustado,
-      obs,
-    });
+  } else if (res.status === 'full') {
+    alert('Quantidade já conferida');
   }
 
   consultaAtual = null;
-  document.getElementById('codigoInput').value = '';
+  const codigoInput = document.getElementById('codigoInput');
+  codigoInput.value = '';
   precoInput.value = '';
   obsInput.value = '';
   render();
+  codigoInput.focus();
+  codigoInput.select();
+}
+
+function handleRegistrarExcedente() {
+  if (!store.state.currentRZ || !consultaAtual || consultaAtual.encontrado) return;
+  const codigo = consultaAtual.codigo;
+  const precoInput = document.getElementById('precoInput');
+  const obsInput = document.getElementById('obsInput');
+  const preco = Number(precoInput.value);
+  if (!preco) {
+    alert('Preço ajustado é obrigatório para excedente');
+    return;
+  }
+  const obs = obsInput.value.trim();
+  registrarExcedente(codigo);
+  registrarAjuste({
+    tipo: 'EXCEDENTE',
+    codigo,
+    precoOriginal: 0,
+    precoAjustado: preco,
+    obs,
+  });
+  consultaAtual = null;
+  const codigoInput = document.getElementById('codigoInput');
+  codigoInput.value = '';
+  precoInput.value = '';
+  obsInput.value = '';
+  render();
+  codigoInput.focus();
+  codigoInput.select();
 }
 
 function finalize() {
@@ -265,6 +294,9 @@ function setup() {
   document.getElementById('rzSelect').addEventListener('change', handleRzChange);
   document.getElementById('consultarBtn').addEventListener('click', handleConsultar);
   document.getElementById('registrarBtn').addEventListener('click', handleRegistrar);
+  document
+    .getElementById('excedenteBtn')
+    .addEventListener('click', handleRegistrarExcedente);
   document.getElementById('finalizarBtn').addEventListener('click', finalize);
   document.getElementById('codigoInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') {
