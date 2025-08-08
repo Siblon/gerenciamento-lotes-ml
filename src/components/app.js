@@ -9,9 +9,6 @@ import store, {
   finalizeCurrent,
   registrarExcedente,
   registrarAjuste,
-  load as loadState,
-  calcResumoRZ,
-  calcResumoGeral,
 } from '../store/index.js';
 import { processarPlanilha, exportResult } from '../utils/excel.js';
 
@@ -25,7 +22,7 @@ function render() {
   renderFaltantes();
   renderExcedentes();
   renderConsulta();
-  renderResumo();
+  renderResumos();
 }
 
 function renderConferidos() {
@@ -70,7 +67,34 @@ function renderExcedentes() {
   });
 }
 
-function renderResumo() {
+function calcResumoRZ(rz) {
+  const pallet = store.state.pallets[rz];
+  if (!pallet) return { totalOriginal: 0, totalAjustado: 0, delta: 0, deltaPct: 0 };
+  let totalOriginal = 0;
+  let totalAjustado = 0;
+  Object.values(pallet.expected).forEach(it => {
+    totalOriginal += it.valorTotalOriginal || it.precoOriginal * it.qtd;
+    totalAjustado += (it.precoAtual ?? it.precoOriginal) * it.qtd;
+  });
+  const delta = totalAjustado - totalOriginal;
+  const deltaPct = totalOriginal ? delta / totalOriginal : 0;
+  return { totalOriginal, totalAjustado, delta, deltaPct };
+}
+
+function calcResumoGeral() {
+  let totalOriginal = 0;
+  let totalAjustado = 0;
+  Object.keys(store.state.pallets).forEach(rz => {
+    const r = calcResumoRZ(rz);
+    totalOriginal += r.totalOriginal;
+    totalAjustado += r.totalAjustado;
+  });
+  const delta = totalAjustado - totalOriginal;
+  const deltaPct = totalOriginal ? delta / totalOriginal : 0;
+  return { totalOriginal, totalAjustado, delta, deltaPct };
+}
+
+function renderResumos() {
   const rzDiv = document.getElementById('resumoRZ');
   const geralDiv = document.getElementById('resumoGeral');
   const fmt = n => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -158,6 +182,7 @@ function handleFile(evt) {
       init(itens);
       populateRZs();
       render();
+      salvar();
       console.log('Produtos válidos carregados:', produtosValidos.length);
 
     } catch (err) {
@@ -187,6 +212,7 @@ function handleRzChange(evt) {
   if (rz) {
     selectRZ(rz);
     render();
+    salvar();
   }
 }
 
@@ -210,6 +236,7 @@ function handleConsultar() {
     precoAtual: esperado ? esperado.precoAtual : 0,
   };
   renderConsulta();
+  renderResumos();
 }
 
 function handleRegistrar() {
@@ -240,6 +267,7 @@ function handleRegistrar() {
   precoInput.value = '';
   obsInput.value = '';
   render();
+  salvar();
   codigoInput.focus();
   codigoInput.select();
 }
@@ -269,6 +297,7 @@ function handleRegistrarExcedente() {
   precoInput.value = '';
   obsInput.value = '';
   render();
+  salvar();
   codigoInput.focus();
   codigoInput.select();
 }
@@ -289,6 +318,137 @@ function finalize() {
   }
 }
 
+function getConferidosPlain() {
+  const arr = [];
+  Object.keys(store.state.pallets).forEach(rz => {
+    const pal = store.state.pallets[rz];
+    Object.entries(pal.conferido).forEach(([sku, qtd]) => {
+      arr.push({ sku, rz, qtd });
+    });
+  });
+  return arr;
+}
+
+function getFaltantesPlain() {
+  const arr = [];
+  Object.keys(store.state.pallets).forEach(rz => {
+    const pal = store.state.pallets[rz];
+    Object.keys(pal.expected).forEach(sku => {
+      const exp = pal.expected[sku].qtd;
+      const conf = pal.conferido[sku] || 0;
+      if (conf < exp) {
+        arr.push({ sku, rz, quantidade: exp - conf, esperado: exp, conferido: conf });
+      }
+    });
+  });
+  return arr;
+}
+
+function getExcedentesPlain() {
+  const arr = [];
+  Object.keys(store.state.pallets).forEach(rz => {
+    const pal = store.state.pallets[rz];
+    Object.entries(pal.excedentes).forEach(([sku, qtd]) => {
+      arr.push({ sku, rz, quantidade: qtd });
+    });
+  });
+  return arr;
+}
+
+function setConferidosFromPlain(list) {
+  Object.keys(store.state.pallets).forEach(rz => {
+    store.state.pallets[rz].conferido = {};
+  });
+  list.forEach(it => {
+    if (!store.state.pallets[it.rz]) {
+      store.state.pallets[it.rz] = { expected: {}, conferido: {}, excedentes: {} };
+    }
+    store.state.pallets[it.rz].conferido[it.sku] = it.qtd;
+  });
+}
+
+function setFaltantesFromPlain(_list) {
+  // faltantes são derivados de expected e conferido
+}
+
+function setExcedentesFromPlain(list) {
+  Object.keys(store.state.pallets).forEach(rz => {
+    store.state.pallets[rz].excedentes = {};
+  });
+  list.forEach(it => {
+    if (!store.state.pallets[it.rz]) {
+      store.state.pallets[it.rz] = { expected: {}, conferido: {}, excedentes: {} };
+    }
+    store.state.pallets[it.rz].excedentes[it.sku] = it.quantidade;
+  });
+}
+
+function salvar() {
+  const itens = [];
+  Object.keys(store.state.pallets).forEach(rz => {
+    const pal = store.state.pallets[rz];
+    Object.entries(pal.expected).forEach(([sku, it]) => {
+      itens.push({
+        sku,
+        rz,
+        qtd: it.qtd,
+        descricao: it.descricao,
+        precoOriginal: it.precoOriginal,
+        precoAtual: it.precoAtual,
+        valorTotalOriginal: it.valorTotalOriginal,
+      });
+    });
+  });
+  const state = {
+    rzAtual: store.state.currentRZ,
+    itens,
+    ajustes: store.state.ajustes,
+    listas: {
+      conferidos: getConferidosPlain(),
+      faltantes: getFaltantesPlain(),
+      excedentes: getExcedentesPlain(),
+    },
+    version: 1,
+  };
+  localStorage.setItem('estadoConferencia', JSON.stringify(state));
+}
+
+function restaurar() {
+  const raw = localStorage.getItem('estadoConferencia');
+  if (!raw) return;
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  store.state.pallets = {};
+  (data.itens || []).forEach(it => {
+    if (!store.state.pallets[it.rz]) {
+      store.state.pallets[it.rz] = { expected: {}, conferido: {}, excedentes: {} };
+    }
+    store.state.pallets[it.rz].expected[it.sku] = {
+      qtd: it.qtd,
+      precoOriginal: it.precoOriginal,
+      precoAtual: it.precoAtual ?? it.precoOriginal,
+      valorTotalOriginal: it.valorTotalOriginal || it.precoOriginal * it.qtd,
+      descricao: it.descricao,
+    };
+  });
+  store.state.currentRZ = data.rzAtual || null;
+  store.state.ajustes = Array.isArray(data.ajustes) ? data.ajustes : [];
+  setConferidosFromPlain(data.listas?.conferidos || []);
+  setFaltantesFromPlain(data.listas?.faltantes || []);
+  setExcedentesFromPlain(data.listas?.excedentes || []);
+  populateRZs();
+  renderTudo();
+  renderResumos();
+}
+
+function renderTudo() {
+  render();
+}
+
 function setup() {
   document.getElementById('fileInput').addEventListener('change', handleFile);
   document.getElementById('rzSelect').addEventListener('change', handleRzChange);
@@ -304,9 +464,7 @@ function setup() {
       else handleConsultar();
     }
   });
-  loadState();
-  populateRZs();
-  render();
+  restaurar();
 }
 
 if (typeof window !== 'undefined') {
