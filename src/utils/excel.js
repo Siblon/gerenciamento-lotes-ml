@@ -84,6 +84,16 @@ export async function processarPlanilha(file) {
         'Produto',
         'Item',
       ],
+      // Preço unitário do produto
+      preco: [
+        'Preço',
+        'Preco',
+        'Preço Unitário',
+        'Preco Unitario',
+        'Valor',
+        'Valor Unitário',
+        'Valor Unitario',
+      ],
       // Quantidade esperada do produto
       quantidade: [
         'Qtd',
@@ -152,6 +162,7 @@ export async function processarPlanilha(file) {
           descricao: getColIndex(row, aliases.descricao),
           quantidade: getColIndex(row, aliases.quantidade),
           rz: getColIndex(row, aliases.rz),
+          preco: getColIndex(row, aliases.preco),
         };
         lastHeaderIndices = headerIndices;
 
@@ -210,6 +221,13 @@ export async function processarPlanilha(file) {
         let quantidade = Number(quantidadeRaw);
         if (!quantidade || Number.isNaN(quantidade)) quantidade = 1;
         const rz = row[indices.rz] ? String(row[indices.rz]).trim() : '';
+        const precoRaw =
+          indices.preco !== -1 && row[indices.preco] !== undefined
+            ? row[indices.preco]
+            : null;
+        const preco = precoRaw !== null && precoRaw !== undefined && !Number.isNaN(Number(precoRaw))
+          ? Number(precoRaw)
+          : 0;
 
         if (!codigoML || !descricao || !rz) {
           console.warn(
@@ -218,7 +236,7 @@ export async function processarPlanilha(file) {
           continue;
         }
 
-        produtos.push({ codigoML, descricao, quantidade, rz });
+        produtos.push({ codigoML, descricao, quantidade, rz, preco });
       }
 
       const rzs = Array.from(new Set(produtos.map(p => p.rz)));
@@ -239,15 +257,21 @@ export async function processarPlanilha(file) {
   }
 }
 
-// Exporta os resultados finais em um arquivo .xlsx com três abas:
-// conferidos, faltantes e excedentes. Cada aba recebe um array de objetos
-// no formato { codigo, quantidade }.
-export function exportResult({ conferidos, faltantes, excedentes }, filename = 'resultado.xlsx') {
+// Exporta os resultados finais em um arquivo .xlsx com quatro abas:
+// conferidos, faltantes, excedentes e ajustes de preço ou erro.
+// Cada aba recebe um array de objetos.
+export function exportResult({
+  conferidos,
+  faltantes,
+  excedentes,
+  ajustes = [],
+}, filename = 'resultado.xlsx') {
   const wb = XLSX.utils.book_new();
   const toSheet = arr => XLSX.utils.json_to_sheet(arr);
   XLSX.utils.book_append_sheet(wb, toSheet(conferidos), 'conferidos');
   XLSX.utils.book_append_sheet(wb, toSheet(faltantes), 'faltantes');
   XLSX.utils.book_append_sheet(wb, toSheet(excedentes), 'excedentes');
+  XLSX.utils.book_append_sheet(wb, toSheet(ajustes), 'ajustesPrecoOuErro');
   XLSX.writeFile(wb, filename);
 }
 

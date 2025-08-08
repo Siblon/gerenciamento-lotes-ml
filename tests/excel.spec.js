@@ -15,16 +15,16 @@ describe('processarPlanilha', () => {
     const data = [
       ['alguma coisa', 'foo'],
       [],
-      ['Cod. ML', 'Item', 'Qtde', 'Palete'],
-      ['AAA123', 'Produto A', 2, 'RZ-123'],
-      ['BBB456', 'Produto B', '1', 'RZ-124'],
-      ['TOTAL', '', { f: 'SUM(C4:C5)' }, 'RZ-123'],
+      ['Cod. ML', 'Item', 'Qtde', 'Palete', 'Preço'],
+      ['AAA123', 'Produto A', 2, 'RZ-123', 10.5],
+      ['BBB456', 'Produto B', '1', 'RZ-124', 5],
+      ['TOTAL', '', { f: 'SUM(C4:C5)' }, 'RZ-123', 0],
     ];
     const buf = createXlsxBuffer(data);
     const { produtos } = await processarPlanilha(buf);
     expect(produtos).toEqual([
-      { codigoML: 'AAA123', descricao: 'Produto A', quantidade: 2, rz: 'RZ-123' },
-      { codigoML: 'BBB456', descricao: 'Produto B', quantidade: 1, rz: 'RZ-124' },
+      { codigoML: 'AAA123', descricao: 'Produto A', quantidade: 2, rz: 'RZ-123', preco: 10.5 },
+      { codigoML: 'BBB456', descricao: 'Produto B', quantidade: 1, rz: 'RZ-124', preco: 5 },
     ]);
   });
 });
