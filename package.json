@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "vite",
-    "test": "vitest",
+    "test": "vitest run --reporter=dot --silent",
+    "test:verbose": "vitest run --reporter=verbose",
     "start": "node src/server.js"
   },
   "dependencies": {
