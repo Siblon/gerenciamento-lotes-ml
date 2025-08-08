@@ -1,5 +1,28 @@
 import * as XLSX from 'xlsx';
 
+function toNumberBR(v) {
+  if (v == null) return 0;
+  const s = String(v);
+  if (s.includes(',')) {
+    return Number(s.replace(/\./g, '').replace(',', '.')) || 0;
+  }
+  return Number(s) || 0;
+}
+
+function pickByRegex(row, regexArray) {
+  const key = Object.keys(row).find(k => regexArray.some(r => r.test(k)));
+  return key ? row[key] : undefined;
+}
+
+const RX_UNIT = [
+  /valor\s*unit/i,
+  /pre(ç|c)o\s*unit/i,
+  /unit(á|a)rio/i,
+  /^pre(ç|c)o$/i,
+  /^valor(?!.*total)/i,
+];
+const RX_TOTAL = [/valor\s*total/i, /total/i, /vlr\s*total/i];
+
 // Remove acentos, espaços e coloca tudo em minúsculas
 function normalize(str) {
   return String(str)
@@ -221,13 +244,15 @@ export async function processarPlanilha(file) {
         let quantidade = Number(quantidadeRaw);
         if (!quantidade || Number.isNaN(quantidade)) quantidade = 1;
         const rz = row[indices.rz] ? String(row[indices.rz]).trim() : '';
-        const precoRaw =
-          indices.preco !== -1 && row[indices.preco] !== undefined
-            ? row[indices.preco]
-            : null;
-        const preco = precoRaw !== null && precoRaw !== undefined && !Number.isNaN(Number(precoRaw))
-          ? Number(precoRaw)
-          : 0;
+        const rowObj = {};
+        headerCols.forEach((h, idx) => {
+          rowObj[h] = row[idx];
+        });
+        const rawUnit = pickByRegex(rowObj, RX_UNIT);
+        const rawTotal = pickByRegex(rowObj, RX_TOTAL);
+        const preco = toNumberBR(rawUnit);
+        let valorTotal = toNumberBR(rawTotal);
+        if (!valorTotal && preco) valorTotal = preco * quantidade;
 
         if (!codigoML || !descricao || !rz) {
           console.warn(
@@ -236,7 +261,7 @@ export async function processarPlanilha(file) {
           continue;
         }
 
-        produtos.push({ codigoML, descricao, quantidade, rz, preco });
+        produtos.push({ codigoML, descricao, quantidade, rz, preco, valorTotal });
       }
 
       const rzs = Array.from(new Set(produtos.map(p => p.rz)));
@@ -265,6 +290,7 @@ export function exportResult({
   faltantes,
   excedentes,
   ajustes = [],
+  resumo = [],
 }, filename = 'resultado.xlsx') {
   const wb = XLSX.utils.book_new();
   const toSheet = arr => XLSX.utils.json_to_sheet(arr);
@@ -272,6 +298,9 @@ export function exportResult({
   XLSX.utils.book_append_sheet(wb, toSheet(faltantes), 'faltantes');
   XLSX.utils.book_append_sheet(wb, toSheet(excedentes), 'excedentes');
   XLSX.utils.book_append_sheet(wb, toSheet(ajustes), 'ajustesPrecoOuErro');
+  if (resumo.length) {
+    XLSX.utils.book_append_sheet(wb, toSheet(resumo), 'resumoFinanceiro');
+  }
   XLSX.writeFile(wb, filename);
 }
 

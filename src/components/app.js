@@ -10,6 +10,8 @@ import store, {
   registrarExcedente,
   registrarAjuste,
   load as loadState,
+  calcResumoRZ,
+  calcResumoGeral,
 } from '../store/index.js';
 import { processarPlanilha, exportResult } from '../utils/excel.js';
 
@@ -23,6 +25,7 @@ function render() {
   renderFaltantes();
   renderExcedentes();
   renderConsulta();
+  renderResumo();
 }
 
 function renderConferidos() {
@@ -67,30 +70,44 @@ function renderExcedentes() {
   });
 }
 
+function renderResumo() {
+  const rzDiv = document.getElementById('resumoRZ');
+  const geralDiv = document.getElementById('resumoGeral');
+  const fmt = n => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  if (store.state.currentRZ) {
+    const r = calcResumoRZ(store.state.currentRZ);
+    rzDiv.textContent = `${store.state.currentRZ} | Original: ${fmt(r.totalOriginal)} | Ajustado: ${fmt(r.totalAjustado)} | Δ: ${fmt(r.delta)} (${(r.deltaPct * 100).toFixed(2)}%)`;
+  } else {
+    rzDiv.textContent = '';
+  }
+  const g = calcResumoGeral();
+  geralDiv.textContent = `GERAL | Original: ${fmt(g.totalOriginal)} | Ajustado: ${fmt(g.totalAjustado)} | Δ: ${fmt(g.delta)} (${(g.deltaPct * 100).toFixed(2)}%)`;
+}
+
 function renderConsulta() {
   const container = document.getElementById('consultaCard');
   if (!container) return;
+  const precoInput = document.getElementById('precoInput');
+  const obsInput = document.getElementById('obsInput');
+  precoInput.value = '';
+  obsInput.value = '';
   container.innerHTML = '';
   if (!consultaAtual) return;
-  const div = document.createElement('div');
   if (consultaAtual.encontrado) {
-    div.innerHTML = `
+    precoInput.value = consultaAtual.precoAtual;
+    container.innerHTML = `
       <p>SKU: ${consultaAtual.codigo}</p>
       <p>${consultaAtual.descricao}</p>
       <p>RZ: ${store.state.currentRZ}</p>
       <p>Qtd: ${consultaAtual.conferido}/${consultaAtual.esperado}</p>
-      <label>Preço: <input type="number" id="precoAjustado" value="${consultaAtual.precoOriginal}" step="0.01"></label>
-      <input type="text" id="obsInput" placeholder="Observação" />
+      <p>Preço (planilha): ${consultaAtual.precoOriginal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+      <p>Edite o preço se necessário e informe observação.</p>
     `;
   } else {
-    div.innerHTML = `
-      <p>SKU ${consultaAtual.codigo} não encontrado</p>
-      <label>Preço Original: <input type="number" id="precoOriginal" step="0.01"></label>
-      <label>Preço Ajustado: <input type="number" id="precoAjustado" step="0.01"></label>
-      <input type="text" id="obsInput" placeholder="Observação" />
+    container.innerHTML = `
+      <p>SKU ${consultaAtual.codigo} não está neste RZ, se registrar entra como Excedente.</p>
     `;
   }
-  container.appendChild(div);
 }
 
 function handleFile(evt) {
@@ -121,15 +138,16 @@ function handleFile(evt) {
         return;
       }
 
-      const pallets = {};
-      const catalog = {};
-      produtosValidos.forEach(({ codigoML, quantidade, rz, descricao, preco }) => {
-        if (!pallets[rz]) pallets[rz] = {};
-        pallets[rz][codigoML] = (pallets[rz][codigoML] || 0) + quantidade;
-        if (!catalog[codigoML]) catalog[codigoML] = { descricao, preco };
-      });
+      const itens = produtosValidos.map(p => ({
+        sku: p.codigoML,
+        rz: p.rz,
+        qtd: p.quantidade,
+        descricao: p.descricao,
+        preco: p.preco,
+        valorTotal: p.valorTotal,
+      }));
 
-      init(pallets, catalog);
+      init(itens);
       populateRZs();
       render();
       console.log('Produtos válidos carregados:', produtosValidos.length);
@@ -173,15 +191,15 @@ function handleConsultar() {
   const pallet = store.state.pallets[store.state.currentRZ];
   const esperado = pallet.expected[codigo];
   const conferido = pallet.conferido[codigo] || 0;
-  const produto = store.state.catalog[codigo];
 
   consultaAtual = {
     codigo,
     encontrado: !!esperado,
-    esperado: esperado || 0,
+    esperado: esperado ? esperado.qtd : 0,
     conferido,
-    descricao: produto ? produto.descricao : '',
-    precoOriginal: produto ? produto.preco : 0,
+    descricao: esperado ? esperado.descricao : '',
+    precoOriginal: esperado ? esperado.precoOriginal : 0,
+    precoAtual: esperado ? esperado.precoAtual : 0,
   };
   renderConsulta();
 }
@@ -189,38 +207,40 @@ function handleConsultar() {
 function handleRegistrar() {
   if (!store.state.currentRZ || !consultaAtual) return;
   const codigo = consultaAtual.codigo;
-  const obs = document.getElementById('obsInput')?.value.trim() || '';
-  const precoAjEl = document.getElementById('precoAjustado');
+  const precoInput = document.getElementById('precoInput');
+  const obsInput = document.getElementById('obsInput');
+  const obs = obsInput.value.trim();
+  const precoAjustado = Number(precoInput.value) || 0;
 
   if (consultaAtual.encontrado) {
     const res = conferir(codigo);
     if (res.status === 'ok') {
-      const precoAjustado = precoAjEl ? Number(precoAjEl.value) || 0 : 0;
-      if (precoAjustado !== consultaAtual.precoOriginal) {
+      if (precoAjustado !== consultaAtual.precoOriginal || obs) {
         registrarAjuste({
           codigo,
-          observacao: obs,
           precoOriginal: consultaAtual.precoOriginal,
           precoAjustado,
+          obs,
         });
       }
     } else if (res.status === 'full') {
       alert('Quantidade já conferida');
     }
   } else {
-    const precoOriginal = Number(document.getElementById('precoOriginal')?.value) || 0;
-    const precoAjustado = precoAjEl ? Number(precoAjEl.value) || 0 : 0;
     registrarExcedente(codigo);
     registrarAjuste({
+      tipo: 'EXCEDENTE',
       codigo,
-      observacao: obs,
-      precoOriginal,
+      precoOriginal: 0,
       precoAjustado,
+      obs,
     });
   }
 
   consultaAtual = null;
   document.getElementById('codigoInput').value = '';
+  precoInput.value = '';
+  obsInput.value = '';
   render();
 }
 
@@ -229,9 +249,14 @@ function finalize() {
   const faltantesCount = result.faltantes.reduce((s, i) => s + i.quantidade, 0);
   const excedentesCount = result.excedentes.reduce((s, i) => s + i.quantidade, 0);
   const completo = faltantesCount === 0 ? 'completa' : 'parcial';
-  const resumo = `Conferência ${completo}\nFaltantes: ${faltantesCount}\nExcedentes: ${excedentesCount}\nDeseja encerrar?`;
-  if (confirm(resumo)) {
-    exportResult(result);
+  const resumoMsg = `Conferência ${completo}\nFaltantes: ${faltantesCount}\nExcedentes: ${excedentesCount}\nDeseja encerrar?`;
+  if (confirm(resumoMsg)) {
+    const resumo = Object.keys(store.state.pallets).map(rz => ({
+      rz,
+      ...calcResumoRZ(rz),
+    }));
+    resumo.push({ rz: 'GERAL', ...calcResumoGeral() });
+    exportResult({ ...result, resumo });
   }
 }
 
