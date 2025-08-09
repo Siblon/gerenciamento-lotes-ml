@@ -19,6 +19,10 @@
       <input type="text" id="codigoInput" placeholder="Código do produto" />
       <input type="number" id="precoInput" placeholder="Preço ajustado" step="0.01" />
       <input type="text" id="obsInput" placeholder="Observação" />
+      <div id="excedenteForm" style="display:none">
+        <input type="text" id="exDescInput" placeholder="Descrição do produto" />
+        <input type="number" id="exQtdInput" min="1" value="1" />
+      </div>
       <button id="consultarBtn">Consultar</button>
       <button id="registrarBtn">Registrar</button>
       <button id="excedenteBtn" disabled>Registrar Excedente</button>
@@ -84,7 +88,18 @@
               <option value="100">100</option>
             </select>
           </div>
-          <table><tbody id="excedentesTable"></tbody></table>
+          <table>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Descrição</th>
+                <th>Qtd</th>
+                <th>Preço Médio (R$)</th>
+                <th>Valor Total (R$)</th>
+              </tr>
+            </thead>
+            <tbody id="excedentesTable"></tbody>
+          </table>
           <div class="pagination" id="excedentesPagination"></div>
         </div>
       </div>
