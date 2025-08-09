@@ -136,16 +136,11 @@ function renderFaltantes() {
 
 function renderExcedentes() {
   const state = listState.excedentes;
-  const list = listarExcedentes().map(it => ({
-    ...it,
-    descricao:
-      store.state.pallets[store.state.currentRZ]?.expected[it.codigo]?.descricao || '',
-  }));
+  const list = listarExcedentes();
   const q = state.query.toLowerCase();
   const filtered = q
     ? list.filter(
-        it =>
-          it.codigo.toLowerCase().includes(q) || it.descricao.toLowerCase().includes(q),
+        it => it.sku.toLowerCase().includes(q) || it.descricao.toLowerCase().includes(q),
       )
     : list;
   const { slice, total, pages } = paginate(filtered, state.page, state.perPage);
@@ -162,10 +157,13 @@ function renderExcedentes() {
   tbody.innerHTML = '';
   slice.forEach(item => {
     const tr = document.createElement('tr');
-    const td = document.createElement('td');
-    td.textContent =
-      item.quantidade > 1 ? `${item.codigo} (${item.quantidade})` : item.codigo;
-    tr.appendChild(td);
+    tr.innerHTML = `
+      <td>${item.sku}</td>
+      <td>${item.descricao}</td>
+      <td>${item.qtd}</td>
+      <td>${brl(item.precoMedio)}</td>
+      <td>${brl(item.valorTotal)}</td>
+    `;
     tbody.appendChild(tr);
   });
   renderPagination('excedentes', state.page, pages);
@@ -235,16 +233,21 @@ function renderResumos() {
   const geralDiv = document.getElementById('resumoGeral');
   if (store.state.currentRZ) {
     const r = calcResumoRZ(store.state.currentRZ);
+    const exRZ = listarExcedentes().reduce((s, e) => s + e.valorTotal, 0);
     rzDiv.textContent =
       `${store.state.currentRZ} | Original: ${brl(r.totalOriginal)} | Ajustado: ${brl(r.totalAjustado)} | Δ: ${brl(r.delta)} ` +
-      `(${(r.deltaPct * 100).toFixed(2)}%)`;
+      `(${(r.deltaPct * 100).toFixed(2)}%) | Excedentes: ${brl(exRZ)}`;
   } else {
     rzDiv.textContent = '';
   }
   const g = calcResumoGeral();
+  const exG = Array.from(store.state.excedentes.values()).reduce(
+    (s, e) => s + e.valorTotal,
+    0,
+  );
   geralDiv.textContent =
     `GERAL | Original: ${brl(g.totalOriginal)} | Ajustado: ${brl(g.totalAjustado)} | Δ: ${brl(g.delta)} ` +
-    `(${(g.deltaPct * 100).toFixed(2)}%)`;
+    `(${(g.deltaPct * 100).toFixed(2)}%) | Excedentes: ${brl(exG)}`;
 }
 
 function renderConsulta() {
@@ -254,11 +257,17 @@ function renderConsulta() {
   const obsInput = document.getElementById('obsInput');
   const registrarBtn = document.getElementById('registrarBtn');
   const excedenteBtn = document.getElementById('excedenteBtn');
+  const exDescInput = document.getElementById('exDescInput');
+  const exQtdInput = document.getElementById('exQtdInput');
+  const exForm = document.getElementById('excedenteForm');
   precoInput.value = '';
   obsInput.value = '';
   precoInput.placeholder = 'Preço ajustado';
   registrarBtn.disabled = true;
   excedenteBtn.disabled = true;
+  if (exDescInput) exDescInput.value = '';
+  if (exQtdInput) exQtdInput.value = 1;
+  if (exForm) exForm.style.display = 'none';
   container.innerHTML = '';
   if (!consultaAtual) return;
   if (consultaAtual.encontrado) {
@@ -278,8 +287,9 @@ function renderConsulta() {
   } else {
     excedenteBtn.disabled = false;
     precoInput.placeholder = 'Preço ajustado (obrigatório p/ excedente)';
+    if (exForm) exForm.style.display = 'block';
     container.innerHTML = `
-      <p>SKU ${consultaAtual.codigo} não está neste RZ, se registrar entra como Excedente.</p>
+      <p>SKU ${consultaAtual.codigo} não está neste RZ. Registro será lançado como Excedente.</p>
     `;
   }
 }
@@ -416,21 +426,26 @@ function handleRegistrar() {
 
 function handleRegistrarExcedente() {
   if (!store.state.currentRZ || !consultaAtual || consultaAtual.encontrado) return;
-  const codigo = consultaAtual.codigo;
+  const sku = consultaAtual.codigo;
   const precoInput = document.getElementById('precoInput');
   const obsInput = document.getElementById('obsInput');
-  const preco = Number(precoInput.value);
-  if (!preco) {
-    alert('Preço ajustado é obrigatório para excedente');
+  const exDescInput = document.getElementById('exDescInput');
+  const exQtdInput = document.getElementById('exQtdInput');
+  const descricao = exDescInput.value.trim();
+  const qtd = Number(exQtdInput.value);
+  const precoUnit = Number(precoInput.value);
+  if (!descricao || qtd < 1 || precoUnit <= 0) {
+    alert('Preencha descrição, quantidade >=1 e preço unitário > 0');
     return;
   }
   const obs = obsInput.value.trim();
-  registrarExcedente(codigo);
+  registrarExcedente({ sku, descricao, qtd, precoUnit, obs });
   registrarAjuste({
     tipo: 'EXCEDENTE',
-    codigo,
+    codigo: sku,
     precoOriginal: 0,
-    precoAjustado: preco,
+    precoAjustado: precoUnit,
+    qtd,
     obs,
   });
   consultaAtual = null;
@@ -447,7 +462,7 @@ function handleRegistrarExcedente() {
 function finalize() {
   const result = finalizeCurrent();
   const faltantesCount = result.faltantes.reduce((s, i) => s + i.quantidade, 0);
-  const excedentesCount = result.excedentes.reduce((s, i) => s + i.quantidade, 0);
+  const excedentesCount = result.excedentes.reduce((s, i) => s + i.qtd, 0);
   const completo = faltantesCount === 0 ? 'completa' : 'parcial';
   const resumoMsg = `Conferência ${completo}\nFaltantes: ${faltantesCount}\nExcedentes: ${excedentesCount}\nDeseja encerrar?`;
   if (confirm(resumoMsg)) {
@@ -486,24 +501,13 @@ function getFaltantesPlain() {
   return arr;
 }
 
-function getExcedentesPlain() {
-  const arr = [];
-  Object.keys(store.state.pallets).forEach(rz => {
-    const pal = store.state.pallets[rz];
-    Object.entries(pal.excedentes).forEach(([sku, qtd]) => {
-      arr.push({ sku, rz, quantidade: qtd });
-    });
-  });
-  return arr;
-}
-
 function setConferidosFromPlain(list) {
   Object.keys(store.state.pallets).forEach(rz => {
     store.state.pallets[rz].conferido = {};
   });
   list.forEach(it => {
     if (!store.state.pallets[it.rz]) {
-      store.state.pallets[it.rz] = { expected: {}, conferido: {}, excedentes: {} };
+      store.state.pallets[it.rz] = { expected: {}, conferido: {} };
     }
     store.state.pallets[it.rz].conferido[it.sku] = it.qtd;
   });
@@ -513,17 +517,6 @@ function setFaltantesFromPlain(_list) {
   // faltantes são derivados de expected e conferido
 }
 
-function setExcedentesFromPlain(list) {
-  Object.keys(store.state.pallets).forEach(rz => {
-    store.state.pallets[rz].excedentes = {};
-  });
-  list.forEach(it => {
-    if (!store.state.pallets[it.rz]) {
-      store.state.pallets[it.rz] = { expected: {}, conferido: {}, excedentes: {} };
-    }
-    store.state.pallets[it.rz].excedentes[it.sku] = it.quantidade;
-  });
-}
 
 function salvar() {
   const itens = [];
@@ -548,9 +541,9 @@ function salvar() {
     listas: {
       conferidos: getConferidosPlain(),
       faltantes: getFaltantesPlain(),
-      excedentes: getExcedentesPlain(),
     },
-    version: 1,
+    excedentes: Array.from(store.state.excedentes.values()),
+    version: 2,
   };
   localStorage.setItem('estadoConferencia', JSON.stringify(state));
 }
@@ -567,7 +560,7 @@ function restaurar() {
   store.state.pallets = {};
   (data.itens || []).forEach(it => {
     if (!store.state.pallets[it.rz]) {
-      store.state.pallets[it.rz] = { expected: {}, conferido: {}, excedentes: {} };
+      store.state.pallets[it.rz] = { expected: {}, conferido: {} };
     }
     store.state.pallets[it.rz].expected[it.sku] = {
       qtd: it.qtd,
@@ -581,7 +574,9 @@ function restaurar() {
   store.state.ajustes = Array.isArray(data.ajustes) ? data.ajustes : [];
   setConferidosFromPlain(data.listas?.conferidos || []);
   setFaltantesFromPlain(data.listas?.faltantes || []);
-  setExcedentesFromPlain(data.listas?.excedentes || []);
+  store.state.excedentes = new Map(
+    (data.excedentes || []).map(e => [`${e.rz}::${e.sku}`, e]),
+  );
   populateRZs();
   renderTudo();
   renderResumos();

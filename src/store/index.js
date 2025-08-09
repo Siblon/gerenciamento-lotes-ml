@@ -4,16 +4,18 @@ export const state = {
   pallets: {},
   currentRZ: null,
   ajustes: [],
+  excedentes: new Map(),
 };
 
 export function init(items = []) {
   state.pallets = {};
   state.ajustes = [];
   state.currentRZ = null;
+  state.excedentes = new Map();
   items.forEach(it => {
     const { sku, rz, qtd, preco = 0, valorTotal = 0, descricao = '' } = it;
     if (!state.pallets[rz]) {
-      state.pallets[rz] = { expected: {}, conferido: {}, excedentes: {} };
+      state.pallets[rz] = { expected: {}, conferido: {} };
     }
     state.pallets[rz].expected[sku] = {
       qtd,
@@ -28,7 +30,7 @@ export function init(items = []) {
 export function selectRZ(rz) {
   state.currentRZ = rz;
   if (!state.pallets[rz]) {
-    state.pallets[rz] = { expected: {}, conferido: {}, excedentes: {} };
+    state.pallets[rz] = { expected: {}, conferido: {} };
   }
 }
 
@@ -51,10 +53,30 @@ export function conferir(codigo) {
   return { status: 'not-found' };
 }
 
-export function registrarExcedente(codigo) {
-  const pallet = getCurrent();
-  if (!pallet) return;
-  pallet.excedentes[codigo] = (pallet.excedentes[codigo] || 0) + 1;
+export function registrarExcedente({ sku, descricao, qtd, precoUnit, obs }) {
+  if (!state.currentRZ || !sku) return;
+  const key = `${state.currentRZ}::${sku}`;
+  const valorNovo = qtd * precoUnit;
+  if (!state.excedentes.has(key)) {
+    state.excedentes.set(key, {
+      sku,
+      rz: state.currentRZ,
+      descricao,
+      qtd,
+      precoMedio: precoUnit,
+      valorTotal: valorNovo,
+      historico: [{ qtd, precoUnit, obs, ts: new Date().toISOString() }],
+    });
+  } else {
+    const ex = state.excedentes.get(key);
+    const qtdTot = ex.qtd + qtd;
+    const valorTot = ex.valorTotal + valorNovo;
+    ex.qtd = qtdTot;
+    ex.precoMedio = valorTot / qtdTot;
+    ex.valorTotal = valorTot;
+    ex.descricao = ex.descricao || descricao;
+    ex.historico?.push({ qtd, precoUnit, obs, ts: new Date().toISOString() });
+  }
 }
 
 export function registrarAjuste({
@@ -63,6 +85,7 @@ export function registrarAjuste({
   precoOriginal = 0,
   precoAjustado = 0,
   obs = '',
+  qtd,
 }) {
   state.ajustes.push({
     tipo,
@@ -70,6 +93,7 @@ export function registrarAjuste({
     rz: state.currentRZ,
     precoOriginal,
     precoAjustado,
+    qtd,
     obs,
     timestamp: new Date().toISOString(),
   });
@@ -127,12 +151,8 @@ export function listarFaltantes() {
 }
 
 export function listarExcedentes() {
-  const pallet = getCurrent();
-  if (!pallet) return [];
-  return Object.keys(pallet.excedentes).map(codigo => ({
-    codigo,
-    quantidade: pallet.excedentes[codigo],
-  }));
+  if (!state.currentRZ) return [];
+  return Array.from(state.excedentes.values()).filter(e => e.rz === state.currentRZ);
 }
 
 export function finalizeCurrent() {
@@ -188,7 +208,13 @@ export function calcResumoGeral() {
 
 export function save() {
   if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const data = {
+      pallets: state.pallets,
+      currentRZ: state.currentRZ,
+      ajustes: state.ajustes,
+      excedentes: Array.from(state.excedentes.values()),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }
 }
 
@@ -200,6 +226,9 @@ export function load() {
     state.pallets = data.pallets || {};
     state.currentRZ = data.currentRZ || null;
     state.ajustes = data.ajustes || [];
+    state.excedentes = new Map(
+      (data.excedentes || []).map(e => [`${e.rz}::${e.sku}`, e]),
+    );
   }
 }
 

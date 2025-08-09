@@ -34,10 +34,25 @@ describe('store de conferência com RZ', () => {
   it('código desconhecido vai para excedentes após registrar', () => {
     const r = conferir('X');
     expect(r.status).toBe('not-found');
-    registrarExcedente('X');
-    registrarAjuste({ tipo: 'EXCEDENTE', codigo: 'X', precoOriginal: 0, precoAjustado: 0 });
+    registrarExcedente({
+      sku: 'X',
+      descricao: 'Produto X',
+      qtd: 1,
+      precoUnit: 10,
+      obs: '',
+    });
+    registrarAjuste({
+      tipo: 'EXCEDENTE',
+      codigo: 'X',
+      precoOriginal: 0,
+      precoAjustado: 10,
+      qtd: 1,
+      obs: '',
+    });
     const res = finalizeCurrent();
-    expect(res.excedentes).toEqual([{ codigo: 'X', quantidade: 1 }]);
+    expect(res.excedentes).toMatchObject([
+      { sku: 'X', rz: 'RZ1', descricao: 'Produto X', qtd: 1, precoMedio: 10, valorTotal: 10 },
+    ]);
     expect(res.ajustes).toHaveLength(1);
   });
 
