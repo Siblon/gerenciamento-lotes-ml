@@ -47,6 +47,20 @@ function toast(msg, dur = 2000) {
   }, dur);
 }
 
+let scanMode = 'manual';
+
+function setScanMode(mode) {
+  scanMode = mode;
+  const manualBtn = document.getElementById('scanManualBtn');
+  const autoBtn = document.getElementById('scanAutoBtn');
+  manualBtn?.classList.toggle('active', mode === 'manual');
+  autoBtn?.classList.toggle('active', mode === 'auto');
+  try {
+    localStorage.setItem('scanMode', mode);
+  } catch {}
+  toast(`Scan em modo ${mode === 'auto' ? 'Automático' : 'Manual'}.`, 1500);
+}
+
 function mostrarDialogoTrocaRZ({ sku, rzEncontrado, onTrocar, onExcedente }) {
   const msg = `SKU ${sku} encontrado no ${rzEncontrado}. Trocar para esse RZ?`;
   if (confirm(msg)) onTrocar();
@@ -253,9 +267,12 @@ function renderResumos() {
   if (store.state.currentRZ) {
     const r = calcResumoRZ(store.state.currentRZ);
     const exRZ = listarExcedentes().reduce((s, e) => s + e.valorTotal, 0);
-    rzDiv.textContent =
-      `${store.state.currentRZ} | Original: ${brl(r.totalOriginal)} | Ajustado: ${brl(r.totalAjustado)} | Δ: ${brl(r.delta)} ` +
-      `(${(r.deltaPct * 100).toFixed(2)}%) | Excedentes: ${brl(exRZ)}`;
+    const cls = r.delta < 0 ? 'diff-neg' : r.delta > 0 ? 'diff-pos' : 'diff-zero';
+    rzDiv.innerHTML =
+      `${store.state.currentRZ} | Original: ${brl(r.totalOriginal)} | Ajustado: ${brl(r.totalAjustado)} | ` +
+      `<span class="diff-label">Diferença:</span><span class="diff-badge ${cls}">${brl(r.delta)} (${(
+        r.deltaPct * 100
+      ).toFixed(2)}%)</span> | Excedentes: ${brl(exRZ)}`;
   } else {
     rzDiv.textContent = '';
   }
@@ -264,9 +281,12 @@ function renderResumos() {
     (s, e) => s + e.valorTotal,
     0,
   );
-  geralDiv.textContent =
-    `GERAL | Original: ${brl(g.totalOriginal)} | Ajustado: ${brl(g.totalAjustado)} | Δ: ${brl(g.delta)} ` +
-    `(${(g.deltaPct * 100).toFixed(2)}%) | Excedentes: ${brl(exG)}`;
+  const gCls = g.delta < 0 ? 'diff-neg' : g.delta > 0 ? 'diff-pos' : 'diff-zero';
+  geralDiv.innerHTML =
+    `GERAL | Original: ${brl(g.totalOriginal)} | Ajustado: ${brl(g.totalAjustado)} | ` +
+    `<span class="diff-label">Diferença:</span><span class="diff-badge ${gCls}">${brl(g.delta)} (${(
+      g.deltaPct * 100
+    ).toFixed(2)}%)</span> | Excedentes: ${brl(exG)}`;
 }
 
 function renderConsulta() {
@@ -293,6 +313,10 @@ function renderConsulta() {
     registrarBtn.disabled = false;
     precoInput.value = consultaAtual.precoAtual;
     const delta = consultaAtual.precoAtual - consultaAtual.precoOriginal;
+    const deltaPct = consultaAtual.precoOriginal
+      ? delta / consultaAtual.precoOriginal
+      : 0;
+    const cls = delta < 0 ? 'diff-neg' : delta > 0 ? 'diff-pos' : 'diff-zero';
     container.innerHTML = `
       <p>SKU: ${consultaAtual.codigo}</p>
       <p>${consultaAtual.descricao}</p>
@@ -300,7 +324,9 @@ function renderConsulta() {
       <p>Qtd: ${consultaAtual.conferido}/${consultaAtual.esperado}</p>
       <p>Preço original: ${brl(consultaAtual.precoOriginal)}</p>
       <p>Preço ajustado: ${brl(consultaAtual.precoAtual)}</p>
-      <p>Δ: ${brl(delta)}</p>
+      <p><span class="diff-label">Diferença:</span><span class="diff-badge ${cls}">${brl(delta)} (${(
+        deltaPct * 100
+      ).toFixed(2)}%)</span></p>
       <p>Edite o preço se necessário e informe observação.</p>
     `;
   } else {
@@ -476,12 +502,18 @@ function handleRegistrar() {
 }
 
 function handleCodigoLido(valor) {
+  const v = String(valor || '').trim();
+  if (!v) return;
   const codigoInput = document.getElementById('codigoInput');
-  codigoInput.value = valor.trim();
-  const res = consultar();
-  if (res?.status === 'found') toast('Produto localizado.');
-  else if (res?.status === 'other') toast(`Encontrado no ${res.rzEncontrado}.`);
-  else if (res?.status === 'not-found') toast('Não encontrado — excedente.');
+  codigoInput.value = v;
+  if (scanMode === 'auto') {
+    const res = consultar();
+    if (res?.status === 'found') toast('Produto localizado.');
+    else if (res?.status === 'other') toast(`Encontrado no ${res.rzEncontrado}.`);
+    else if (res?.status === 'not-found') toast('Não encontrado — excedente.');
+  } else {
+    document.getElementById('consultarBtn')?.focus();
+  }
 }
 
 function handleRegistrarExcedente() {
@@ -659,10 +691,19 @@ function setup() {
   document.getElementById('finalizarBtn').addEventListener('click', finalize);
   document.getElementById('codigoInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') {
+      e.preventDefault();
       if (e.ctrlKey) handleRegistrar();
-      else consultar();
+      else handleCodigoLido(e.target.value);
     }
   });
+  document
+    .getElementById('scanManualBtn')
+    .addEventListener('click', () => setScanMode('manual'));
+  document
+    .getElementById('scanAutoBtn')
+    .addEventListener('click', () => setScanMode('auto'));
+  scanMode = localStorage.getItem('scanMode') || 'manual';
+  setScanMode(scanMode);
   document.querySelectorAll('.lista-search').forEach(inp => {
     const list = inp.dataset.list;
     inp.addEventListener(
