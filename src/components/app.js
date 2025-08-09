@@ -1,11 +1,12 @@
 import { iniciarLeitura, pararLeitura } from '../utils/scan.js';
 import { processarPlanilha } from '../utils/excel.js';
-import store, { selectRZ } from '../store/index.js';
+import store, { init as storeInit, selectRZ } from '../store/index.js';
 
 const log = (...a) => console.log('[CONF-DBG]', ...a);
 
 export function initApp() {
   log('initApp() — conectando handlers');
+  try { if (typeof storeInit === 'function') storeInit(); } catch {}
 
   const fileInput = document.querySelector('#input-arquivo');
   const rzSelect  = document.querySelector('#select-rz');
@@ -18,7 +19,6 @@ export function initApp() {
     return;
   }
 
-  // Carregar planilha -> popular RZs
   fileInput.addEventListener('change', async (e) => {
     const f = e.target?.files?.[0];
     if (!f) { log('Nenhum arquivo selecionado'); return; }
@@ -28,6 +28,7 @@ export function initApp() {
       const list = store?.state?.rzList || [];
       log('RZs carregados:', list.length, list);
       renderRZOptions(rzSelect, list);
+      if (typeof window.render === 'function') window.render();
     } catch (err) {
       console.error('Falha processarPlanilha', err);
     }
@@ -38,13 +39,12 @@ export function initApp() {
     const rz = e.target.value || null;
     store.dispatch(selectRZ(rz));
     log('RZ selecionado:', rz);
-    // se houver render() global, chamar aqui
     if (typeof window.render === 'function') window.render();
   });
 
   // Iniciar/Parar scanner
   btnAuto.addEventListener('click', async () => {
-    log('Iniciar scan automático — solicitando câmera');
+    log('Iniciar scan automático → solicitando câmera');
     try { await navigator.mediaDevices.getUserMedia({ video: true }); } catch {}
     btnAuto.disabled = true;
     btnStop.style.display = '';
