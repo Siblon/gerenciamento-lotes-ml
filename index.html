@@ -16,14 +16,8 @@
       <input type="file" id="input-arquivo" accept=".xlsx" />
       <select id="select-rz"></select>
       <div id="progresso">0 de 0 conferidos</div>
-      <input type="text" id="codigoInput" placeholder="Código do produto" />
-      <div id="scanModeBox">
-        <label>Scan:</label>
-        <button id="scanManualBtn" type="button">Manual</button>
-        <button id="scanAutoBtn" type="button">Automático</button>
-      </div>
-      <button id="btn-scan-auto" type="button">Ler código</button>
-      <button id="btn-scan-stop" type="button" style="display:none">Parar leitura</button>
+      <input type="text" id="codigo-ml" placeholder="Código do produto" />
+      <button id="btn-scan-toggle" type="button">Ler código</button>
       <video id="preview" playsinline muted style="width:0;height:0;position:absolute;left:-9999px;"></video>
       <input type="number" id="precoInput" placeholder="Preço ajustado" step="0.01" />
       <input type="text" id="obsInput" placeholder="Observação" />
@@ -70,8 +64,8 @@
             </header>
           <div class="lista-body" id="faltantesBody">
             <div>
-              <label for="sel-limit-pendentes" style="margin-right:6px">Recolher</label>
-              <select id="sel-limit-pendentes">
+              <label for="limit-pendentes" style="margin-right:6px">Recolher</label>
+              <select id="limit-pendentes">
                 <option>50</option>
                 <option>100</option>
                 <option>200</option>
