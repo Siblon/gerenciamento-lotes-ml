@@ -123,3 +123,17 @@ th, td {
 .toast.show {
   opacity: 1;
 }
+
+#scanModeBox button.active {
+  background: #2563eb;
+  color: #fff;
+}
+
+.diff-label { margin-right: 6px; opacity: .8; }
+.diff-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 9999px; font-weight: 600;
+  background: #f3f4f6; color: #374151; /* default/zero */
+}
+.diff-pos { background: #fee2e2; color: #991b1b; }
+.diff-neg { background: #dcfce7; color: #166534; }
+.diff-zero { background: #e5e7eb; color: #374151; }
