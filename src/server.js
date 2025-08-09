@@ -43,12 +43,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Erro interno do servidor.' });
 });
 
-// Inicia o servidor apenas se não estiver em ambiente de teste
-if (process.env.NODE_ENV !== 'test') {
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`Servidor executando na porta ${PORT}`);
-  });
-}
+// Inicia o servidor
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor executando na porta ${PORT}`);
+});
 
 export default app;
