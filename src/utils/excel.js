@@ -135,6 +135,7 @@ export async function processarPlanilha(input) {
     const rzList = Object.keys(itemsByRZ).sort();
 
     const totalByRZSku = {};
+    const metaByRZSku = {};
     for (const rz of rzList) {
       const map = {};
       for (const it of itemsByRZ[rz]) {
@@ -142,6 +143,11 @@ export async function processarPlanilha(input) {
         const inc = Number(it.qtd) || 0;
         if (!sku) continue;
         map[sku] = (map[sku] || 0) + inc;
+
+        const descricao = String(it.descricao || '').trim();
+        const precoMedio = Number(it.valorUnit || 0);
+        (metaByRZSku[rz] ||= {});
+        if (!metaByRZSku[rz][sku]) metaByRZSku[rz][sku] = { descricao, precoMedio };
       }
       totalByRZSku[rz] = map;
     }
@@ -150,11 +156,12 @@ export async function processarPlanilha(input) {
     store.state.itemsByRZ = itemsByRZ;
     store.state.rzList = rzList;
     store.state.totalByRZSku = totalByRZSku;
+    store.state.metaByRZSku = metaByRZSku;
     store.state.conferidosByRZSku = {};
     if (!store.state.currentRZ) store.state.currentRZ = rzList[0] || null;
 
     DBG('RZs (header):', rzList.length, rzList.slice(0, 30));
-    return { rzList, itemsByRZ, totalByRZSku };
+    return { rzList, itemsByRZ, totalByRZSku, metaByRZSku };
   }
 
   // 2) fallback regex se não achar header
@@ -166,11 +173,12 @@ export async function processarPlanilha(input) {
   store.state.itemsByRZ = itemsByRZ;
   store.state.rzList = rzList;
   store.state.totalByRZSku = {};
+  store.state.metaByRZSku = {};
   store.state.conferidosByRZSku = {};
   if (!store.state.currentRZ) store.state.currentRZ = rzList[0] || null;
 
   DBG('RZs (fallback):', rzList.length, rzList.slice(0, 30));
-  return { rzList, itemsByRZ, totalByRZSku: {} };
+  return { rzList, itemsByRZ, totalByRZSku: {}, metaByRZSku: {} };
 }
 
 // Exporta os resultados finais em um arquivo .xlsx com quatro abas:
