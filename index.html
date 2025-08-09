@@ -19,8 +19,8 @@
       <input type="text" id="codigo-ml" placeholder="Código do produto" />
       <button id="btn-scan-toggle" type="button">Ler código</button>
       <video id="preview" playsinline muted style="width:0;height:0;position:absolute;left:-9999px;"></video>
-      <input type="number" id="precoInput" placeholder="Preço ajustado" step="0.01" />
-      <input type="text" id="obsInput" placeholder="Observação" />
+        <input type="number" id="preco-ajustado" placeholder="Preço ajustado" step="0.01" />
+        <input type="text" id="observacao" placeholder="Observação" />
       <div id="excedenteForm" style="display:none">
         <input type="text" id="exDescInput" placeholder="Descrição do produto" />
         <input type="number" id="exQtdInput" min="1" value="1" />
@@ -38,24 +38,29 @@
     </section>
 
     <section id="listas">
-      <div class="lista-bloco" id="conferidosBloco">
-          <header class="lista-header">
-            <h2>Conferidos <span class="badge" id="count-conferidos">0</span></h2>
-            <button class="lista-toggle" data-list="conferidos">Recolher</button>
-          </header>
-        <div class="lista-body" id="conferidosBody">
-          <div class="lista-controles">
-            <input class="lista-search" data-list="conferidos" placeholder="Buscar por SKU ou descrição" />
-            <select class="lista-pagesize" data-list="conferidos">
-              <option value="20">20</option>
-              <option value="50" selected>50</option>
-              <option value="100">100</option>
-            </select>
-          </div>
-          <table><tbody id="conferidosTable"></tbody></table>
-          <div class="pagination" id="conferidosPagination"></div>
+        <div class="lista-bloco" id="conferidosBloco">
+            <h2>Conferidos <span id="count-conferidos">0</span></h2>
+            <div>
+              <select id="limit-conferidos">
+                <option>50</option>
+                <option>100</option>
+                <option>200</option>
+              </select>
+              <button id="btn-recolher-conferidos" type="button">Recolher</button>
+            </div>
+            <table id="tbl-conferidos" class="tabela">
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Descrição</th>
+                  <th>Qtd</th>
+                  <th>Preço Médio (R$)</th>
+                  <th>Valor Total (R$)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
         </div>
-      </div>
 
       <div class="lista-bloco" id="faltantesBloco">
             <header class="lista-header">
@@ -70,7 +75,7 @@
                   <option>100</option>
                   <option>200</option>
                 </select>
-                <button id="btn-recolher" type="button">Recolher</button>
+                  <button id="btn-recolher-pendentes" type="button">Recolher</button>
               </div>
             <table id="tbl-pendentes" class="tabela">
               <thead>
