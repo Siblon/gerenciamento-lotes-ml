@@ -1,7 +1,7 @@
 // src/components/app.js
 import { iniciarLeitura, pararLeitura } from '../utils/scan.js';
 import { processarPlanilha, exportarConferencia } from '../utils/excel.js';
-import store, { getTotals, getConferidos, setCurrentRZ, findInRZ, findConferido } from '../store/index.js';
+import store, { getTotals, getConferidos, setCurrentRZ, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ } from '../store/index.js';
 
 function toast(msg, type='info') {
   const el = document.createElement('div');
@@ -42,7 +42,20 @@ function updateToggleLabels() {
   });
 }
 
-async function onConsultarClick() {
+function abrirModalExcedente(sku, fonte='manual'){
+  const dlg = document.getElementById('dlg-excedente');
+  if (!dlg) return;
+  document.getElementById('exc-sku').value = sku;
+  document.getElementById('exc-desc').value = '';
+  document.getElementById('exc-qtd').value = 1;
+  document.getElementById('exc-preco').value = '';
+  document.getElementById('exc-obs').value = '';
+  dlg.dataset.fonte = fonte;
+  dlg.showModal();
+  document.getElementById('exc-preco').focus();
+}
+
+async function onConsultarClick(fonte='manual') {
   const input = document.querySelector('#codigo-ml') || document.querySelector('#codigo-produto') || document.querySelector('input[placeholder="Código do produto"]');
   const sku = (input?.value || '').trim().toUpperCase();
   if (!sku) return toast('Informe o SKU', 'warn');
@@ -50,13 +63,24 @@ async function onConsultarClick() {
   const rz = store.state.rzAtual;
   const item = findInRZ?.(rz, sku) || findConferido?.(rz, sku);
   if (!item) {
+    const outro = findEmOutrosRZ?.(sku);
+    if (outro){
+      if (confirm(`SKU pertence ao ${outro}. Mover para este RZ?`)){
+        moveItemEntreRZ(outro, rz, sku, 1);
+        toast('Item movido', 'info');
+        render();
+        return;
+      }
+    }
+    abrirModalExcedente(sku, fonte);
     document.getElementById('produto-info').hidden = true;
-    return toast('SKU fora do RZ', 'warn');
+    return false;
   }
   mostrarProdutoInfo(item);
   const precoInput = document.querySelector('#preco-ajustado');
   if (precoInput && !precoInput.value) precoInput.value = item.precoMedio ?? '';
   active?.focus?.();
+  return true;
 }
 
 function rowsConferidos(rz){
@@ -82,23 +106,37 @@ function rowsPendentes(rz){
   }).sort((a,b)=> b.qtd - a.qtd);
 }
 
+function rowsExcedentes(rz){
+  const list = store.state.excedentes[rz] || [];
+  return list.map(it=>{
+    const preco = Number(it.preco||0);
+    return { sku: it.sku, descricao: it.descricao||'', qtd: it.qtd||0, preco, total: (it.qtd||0)*preco };
+  }).sort((a,b)=> b.qtd - a.qtd);
+}
+
 function render(){
   const rz = store.state.rzAtual; if (!rz) return;
   const confRows = rowsConferidos(rz);
   const pendRows = rowsPendentes(rz);
   const tbConf = document.querySelector('#tbl-conferidos tbody');
   const tbPend = document.querySelector('#tbl-pendentes tbody');
+  const tbExc  = document.querySelector('#excedentesTable');
   if (tbConf) {
     tbConf.innerHTML = confRows.length ? confRows.map(r=>`<tr data-sku="${r.sku}"><td>${r.sku}</td><td>${r.descricao}</td><td style="text-align:right">${r.qtd}</td><td style="text-align:right">${r.preco.toFixed(2)}</td><td style="text-align:right">${r.total.toFixed(2)}</td></tr>`).join('') : `<tr><td colspan="5" style="text-align:center;color:#777">Nenhum item conferido</td></tr>`;
   }
   if (tbPend) {
     tbPend.innerHTML = pendRows.length ? pendRows.map(r=>`<tr data-sku="${r.sku}"><td>${r.sku}</td><td>${r.descricao}</td><td style="text-align:right">${r.qtd}</td><td style="text-align:right">${r.preco.toFixed(2)}</td><td style="text-align:right">${r.total.toFixed(2)}</td></tr>`).join('') : `<tr><td colspan="5" style="text-align:center;color:#777">Sem pendências para este RZ</td></tr>`;
   }
+  if (tbExc) {
+    const excRows = rowsExcedentes(rz);
+    tbExc.innerHTML = excRows.length ? excRows.map(r=>`<tr data-sku="${r.sku}"><td>${r.sku}</td><td>${r.descricao}</td><td style="text-align:right">${r.qtd}</td><td style="text-align:right">${r.preco.toFixed(2)}</td><td style="text-align:right">${r.total.toFixed(2)}</td></tr>`).join('') : `<tr><td colspan="5" style="text-align:center;color:#777">Nenhum excedente</td></tr>`;
+  }
   const cont = store.state.contadores[rz] || { conferidos:0, total:0 };
   const hdr = document.getElementById('hdr-conferidos');
   if (hdr) hdr.textContent = `Conferência de Lotes ${cont.conferidos} de ${cont.total} conferidos`;
   const bc = document.getElementById('count-conferidos'); if (bc) bc.textContent = cont.conferidos;
   const bp = document.getElementById('count-pendentes'); if (bp) bp.textContent = cont.total - cont.conferidos;
+  const be = document.getElementById('excedentesCount'); if (be) be.textContent = cont.excedentes || 0;
   updateToggleLabels();
 }
 
@@ -112,6 +150,8 @@ export function initApp(){
   const fileInput = document.querySelector('#input-arquivo');
   const rzSelect  = document.querySelector('#select-rz');
 
+  function iniciarLeituraUI(){ btnScan?.click(); }
+
   document.querySelectorAll('button[id^="btn-recolher-"]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.target;
@@ -121,14 +161,14 @@ export function initApp(){
     });
   });
 
-  btnCons?.addEventListener('click', onConsultarClick);
+  btnCons?.addEventListener('click', ()=>onConsultarClick('manual'));
 
   btnReg?.addEventListener('click', async () => {
     try {
       const sku = (inputSku?.value || '').trim().toUpperCase();
       if (!sku) return toast('Informe o SKU', 'warn');
       const rz  = store.state.rzAtual;
-      if (!store.getSkuInRZ(rz, sku)) return toast('SKU fora do RZ', 'warn');
+      if (!store.getSkuInRZ(rz, sku)) return abrirModalExcedente(sku);
       if (store.isConferido(rz, sku))   return toast('SKU já conferido', 'warn');
       const preco = (document.querySelector('#preco-ajustado')?.value || '').trim();
       const obs   = (document.querySelector('#observacao')?.value || '').trim();
@@ -158,16 +198,8 @@ export function initApp(){
         const preco = Number(m.precoMedio || 0);
         return { SKU: sku, Descrição: m.descricao || '', Qtd: qtd, 'Preço Médio (R$)': preco, 'Valor Total (R$)': qtd*preco };
       });
-      const excedentes = store.state.movimentos.filter(m => m.rz === rz && !tot[m.sku]).map(m => ({ SKU: m.sku, Descrição: '', Qtd: 1, 'Preço Médio (R$)': Number(m.precoAjustado || 0), 'Valor Total (R$)': Number(m.precoAjustado || 0), 'Observação': m.observacao || '' }));
-      const soma = arr => arr.reduce((a,b)=>a + Number(b['Valor Total (R$)']||0),0);
-      const sumQtd = arr => arr.reduce((a,b)=>a + Number(b.Qtd||0),0);
-      const resumo = {
-        'Itens conferidos': sumQtd(conferidos),
-        'Itens pendentes': sumQtd(pendentes),
-        'Valor conferido (R$)': soma(conferidos),
-        'Valor pendente (R$)': soma(pendentes),
-      };
-      exportarConferencia({ rz, conferidos, pendentes, excedentes, resumo });
+      const excedentes = (store.state.excedentes[rz] || []).map(it=>({ SKU: it.sku, Descrição: it.descricao || '', Qtd: it.qtd, 'Preço Médio (R$)': Number(it.preco || 0), 'Valor Total (R$)': Number(it.qtd||0) * Number(it.preco||0), Observação: it.obs || '' }));
+      exportarConferencia({ rz, conferidos, pendentes, excedentes });
       toast('Planilha exportada', 'info');
     } catch(e) {
       console.error(e); toast('Falha ao exportar', 'error');
@@ -179,11 +211,13 @@ export function initApp(){
   btnScan?.addEventListener('click', async ()=>{
     try {
       if (!scanning) {
-        await iniciarLeitura(videoEl, (texto)=>{
-          const sku = (texto||'').trim().toUpperCase();
+        const once = (fn, ms=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms);} };
+        const onDecoded = once((code)=>{
+          const sku = (code||'').trim().toUpperCase();
           if (inputSku) inputSku.value = sku;
-          onConsultarClick();
-        });
+          onConsultarClick('scanner');
+        },350);
+        await iniciarLeitura(videoEl, (texto)=>{ onDecoded(texto); });
         scanning = true; btnScan.textContent = 'Parar leitura';
         setBoot('Scanner ativo ▶️');
       } else {
@@ -199,6 +233,26 @@ export function initApp(){
   });
 
   rzSelect?.addEventListener('change', e=>{ setCurrentRZ(e.target.value || null); render(); });
+
+  document.getElementById('exc-salvar')?.addEventListener('click', ()=>{
+    const dlg = document.getElementById('dlg-excedente');
+    const sku = document.getElementById('exc-sku').value.trim().toUpperCase();
+    const desc = document.getElementById('exc-desc').value.trim();
+    const qtd  = Number(document.getElementById('exc-qtd').value) || 1;
+    const preco= Number(document.getElementById('exc-preco').value) || 0;
+    const obs  = document.getElementById('exc-obs').value.trim();
+    if (!sku || !desc || !preco) return;
+    addExcedente(store.state.rzAtual, { sku, descricao: desc, qtd, preco, obs, fonte: dlg?.dataset.fonte||'manual' });
+    dlg.close();
+    toast('Excedente salvo', 'info');
+    render();
+  });
+
+  document.addEventListener('keydown',(e)=>{
+    if (e.ctrlKey && e.key.toLowerCase()==='k'){ e.preventDefault(); document.querySelector('#codigo-ml')?.focus(); }
+    if (e.ctrlKey && e.key.toLowerCase()==='j'){ e.preventDefault(); iniciarLeituraUI(); }
+    if (e.key==='Escape') document.getElementById('dlg-excedente')?.close();
+  });
 
   fileInput?.addEventListener('change', async (e)=>{
     const f = e.target?.files?.[0];

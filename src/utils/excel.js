@@ -158,6 +158,7 @@ export async function processarPlanilha(input) {
     store.state.totalByRZSku = totalByRZSku;
     store.state.metaByRZSku = metaByRZSku;
     store.state.conferidosByRZSku = {};
+    store.state.excedentes = {};
     if (!store.state.currentRZ) store.state.currentRZ = rzList[0] || null;
 
     DBG('RZs (header):', rzList.length, rzList.slice(0, 30));
@@ -175,6 +176,7 @@ export async function processarPlanilha(input) {
   store.state.totalByRZSku = {};
   store.state.metaByRZSku = {};
   store.state.conferidosByRZSku = {};
+  store.state.excedentes = {};
   if (!store.state.currentRZ) store.state.currentRZ = rzList[0] || null;
 
   DBG('RZs (fallback):', rzList.length, rzList.slice(0, 30));
@@ -203,7 +205,20 @@ export function exportResult({
   XLSX.writeFile(wb, filename);
 }
 
-export function exportarConferencia({ rz, conferidos, pendentes, excedentes, resumo }) {
+export function exportarConferencia({ rz, conferidos, pendentes, excedentes }) {
+  const soma = arr => arr.reduce((a,b)=>a + Number(b['Valor Total (R$)']||0),0);
+  const sumQtd = arr => arr.reduce((a,b)=>a + Number(b.Qtd||0),0);
+  const resumo = {
+    qtd_conferidos: sumQtd(conferidos),
+    valor_conferidos: soma(conferidos),
+    qtd_pendentes: sumQtd(pendentes),
+    valor_pendentes: soma(pendentes),
+    qtd_excedentes: sumQtd(excedentes),
+    valor_excedentes: soma(excedentes),
+  };
+  resumo.qtd_total = resumo.qtd_conferidos + resumo.qtd_pendentes + resumo.qtd_excedentes;
+  resumo.valor_total = resumo.valor_conferidos + resumo.valor_pendentes + resumo.valor_excedentes;
+
   const wb = XLSX.utils.book_new();
   const wsResumo = XLSX.utils.json_to_sheet([resumo]);
   XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo');
