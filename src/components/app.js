@@ -13,24 +13,6 @@ import store, {
 } from '../store/index.js';
 import { processarPlanilha, exportResult } from '../utils/excel.js';
 import { brl } from '../utils/format.js';
-import { BrowserMultiFormatReader as ZXingBrowserReader } from '@zxing/browser';
-
-let BrowserMultiFormatReader = ZXingBrowserReader;
-
-async function loadZXing() {
-  if (BrowserMultiFormatReader) return BrowserMultiFormatReader;
-  try {
-    const mod = await import('@zxing/browser');
-    BrowserMultiFormatReader = mod.BrowserMultiFormatReader;
-  } catch (err) {
-    console.error(
-      'Biblioteca @zxing/browser não encontrada. Instale @zxing/browser e @zxing/library para habilitar a leitura de códigos.',
-      err,
-    );
-    BrowserMultiFormatReader = null;
-  }
-  return BrowserMultiFormatReader;
-}
 
 const listState = {
   conferidos: { page: 1, perPage: 50, query: '', collapsed: false },
@@ -83,9 +65,7 @@ const torchBtn = document.getElementById('toggleTorchBtn');
 let currentTrack = null;
 let torchOn = false;
 
-abrirBtn?.addEventListener('click', async () => {
-  await abrirCamera();
-});
+abrirBtn?.addEventListener('click', abrirCamera);
 
 fecharBtn?.addEventListener('click', () => fecharCamera());
 
@@ -127,11 +107,10 @@ function renderConferidos() {
     descricao:
       store.state.pallets[store.state.currentRZ]?.expected[it.codigo]?.descricao || '',
   }));
-  const q = state.query.toLowerCase();
+  const q = state.query.trim().toLowerCase();
   const filtered = q
-    ? list.filter(
-        it =>
-          it.codigo.toLowerCase().includes(q) || it.descricao.toLowerCase().includes(q),
+    ? list.filter(it =>
+        it.codigo.toLowerCase().includes(q) || (it.descricao || '').toLowerCase().includes(q),
       )
     : list;
   const { slice, total, pages } = paginate(filtered, state.page, state.perPage);
@@ -171,13 +150,13 @@ function renderFaltantes() {
     descricao:
       store.state.pallets[store.state.currentRZ]?.expected[it.codigo]?.descricao || '',
   }));
-  const q = state.query.toLowerCase();
-  const filtered = q
-    ? list.filter(
-        it =>
-          it.codigo.toLowerCase().includes(q) || it.descricao.toLowerCase().includes(q),
-      )
-    : list;
+    const q = state.query.trim().toLowerCase();
+    const filtered = q
+      ? list.filter(
+          it =>
+            it.codigo.toLowerCase().includes(q) || (it.descricao || '').toLowerCase().includes(q),
+        )
+      : list;
   const { slice, total, pages } = paginate(filtered, state.page, state.perPage);
   if (state.page > pages) {
     state.page = pages;
@@ -194,8 +173,9 @@ function renderFaltantes() {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
     const esperado = item.esperado;
-    td.textContent =
-      esperado > 1 ? `${item.codigo} (${item.conferido}/${esperado})` : item.codigo;
+    const desc = item.descricao ? ` — ${item.descricao}` : '';
+    const base = `${item.codigo}${desc}`;
+    td.textContent = esperado > 1 ? `${base} (${item.conferido}/${esperado})` : base;
     tr.appendChild(td);
     tbody.appendChild(tr);
   });
@@ -544,16 +524,13 @@ function handleRegistrar() {
 function onCodigo(valor) {
   const v = String(valor || '').trim();
   if (!v) return;
-  const codigoInput = document.getElementById('codigoInput');
-  codigoInput.value = v;
-  if (scanMode === 'auto') {
-    const res = consultar();
-    if (res?.status === 'found') toast('Produto localizado.');
-    else if (res?.status === 'other') toast(`Encontrado no ${res.rzEncontrado}.`);
-    else if (res?.status === 'not-found') toast('Não encontrado — excedente.');
-  } else {
-    document.getElementById('consultarBtn')?.focus();
-  }
+  const input = document.getElementById('codigoInput');
+  input.value = v;
+
+  const mode = localStorage.getItem('scanMode') || 'manual';
+  if (mode === 'auto') consultar();
+  else input.focus();
+
   fecharCamera();
 }
 
@@ -657,21 +634,25 @@ async function loopNativo() {
 }
 
 async function iniciarZXing() {
-  const Reader = await loadZXing();
-  if (!Reader) return;
-  zxingReader = new Reader();
-  zxingReader.decodeFromVideoElement(videoEl, (result, err) => {
-    if (result) {
-      onCodigo(result.getText());
-    }
-  });
+  try {
+    const { BrowserMultiFormatReader } = await import('@zxing/browser');
+    const reader = new BrowserMultiFormatReader();
+    reader.decodeFromVideoElement(videoEl, result => {
+      if (result) onCodigo(result.getText());
+    });
+    zxingReader = reader;
+  } catch (err) {
+    console.error('Falha ao carregar ZXing:', err);
+    toast?.('Falha ao carregar leitor ZXing');
+  }
 }
 
 function fecharCamera(hide = true) {
   try {
-    if (zxingReader) {
+    if (usingZXing && zxingReader) {
       zxingReader.reset();
       zxingReader = null;
+      usingZXing = false;
     }
     if (stream) {
       stream.getTracks().forEach(t => t.stop());
