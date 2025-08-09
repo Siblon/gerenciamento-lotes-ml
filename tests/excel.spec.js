@@ -11,20 +11,19 @@ function createXlsxBuffer(data){
 }
 
 describe('processarPlanilha', () => {
-  it('extrai produtos de planilha com cabecalho flexivel', async () => {
-    const data = [
-      ['alguma coisa', 'foo'],
-      [],
-      ['Cod. ML', 'Item', 'Qtde', 'Palete', 'Preço'],
-      ['AAA123', 'Produto A', 2, 'RZ-123', 10.5],
-      ['BBB456', 'Produto B', '1', 'RZ-124', 5],
-      ['TOTAL', '', { f: 'SUM(C4:C5)' }, 'RZ-123', 0],
-    ];
-    const buf = createXlsxBuffer(data);
-    const { produtos } = await processarPlanilha(buf);
-    expect(produtos).toEqual([
-      { codigoML: 'AAA123', descricao: 'Produto A', quantidade: 2, rz: 'RZ-123', preco: 10.5, valorTotal: 21 },
-      { codigoML: 'BBB456', descricao: 'Produto B', quantidade: 1, rz: 'RZ-124', preco: 5, valorTotal: 5 },
-    ]);
+    it('agrupa itens por RZ', async () => {
+      const data = [
+        ['alguma coisa', 'foo'],
+        [],
+        ['Codigo ML', 'Descricao', 'Qtd', 'Cod RZ', 'Valor Unit'],
+        ['AAA123', 'Produto A', 2, 'RZ-123', 10.5],
+        ['BBB456', 'Produto B', '1', 'RZ-124', 5],
+        ['TOTAL', '', { f: 'SUM(C4:C5)' }, 'RZ-123', 0],
+      ];
+      const buf = createXlsxBuffer(data);
+      const { rzList, itemsByRZ } = await processarPlanilha(buf);
+      expect(rzList).toEqual(['RZ-123', 'RZ-124']);
+      expect(itemsByRZ['RZ-123'][0]).toMatchObject({ codigoML: 'AAA123', codigoRZ: 'RZ-123', qtd: 2 });
+      expect(itemsByRZ['RZ-124'][0]).toMatchObject({ codigoML: 'BBB456', codigoRZ: 'RZ-124', qtd: 1 });
+    });
   });
-});

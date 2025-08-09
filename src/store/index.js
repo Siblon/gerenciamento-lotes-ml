@@ -5,6 +5,9 @@ export const state = {
   currentRZ: null,
   ajustes: [],
   excedentes: new Map(),
+  rzList: [],
+  itemsByRZ: {},
+  conferidosBySKU: {},
 };
 
 export function init(items = []) {
