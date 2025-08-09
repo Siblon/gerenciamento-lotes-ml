@@ -231,6 +231,7 @@ export async function processarPlanilha(file) {
       }
 
       const produtos = [];
+      const ignored = [];
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i];
         const codigoML = row[indices.codigoML]
@@ -255,13 +256,19 @@ export async function processarPlanilha(file) {
         if (!valorTotal && preco) valorTotal = preco * quantidade;
 
         if (!codigoML || !descricao || !rz) {
-          console.warn(
-            `Linha ${headerRow + i + 2} ignorada por falta de dados essenciais`,
-          );
+          ignored.push(headerRow + i + 2);
           continue;
         }
 
         produtos.push({ codigoML, descricao, quantidade, rz, preco, valorTotal });
+      }
+
+      const verbose =
+        process.env.VERBOSE === '1' || process.env.CONFER_VERBOSE === '1';
+      if (ignored.length && verbose) {
+        console.warn(
+          `${ignored.length} linha(s) ignoradas por falta de dados essenciais: ${ignored.join(', ')}`,
+        );
       }
 
       const rzs = Array.from(new Set(produtos.map(p => p.rz)));

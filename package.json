@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "vite",
-    "test": "vitest",
+    "test": "vitest run --reporter=dot --silent",
+    "test:verbose": "cross-env VERBOSE=1 vitest run --reporter=verbose",
     "start": "node src/server.js"
   },
   "dependencies": {
@@ -13,7 +14,8 @@
   },
   "devDependencies": {
     "vite": "^4.0.0",
-    "vitest": "^0.34.0"
+    "vitest": "^0.34.0",
+    "cross-env": "^7.0.3"
   },
   "type": "module"
 }
