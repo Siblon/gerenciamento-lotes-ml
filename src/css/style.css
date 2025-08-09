@@ -1,7 +1,17 @@
-body {
-  font-family: Arial, sans-serif;
-  background: #f9fafb;
+:root{ --bg:#fafafa; --fg:#111; --muted:#6b7280; --primary:#2563eb; --border:#e5e7eb; --card:#fff; }
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0b0f14; --fg:#e5e7eb; --muted:#94a3b8; --primary:#60a5fa; --border:#1f2937; --card:#0f172a; }
 }
+body{ font-family: Arial, sans-serif; background:var(--bg); color:var(--fg); }
+.card{ background:var(--card); border:1px solid var(--border); border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+.btn{ border-radius:10px; }
+.badge{ border-radius:999px; padding:.15rem .5rem; font-size:.75rem; }
+.badge.excedente{ background:#fee2e2; color:#991b1b; }
+.badge.conferido{ background:#dcfce7; color:#065f46; }
+.badge.pendente{ background:#eef2ff; color:#3730a3; }
+thead.sticky{ position:sticky; top:0; background:var(--card); z-index:1; }
+table.zebra tr:nth-child(even){ background:rgba(0,0,0,.02); }
+td:first-child, th:first-child{ position:sticky; left:0; background:var(--card); }
 
 #app-container {
   max-width: 1100px;
@@ -39,21 +49,16 @@ button:disabled {
   cursor: not-allowed;
 }
 
-.card,
-.lista-bloco,
-.section {
-  border: 1px solid #e5e7eb;
+ .lista-bloco,
+ .section {
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px;
-  background: #fff;
-}
-
-.lista-bloco,
-.section {
+  background: var(--card);
   margin-bottom: 16px;
-}
+ }
 
-.section-head {
+ .section-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -63,12 +68,6 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.badge {
-  border-radius: 9999px;
-  padding: 2px 8px;
-  background: #eef2ff;
 }
 
 .lista-controles {

@@ -22,6 +22,9 @@ const state = {
   // eventos de conferência (para auditoria/finalizar)
   movimentos: [],         // [{ ts, rz, sku, precoAjustado, observacao }]
 
+  // excedentes por RZ
+  excedentes: {},         // { [rz]: [ { sku, descricao, qtd, preco, obs, fonte } ] }
+
   limits: {
     conferidos: 50,
     pendentes: 50,
@@ -31,7 +34,8 @@ const state = {
 function updateContadores(rz){
   const total = Object.keys(state.totalByRZSku[rz] || {}).length;
   const conf = Object.keys(state.conferidosByRZSku[rz] || {}).length;
-  state.contadores[rz] = { conferidos: conf, total };
+  const exc  = (state.excedentes[rz] || []).length;
+  state.contadores[rz] = { conferidos: conf, total, excedentes: exc };
 }
 
 export function setCurrentRZ(rz){
@@ -96,6 +100,47 @@ export function findConferido(rz, sku){
   return { sku, descricao: meta.descricao || '', qtd: tot[sku] || 0, precoMedio: meta.precoMedio };
 }
 
+export function findEmOutrosRZ(sku){
+  for (const [rz, map] of Object.entries(state.totalByRZSku || {})){
+    if (rz !== state.rzAtual && map[sku]) return rz;
+  }
+  return null;
+}
+
+export function addExcedente(rz, { sku, descricao, qtd, preco, obs, fonte }){
+  const list = (state.excedentes[rz] ||= []);
+  const existente = list.find(it => it.sku === sku);
+  const q = Number(qtd) || 0;
+  const p = Number(preco) || 0;
+  if (existente) {
+    existente.qtd += q;
+    existente.preco = p || existente.preco;
+    existente.obs = obs || existente.obs;
+  } else {
+    list.push({ sku, descricao: descricao || '', qtd: q, preco: p, obs: obs || '', fonte: fonte || '' });
+  }
+  state.movimentos.push({ ts: Date.now(), tipo: 'EXCEDENTE', rz, sku, qtd: q, preco: p, obs, fonte });
+  updateContadores(rz);
+}
+
+export function moveItemEntreRZ(origem, destino, sku, qtd=1){
+  const q = Number(qtd) || 0;
+  const mapOrig = state.totalByRZSku[origem] || {};
+  const mapDest = (state.totalByRZSku[destino] ||= {});
+  if (mapOrig[sku]) {
+    mapOrig[sku] -= q;
+    if (mapOrig[sku] <= 0) delete mapOrig[sku];
+  }
+  mapDest[sku] = (mapDest[sku] || 0) + q;
+  const meta = state.metaByRZSku[origem]?.[sku];
+  if (meta){
+    (state.metaByRZSku[destino] ||= {});
+    state.metaByRZSku[destino][sku] = meta;
+  }
+  updateContadores(origem);
+  updateContadores(destino);
+}
+
 export function dispatch(action){
   if (action?.type === 'REGISTRAR'){
     const { rz, sku, precoAjustado, observacao } = action;
@@ -103,6 +148,6 @@ export function dispatch(action){
   }
 }
 
-const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido };
+const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ };
 
 export default store;
