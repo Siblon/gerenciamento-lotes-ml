@@ -7,18 +7,18 @@ const log = (...a) => console.log('[CONF-DBG]', ...a);
 
 function getCountsForRZ(rz) {
   const items = store?.state?.itemsByRZ?.[rz] || [];
-  const conferidos = 0;
-  const faltantes = items.length;
-  return { conferidos, faltantes };
+  const conferidos = 0;           // por enquanto tudo pendente
+  const pendentes = items.length; // renomeado
+  return { conferidos, pendentes };
 }
 
 function renderCounts() {
   const rz = store?.state?.currentRZ;
-  const { conferidos, faltantes } = getCountsForRZ(rz);
+  const { conferidos, pendentes } = getCountsForRZ(rz);
   const elConf = document.getElementById('count-conferidos');
-  const elFalt = document.getElementById('count-faltantes');
+  const elPend = document.getElementById('count-pendentes');
   if (elConf) elConf.textContent = String(conferidos);
-  if (elFalt) elFalt.textContent = String(faltantes);
+  if (elPend) elPend.textContent = String(pendentes);
 }
 const setBoot = (msg) => {
   const st = document.getElementById('boot-status');
@@ -52,43 +52,25 @@ export function initApp() {
   // ===== Upload planilha → processa → popula RZ =====
   fileInput.addEventListener('change', async (e) => {
     const f = e.target?.files?.[0];
-    if (!f) { log('Nenhum arquivo selecionado'); return; }
-    log('Arquivo selecionado:', f.name);
-
-    try {
-      const buf = (f.arrayBuffer ? await f.arrayBuffer() : f);
-        const { rzList } = await processarPlanilha(buf);
-        const list = store?.state?.rzList || rzList || [];
-        log('RZs carregados:', list.length, list);
-
-        renderRZOptions(rzSelect, list);
-
-      // auto‑seleciona se só houver 1 RZ
-        if (list.length === 1) {
-          rzSelect.value = list[0];
-          if (!store.state) store.state = {};
-          store.state.currentRZ = list[0];
-          log('RZ auto‑selecionado:', list[0]);
-        }
-
-        renderCounts();
-        if (typeof window.render === 'function') window.render();
-        setBoot(`Planilha OK (${list.length} RZs) ✅`);
-      } catch (err) {
-      console.error('Falha processarPlanilha', err);
-      setBoot('Erro na planilha ❌ (veja Console)');
+    if (!f) return;
+    const buf = (f.arrayBuffer ? await f.arrayBuffer() : f);
+    const { rzList } = await processarPlanilha(buf);
+    const list = store?.state?.rzList || rzList || [];
+    renderRZOptions(rzSelect, list);
+    if (list.length === 1) {
+      rzSelect.value = list[0];
+      store.state.currentRZ = list[0];
     }
+    renderCounts();
   });
 
   // ===== Seleção de RZ =====
-    rzSelect.addEventListener('change', (e) => {
-      const rz = e.target.value || null;
-      if (!store.state) store.state = {};
-      store.state.currentRZ = rz;
-      log('RZ selecionado:', rz);
-      renderCounts();
-      if (typeof window.render === 'function') window.render();
-    });
+  rzSelect.addEventListener('change', (e) => {
+    const rz = e.target.value || null;
+    if (!store.state) store.state = {};
+    store.state.currentRZ = rz;
+    renderCounts();
+  });
 
   // ===== Iniciar scanner =====
   btnAuto.addEventListener('click', async () => {
