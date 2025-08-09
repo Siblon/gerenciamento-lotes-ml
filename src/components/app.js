@@ -29,8 +29,8 @@ export function initApp() {
     try {
       // compat: aceita File ou ArrayBuffer, conforme implementado em processarPlanilha
       const maybeBuffer = await f.arrayBuffer?.();
-      const result = await processarPlanilha(maybeBuffer || f);
-      const list = store?.state?.rzList || result?.rzList || [];
+      const { rzList } = await processarPlanilha(maybeBuffer || f);
+      const list = store?.state?.rzList || rzList || [];
       log('RZs carregados:', list.length, list);
       renderRZOptions(rzSelect, list);
       if (typeof window.render === 'function') window.render();
