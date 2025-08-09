@@ -574,18 +574,34 @@ async function loopNativo() {
 }
 
 async function iniciarZXing() {
+  async function loadLocal() {
+    // tenta o pacote local (se instalado)
+    return await import('@zxing/browser');
+  }
+  async function loadFromCdn() {
+    // fallback ESM por CDN; @vite-ignore impede o Vite de tentar resolver localmente
+    return await import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/+esm');
+  }
+
   try {
-    const mod = await import('@zxing/browser');   // <-- IMPORT DINÂMICO
+    let mod;
+    try {
+      mod = await loadLocal();
+    } catch (errLocal) {
+      console.warn('ZXing local indisponível, usando CDN…', errLocal);
+      mod = await loadFromCdn();
+    }
+
     const { BrowserMultiFormatReader } = mod || {};
     if (!BrowserMultiFormatReader) {
       console.error('ZXing sem BrowserMultiFormatReader');
       toast?.('Leitor ZXing indisponível');
       return;
     }
-    zxingReader = new BrowserMultiFormatReader();
 
-    // Preferir decodeFromVideoElement (mantém stream já aberto)
-    await zxingReader.decodeFromVideoElement(videoEl, (result/*, err*/) => {
+    // cria reader e usa o stream já aberto no <video>
+    zxingReader = new BrowserMultiFormatReader();
+    await zxingReader.decodeFromVideoElement(videoEl, (result /*, err */) => {
       if (!reading || !result) return;
       const text = String(result.getText?.() || '').trim();
       if (text && text !== lastResult) {
@@ -594,7 +610,7 @@ async function iniciarZXing() {
       }
     });
   } catch (err) {
-    console.error('Falha ao carregar ZXing:', err);
+    console.error('Falha ao carregar ZXing (local e CDN):', err);
     toast?.('Falha ao carregar leitor ZXing');
   }
 }
@@ -609,14 +625,9 @@ async function fecharCamera(hide = true) {
   reading = false;
   try {
     pararZXing();
-    if (stream) {
-      stream.getTracks().forEach(t => t.stop());
-      stream = null;
-    }
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
     currentTrack = null;
     torchOn = false;
-  } catch (e) {
-    console.warn('Erro ao fechar câmera', e);
   } finally {
     if (hide) cameraModal?.classList?.add('hidden');
     statusEl && (statusEl.textContent = 'Pronto');
