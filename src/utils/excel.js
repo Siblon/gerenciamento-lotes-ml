@@ -139,10 +139,7 @@ export async function processarPlanilha(file) {
     let lastMissingFields = [];
     for (const sheetName of workbook.SheetNames) {
       const sheet = workbook.Sheets[sheetName];
-      if (!sheet || !sheet['!ref']) {
-        console.warn(`⚠️ Aba '${sheetName}' está vazia.`);
-        continue;
-      }
+      if (!sheet || !sheet['!ref']) continue;
 
       // Converte a planilha para uma matriz ignorando colunas ocultas e fórmulas
       const range = XLSX.utils.decode_range(sheet['!ref']);
@@ -169,10 +166,7 @@ export async function processarPlanilha(file) {
         rows.push(row);
       }
 
-      if (!rows.length) {
-        console.warn(`⚠️ Aba '${sheetName}' sem linhas.`);
-        continue;
-      }
+      if (!rows.length) continue;
 
       // Busca cabeçalho nas primeiras 10 linhas
       let headerRow = -1;
@@ -196,7 +190,6 @@ export async function processarPlanilha(file) {
         ) {
           headerRow = i;
           indices = headerIndices;
-          console.log(`📄 Usando aba '${sheetName}' com cabeçalho na linha ${i + 1}`);
           break;
         }
       }
@@ -208,8 +201,7 @@ export async function processarPlanilha(file) {
       if (headerRow === -1) {
         lastMissingFields = missingFields;
         console.warn(
-          `⚠️ Cabeçalho não detectado nas primeiras linhas da aba '${sheetName}'.`,
-          missingFields,
+          `⚠️ Cabeçalho não detectado na aba '${sheetName}'. Faltando colunas: ${missingFields.join(', ')}`,
         );
         continue;
       }
@@ -218,17 +210,6 @@ export async function processarPlanilha(file) {
       const dataRows = rows
         .slice(headerRow + 1)
         .filter(r => r && r.some(c => c !== null && String(c).trim() !== ''));
-
-      console.log('✅ Colunas detectadas:', headerCols);
-      console.log('🔢 Total de linhas:', dataRows.length);
-      console.log('🔍 Primeira linha da planilha:', dataRows[0]);
-
-      if (indices.codigoML === -1) {
-        console.warn('⚠️ Nenhuma coluna de código de produto detectada.');
-      }
-      if (indices.rz === -1) {
-        console.warn('⚠️ Nenhuma coluna de RZ (palete) detectada.');
-      }
 
       const produtos = [];
       for (let i = 0; i < dataRows.length; i++) {
@@ -255,9 +236,7 @@ export async function processarPlanilha(file) {
         if (!valorTotal && preco) valorTotal = preco * quantidade;
 
         if (!codigoML || !descricao || !rz) {
-          console.warn(
-            `Linha ${headerRow + i + 2} ignorada por falta de dados essenciais`,
-          );
+          console.warn(`Linha ${headerRow + i + 2} ignorada por falta de dados essenciais`);
           continue;
         }
 
