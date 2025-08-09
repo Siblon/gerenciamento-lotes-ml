@@ -1,4 +1,11 @@
 import * as XLSX from 'xlsx';
+import store from '../store/index.js';
+
+const DBG = (...a) => {
+  if (typeof window !== 'undefined' && window.__DEBUG_SCAN__) {
+    console.log('[XLSX]', ...a);
+  }
+};
 
 function toNumberBR(v) {
   if (v == null) return 0;
@@ -85,6 +92,40 @@ export async function processarPlanilha(file) {
       raw: true,
       cellFormula: false,
     });
+
+    DBG('Abas:', workbook.SheetNames);
+
+    const rzSet = new Set();
+    const RZ_REGEX = /\bRZ-\d+\b/i;
+
+    for (const name of workbook.SheetNames) {
+      const ws = workbook.Sheets[name];
+      if (!ws) continue;
+
+      const rows = XLSX.utils.sheet_to_json(ws, {
+        header: 1,
+        raw: false,
+        defval: '',
+      });
+      if (rows.length === 0) continue;
+
+      DBG(`Aba: ${name} — linhas: ${rows.length}`);
+      if (rows[0] && rows[0].length) DBG('Headers(guess):', rows[0]);
+
+      for (const row of rows) {
+        for (const cell of row) {
+          if (typeof cell === 'string' && cell) {
+            const m = cell.match(RZ_REGEX);
+            if (m) rzSet.add(m[0].toUpperCase());
+          }
+        }
+      }
+    }
+
+    const rzList = Array.from(rzSet).sort();
+    store.state = store.state || {};
+    store.state.rzList = rzList;
+    DBG('RZs encontrados:', rzList.length, rzList.slice(0, 20));
 
     // Alias das colunas aceitando diversos nomes
     // para tornar o parser mais tolerante a planilhas variadas
@@ -278,14 +319,15 @@ export async function processarPlanilha(file) {
         rzs,
         headerRow: headerRow + 1,
         missingFields: [],
+        rzList,
       };
     }
 
     console.warn('⚠️ Planilha lida, mas está vazia ou sem colunas esperadas.');
-    return { produtos: [], totalItens: 0, rzs: [], headerRow: null, missingFields: lastMissingFields };
+    return { produtos: [], totalItens: 0, rzs: [], headerRow: null, missingFields: lastMissingFields, rzList };
   } catch (error) {
     console.error('❌ Erro ao processar planilha:', error);
-    return { produtos: [], totalItens: 0, rzs: [], headerRow: null, missingFields: [] };
+    return { produtos: [], totalItens: 0, rzs: [], headerRow: null, missingFields: [], rzList: store.state?.rzList || [] };
   }
 }
 

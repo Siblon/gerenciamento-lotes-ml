@@ -1,5 +1,6 @@
 // src/main.js
 import { initApp } from './components/app.js';
+import store from './store/index.js';
 
 window.__DEBUG_SCAN__ = true;
 
@@ -19,6 +20,18 @@ window.addEventListener('DOMContentLoaded', () => {
     console.error('[BOOT] falha initApp', e);
     updateBoot('Falhou iniciar ❌ (veja Console)');
   }
+
+  window.store = store;
+  window.__dumpRZ = () => {
+    try {
+      const list = (window.store?.state?.rzList) || [];
+      console.log('[DEBUG] rzList:', list.length, list);
+      return list;
+    } catch (e) {
+      console.warn('dumpRZ falhou', e);
+      return [];
+    }
+  };
 
   // botão Debug (permite testar ZXing e permissões)
   const dbgBtn = document.getElementById('btn-debug');
