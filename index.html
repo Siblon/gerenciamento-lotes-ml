@@ -1,43 +1,96 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Sistema de Conferência</title>
-  <link rel="stylesheet" href="/src/css/style.css">
+  <link rel="stylesheet" href="/src/css/style.css" />
 </head>
 <body>
-  <h1>Conferência de Lotes</h1>
-  <input type="file" id="fileInput" accept=".xlsx" />
-  <select id="rzSelect"></select>
-  <div id="progresso">0 de 0 conferidos</div>
-  <input type="text" id="codigoInput" placeholder="Código do produto" />
-  <input type="number" id="precoInput" placeholder="Preço ajustado" step="0.01" />
-  <input type="text" id="obsInput" placeholder="Observação" />
-  <button id="consultarBtn">Consultar</button>
-  <button id="registrarBtn">Registrar</button>
-  <button id="excedenteBtn" disabled>Registrar Excedente</button>
-  <button id="finalizarBtn">Finalizar Conferência</button>
+  <div id="app-container">
+    <header id="topbar">
+      <h1>Conferência de Lotes</h1>
+      <button id="helpBtn" title="Ajuda/Atalhos">?</button>
+    </header>
 
-  <div id="consultaCard"></div>
+    <section id="painel-controle">
+      <input type="file" id="fileInput" accept=".xlsx" />
+      <select id="rzSelect"></select>
+      <div id="progresso">0 de 0 conferidos</div>
+      <input type="text" id="codigoInput" placeholder="Código do produto" />
+      <input type="number" id="precoInput" placeholder="Preço ajustado" step="0.01" />
+      <input type="text" id="obsInput" placeholder="Observação" />
+      <button id="consultarBtn">Consultar</button>
+      <button id="registrarBtn">Registrar</button>
+      <button id="excedenteBtn" disabled>Registrar Excedente</button>
+      <button id="finalizarBtn">Finalizar Conferência</button>
+      <div id="consultaCard" class="card"></div>
+    </section>
 
-  <div id="resumoRZ"></div>
-  <div id="resumoGeral"></div>
+    <section id="resumos">
+      <div id="resumoRZ"></div>
+      <div id="resumoGeral"></div>
+    </section>
 
-  <section>
-    <h2>Conferidos</h2>
-    <table><tbody id="conferidosTable"></tbody></table>
-  </section>
+    <section id="listas">
+      <div class="lista-bloco" id="conferidosBloco">
+        <header class="lista-header">
+          <h2>Conferidos <span class="badge" id="conferidosCount">0</span></h2>
+          <button class="lista-toggle" data-list="conferidos">Recolher</button>
+        </header>
+        <div class="lista-body" id="conferidosBody">
+          <div class="lista-controles">
+            <input class="lista-search" data-list="conferidos" placeholder="Buscar por SKU ou descrição" />
+            <select class="lista-pagesize" data-list="conferidos">
+              <option value="20">20</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          <table><tbody id="conferidosTable"></tbody></table>
+          <div class="pagination" id="conferidosPagination"></div>
+        </div>
+      </div>
 
-  <section>
-    <h2>Faltantes</h2>
-    <table><tbody id="faltantesTable"></tbody></table>
-  </section>
+      <div class="lista-bloco" id="faltantesBloco">
+          <header class="lista-header">
+            <h2>Faltantes <span class="badge" id="faltantesCount">0</span></h2>
+            <button class="lista-toggle" data-list="faltantes">Recolher</button>
+          </header>
+          <div class="lista-body" id="faltantesBody">
+            <div class="lista-controles">
+              <input class="lista-search" data-list="faltantes" placeholder="Buscar por SKU ou descrição" />
+              <select class="lista-pagesize" data-list="faltantes">
+                <option value="20">20</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <table><tbody id="faltantesTable"></tbody></table>
+            <div class="pagination" id="faltantesPagination"></div>
+          </div>
+      </div>
 
-  <section>
-    <h2>Excedentes</h2>
-    <table><tbody id="excedentesTable"></tbody></table>
-  </section>
+      <div class="lista-bloco" id="excedentesBloco">
+        <header class="lista-header">
+          <h2>Excedentes <span class="badge" id="excedentesCount">0</span></h2>
+          <button class="lista-toggle" data-list="excedentes">Recolher</button>
+        </header>
+        <div class="lista-body" id="excedentesBody">
+          <div class="lista-controles">
+            <input class="lista-search" data-list="excedentes" placeholder="Buscar por SKU ou descrição" />
+            <select class="lista-pagesize" data-list="excedentes">
+              <option value="20">20</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          <table><tbody id="excedentesTable"></tbody></table>
+          <div class="pagination" id="excedentesPagination"></div>
+        </div>
+      </div>
+    </section>
 
-  <script type="module" src="/src/components/app.js"></script>
+    <script type="module" src="/src/components/app.js"></script>
+  </div>
 </body>
 </html>

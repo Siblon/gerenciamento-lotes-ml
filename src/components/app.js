@@ -11,6 +11,28 @@ import store, {
   registrarAjuste,
 } from '../store/index.js';
 import { processarPlanilha, exportResult } from '../utils/excel.js';
+import { brl } from '../utils/format.js';
+
+const listState = {
+  conferidos: { page: 1, perPage: 50, query: '', collapsed: false },
+  faltantes: { page: 1, perPage: 50, query: '', collapsed: false },
+  excedentes: { page: 1, perPage: 50, query: '', collapsed: false },
+};
+
+const debounce = (fn, delay = 200) => {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), delay);
+  };
+};
+
+function paginate(array, page, perPage) {
+  const total = array.length;
+  const pages = Math.max(1, Math.ceil(total / perPage));
+  const start = (page - 1) * perPage;
+  return { slice: array.slice(start, start + perPage), total, pages };
+}
 
 let consultaAtual = null;
 
@@ -26,45 +48,159 @@ function render() {
 }
 
 function renderConferidos() {
-  const list = listarConferidos();
+  const state = listState.conferidos;
+  const list = listarConferidos().map(it => ({
+    ...it,
+    descricao:
+      store.state.pallets[store.state.currentRZ]?.expected[it.codigo]?.descricao || '',
+  }));
+  const q = state.query.toLowerCase();
+  const filtered = q
+    ? list.filter(
+        it =>
+          it.codigo.toLowerCase().includes(q) || it.descricao.toLowerCase().includes(q),
+      )
+    : list;
+  const { slice, total, pages } = paginate(filtered, state.page, state.perPage);
+  if (state.page > pages) {
+    state.page = pages;
+    return renderConferidos();
+  }
+  const search = document.querySelector('.lista-search[data-list="conferidos"]');
+  if (search && search.value !== state.query) search.value = state.query;
+  const sel = document.querySelector('.lista-pagesize[data-list="conferidos"]');
+  if (sel && Number(sel.value) !== state.perPage) sel.value = state.perPage;
+  document.getElementById('conferidosCount').textContent = total;
   const tbody = document.getElementById('conferidosTable');
   tbody.innerHTML = '';
-  list.forEach(item => {
+  slice.forEach(item => {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
     const esperado = item.esperado;
     const conf = Math.min(item.conferido, esperado);
-    td.textContent = esperado > 1 ? `${item.codigo} (${conf}/${esperado})` : item.codigo;
+    td.textContent =
+      esperado > 1 ? `${item.codigo} (${conf}/${esperado})` : item.codigo;
     tr.appendChild(td);
     tbody.appendChild(tr);
   });
+  renderPagination('conferidos', state.page, pages);
+  document
+    .getElementById('conferidosBody')
+    .classList.toggle('hidden', state.collapsed);
+  const toggleBtn = document.querySelector('.lista-toggle[data-list="conferidos"]');
+  if (toggleBtn) toggleBtn.textContent = state.collapsed ? 'Expandir' : 'Recolher';
 }
 
 function renderFaltantes() {
-  const list = listarFaltantes();
+  const state = listState.faltantes;
+  const list = listarFaltantes().map(it => ({
+    ...it,
+    descricao:
+      store.state.pallets[store.state.currentRZ]?.expected[it.codigo]?.descricao || '',
+  }));
+  const q = state.query.toLowerCase();
+  const filtered = q
+    ? list.filter(
+        it =>
+          it.codigo.toLowerCase().includes(q) || it.descricao.toLowerCase().includes(q),
+      )
+    : list;
+  const { slice, total, pages } = paginate(filtered, state.page, state.perPage);
+  if (state.page > pages) {
+    state.page = pages;
+    return renderFaltantes();
+  }
+  const search = document.querySelector('.lista-search[data-list="faltantes"]');
+  if (search && search.value !== state.query) search.value = state.query;
+  const sel = document.querySelector('.lista-pagesize[data-list="faltantes"]');
+  if (sel && Number(sel.value) !== state.perPage) sel.value = state.perPage;
+  document.getElementById('faltantesCount').textContent = total;
   const tbody = document.getElementById('faltantesTable');
   tbody.innerHTML = '';
-  list.forEach(item => {
+  slice.forEach(item => {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
     const esperado = item.esperado;
-    td.textContent = esperado > 1 ? `${item.codigo} (${item.conferido}/${esperado})` : item.codigo;
+    td.textContent =
+      esperado > 1 ? `${item.codigo} (${item.conferido}/${esperado})` : item.codigo;
     tr.appendChild(td);
     tbody.appendChild(tr);
   });
+  renderPagination('faltantes', state.page, pages);
+  document
+    .getElementById('faltantesBody')
+    .classList.toggle('hidden', state.collapsed);
+  const toggleBtn = document.querySelector('.lista-toggle[data-list="faltantes"]');
+  if (toggleBtn) toggleBtn.textContent = state.collapsed ? 'Expandir' : 'Recolher';
 }
 
 function renderExcedentes() {
-  const list = listarExcedentes();
+  const state = listState.excedentes;
+  const list = listarExcedentes().map(it => ({
+    ...it,
+    descricao:
+      store.state.pallets[store.state.currentRZ]?.expected[it.codigo]?.descricao || '',
+  }));
+  const q = state.query.toLowerCase();
+  const filtered = q
+    ? list.filter(
+        it =>
+          it.codigo.toLowerCase().includes(q) || it.descricao.toLowerCase().includes(q),
+      )
+    : list;
+  const { slice, total, pages } = paginate(filtered, state.page, state.perPage);
+  if (state.page > pages) {
+    state.page = pages;
+    return renderExcedentes();
+  }
+  const search = document.querySelector('.lista-search[data-list="excedentes"]');
+  if (search && search.value !== state.query) search.value = state.query;
+  const sel = document.querySelector('.lista-pagesize[data-list="excedentes"]');
+  if (sel && Number(sel.value) !== state.perPage) sel.value = state.perPage;
+  document.getElementById('excedentesCount').textContent = total;
   const tbody = document.getElementById('excedentesTable');
   tbody.innerHTML = '';
-  list.forEach(item => {
+  slice.forEach(item => {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
-    td.textContent = item.quantidade > 1 ? `${item.codigo} (${item.quantidade})` : item.codigo;
+    td.textContent =
+      item.quantidade > 1 ? `${item.codigo} (${item.quantidade})` : item.codigo;
     tr.appendChild(td);
     tbody.appendChild(tr);
   });
+  renderPagination('excedentes', state.page, pages);
+  document
+    .getElementById('excedentesBody')
+    .classList.toggle('hidden', state.collapsed);
+  const toggleBtn = document.querySelector('.lista-toggle[data-list="excedentes"]');
+  if (toggleBtn) toggleBtn.textContent = state.collapsed ? 'Expandir' : 'Recolher';
+}
+
+function renderPagination(name, page, pages) {
+  const container = document.getElementById(`${name}Pagination`);
+  if (!container) return;
+  container.innerHTML = '';
+  const makeBtn = (label, target) => {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.addEventListener('click', () => {
+      listState[name].page = target;
+      render();
+    });
+    return btn;
+  };
+  const first = makeBtn('«', 1);
+  const prev = makeBtn('‹', Math.max(1, page - 1));
+  const next = makeBtn('›', Math.min(pages, page + 1));
+  const last = makeBtn('»', pages);
+  first.disabled = page === 1;
+  prev.disabled = page === 1;
+  next.disabled = page === pages;
+  last.disabled = page === pages;
+  container.append(first, prev);
+  const info = document.createElement('span');
+  info.textContent = `página ${page}/${pages}`;
+  container.append(info, next, last);
 }
 
 function calcResumoRZ(rz) {
@@ -97,15 +233,18 @@ function calcResumoGeral() {
 function renderResumos() {
   const rzDiv = document.getElementById('resumoRZ');
   const geralDiv = document.getElementById('resumoGeral');
-  const fmt = n => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   if (store.state.currentRZ) {
     const r = calcResumoRZ(store.state.currentRZ);
-    rzDiv.textContent = `${store.state.currentRZ} | Original: ${fmt(r.totalOriginal)} | Ajustado: ${fmt(r.totalAjustado)} | Δ: ${fmt(r.delta)} (${(r.deltaPct * 100).toFixed(2)}%)`;
+    rzDiv.textContent =
+      `${store.state.currentRZ} | Original: ${brl(r.totalOriginal)} | Ajustado: ${brl(r.totalAjustado)} | Δ: ${brl(r.delta)} ` +
+      `(${(r.deltaPct * 100).toFixed(2)}%)`;
   } else {
     rzDiv.textContent = '';
   }
   const g = calcResumoGeral();
-  geralDiv.textContent = `GERAL | Original: ${fmt(g.totalOriginal)} | Ajustado: ${fmt(g.totalAjustado)} | Δ: ${fmt(g.delta)} (${(g.deltaPct * 100).toFixed(2)}%)`;
+  geralDiv.textContent =
+    `GERAL | Original: ${brl(g.totalOriginal)} | Ajustado: ${brl(g.totalAjustado)} | Δ: ${brl(g.delta)} ` +
+    `(${(g.deltaPct * 100).toFixed(2)}%)`;
 }
 
 function renderConsulta() {
@@ -125,12 +264,15 @@ function renderConsulta() {
   if (consultaAtual.encontrado) {
     registrarBtn.disabled = false;
     precoInput.value = consultaAtual.precoAtual;
+    const delta = consultaAtual.precoAtual - consultaAtual.precoOriginal;
     container.innerHTML = `
       <p>SKU: ${consultaAtual.codigo}</p>
       <p>${consultaAtual.descricao}</p>
       <p>RZ: ${store.state.currentRZ}</p>
       <p>Qtd: ${consultaAtual.conferido}/${consultaAtual.esperado}</p>
-      <p>Preço (planilha): ${consultaAtual.precoOriginal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+      <p>Preço original: ${brl(consultaAtual.precoOriginal)}</p>
+      <p>Preço ajustado: ${brl(consultaAtual.precoAtual)}</p>
+      <p>Δ: ${brl(delta)}</p>
       <p>Edite o preço se necessário e informe observação.</p>
     `;
   } else {
@@ -463,6 +605,32 @@ function setup() {
       if (e.ctrlKey) handleRegistrar();
       else handleConsultar();
     }
+  });
+  document.querySelectorAll('.lista-search').forEach(inp => {
+    const list = inp.dataset.list;
+    inp.addEventListener(
+      'input',
+      debounce(e => {
+        listState[list].query = e.target.value;
+        listState[list].page = 1;
+        render();
+      }),
+    );
+  });
+  document.querySelectorAll('.lista-pagesize').forEach(sel => {
+    const list = sel.dataset.list;
+    sel.addEventListener('change', e => {
+      listState[list].perPage = Number(e.target.value);
+      listState[list].page = 1;
+      render();
+    });
+  });
+  document.querySelectorAll('.lista-toggle').forEach(btn => {
+    const list = btn.dataset.list;
+    btn.addEventListener('click', () => {
+      listState[list].collapsed = !listState[list].collapsed;
+      render();
+    });
   });
   restaurar();
 }
