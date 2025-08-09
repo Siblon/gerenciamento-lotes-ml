@@ -5,76 +5,95 @@ import store from '../store/index.js';
 
 const log = (...a) => console.log('[CONF-DBG]', ...a);
 
-function sum(obj){ return Object.values(obj || {}).reduce((a,b)=>a+(Number(b)||0),0); }
+// helpers
+const up = s => String(s||'').trim().toUpperCase();
+const sum = o => Object.values(o||{}).reduce((a,b)=>a+(Number(b)||0),0);
 
 function getCountsForRZ(rz) {
-  const totalMap = store.state.totalByRZSku?.[rz] || {};
-  const confMap  = store.state.conferidosByRZSku?.[rz] || {};
-  const total = sum(totalMap);
-  const conf  = sum(confMap);
-  const pend  = Math.max(0, total - conf);
-  return { conferidos: conf, pendentes: pend };
+  const total = sum(store.state.totalByRZSku?.[rz] || {});
+  const conf  = sum(store.state.conferidosByRZSku?.[rz] || {});
+  return { conferidos: conf, pendentes: Math.max(0, total - conf) };
 }
 
 function renderCounts() {
   const rz = store.state.currentRZ;
   const { conferidos, pendentes } = getCountsForRZ(rz);
-  const elConf = document.getElementById('count-conferidos');
-  const elPend = document.getElementById('count-pendentes');
-  if (elConf) elConf.textContent = String(conferidos);
-  if (elPend) elPend.textContent = String(pendentes);
+  (document.getElementById('count-conferidos')||{}).textContent = String(conferidos);
+  (document.getElementById('count-pendentes')||{}).textContent = String(pendentes);
 }
 
-function normalizar(c){
-  return String(c || '').replace(/\s+/g,'').toLowerCase();
+function groupPendentes(rz) {
+  const items = store.state.itemsByRZ?.[rz] || [];
+  const totals = store.state.totalByRZSku?.[rz] || {};
+  const confs  = store.state.conferidosByRZSku?.[rz] || {};
+
+  // agrega por SKU
+  const map = {};
+  for (const it of items) {
+    const sku = up(it.codigoML);
+    if (!sku) continue;
+    const pend = (totals[sku] || 0) - (confs[sku] || 0);
+    if (pend <= 0) continue;
+    const r = (map[sku] ||= { sku, descricao: it.descricao, qtd: 0, vSum: 0, qSum: 0 });
+    const q = Number(it.qtd)||0;
+    r.qtd  = pend; // sempre refletir o pendente atual
+    r.vSum += (Number(it.valorUnit)||0) * q;
+    r.qSum += q;
+  }
+  // calcula preço médio ponderado e total R$
+  return Object.values(map).map(r => ({
+    sku: r.sku,
+    descricao: r.descricao,
+    qtd: r.qtd,
+    precoMedio: r.qSum ? (r.vSum / r.qSum) : 0,
+    valorTotal: r.qtd * (r.qSum ? (r.vSum / r.qSum) : 0),
+  }));
 }
 
-function registrarConferido(raw) {
+function renderPendentes(limit = 50) {
   const rz = store.state.currentRZ;
-  const lidoBruto = String(raw || '').trim();
-  if (!rz || !lidoBruto) {
-    console.warn('[CONF] sem RZ ou SKU');
-    return;
-  }
+  const rows = groupPendentes(rz).slice(0, limit);
+  const tbody = document.querySelector('#tbl-pendentes tbody');
+  if (!tbody) return;
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.sku}</td>
+      <td>${r.descricao ?? ''}</td>
+      <td style="text-align:right">${r.qtd}</td>
+      <td style="text-align:right">${r.precoMedio.toFixed(2)}</td>
+      <td style="text-align:right">${r.valorTotal.toFixed(2)}</td>
+    </tr>
+  `).join('') || `<tr><td colspan="5" style="text-align:center;color:#777">Sem pendências para este RZ</td></tr>`;
+}
 
-  const nLido = normalizar(lidoBruto);
-
-  const totalMap = store.state.totalByRZSku?.[rz] || {};
-  const confMap  = (store.state.conferidosByRZSku[rz] ||= {});
-
-  let skuMatch = null;
-  for (const sku of Object.keys(totalMap)) {
-    const nSku = normalizar(sku);
-    if (nLido.includes(nSku) || nSku.includes(nLido)) {
-      skuMatch = sku;
-      break;
-    }
-  }
-
-  if (!skuMatch) {
-    console.log('[SCAN]', lidoBruto, '→ não encontrado');
-    alert('Produto não encontrado no lote atual');
-    const el = document.querySelector('#codigoInput') || document.querySelector('input[type="text"]');
-    if (el) {
-      const old = el.style.backgroundColor;
-      el.style.backgroundColor = '#faa';
-      setTimeout(()=>{ el.style.backgroundColor = old; }, 500);
-    }
-    return;
-  }
-
-  const total = Number(totalMap[skuMatch] || 0);
-  const atual = Number(confMap[skuMatch] || 0);
-
-  if (atual >= total) {
-    console.log('[SCAN]', lidoBruto, '→ já conferido');
-    console.info('[CONF] SKU já conferido no limite:', skuMatch, `${atual}/${total}`);
-    return;
-  }
-
-  confMap[skuMatch] = atual + 1;
-  console.log('[SCAN]', lidoBruto, '→ registrado como', skuMatch);
+function refreshUI() {
   renderCounts();
+  const sel = document.querySelector('#sel-limit-pendentes');
+  const limit = Number(sel?.value || 50);
+  renderPendentes(limit);
+}
+
+function registrarCodigo(raw) {
+  const rz = store.state.currentRZ;
+  const sku = up(raw);
+  if (!rz || !sku) return;
+
+  const totals = store.state.totalByRZSku?.[rz] || {};
+  if (!totals[sku]) {
+    console.info('[CONF] SKU fora do RZ atual:', sku);
+    refreshUI();
+    return;
+  }
+  const confs  = (store.state.conferidosByRZSku[rz] ||= {});
+  const atual  = Number(confs[sku] || 0);
+  const limite = Number(totals[sku] || 0);
+  if (atual >= limite) {
+    console.info('[CONF] SKU já conferido ao máximo:', sku, `${atual}/${limite}`);
+    refreshUI();
+    return;
+  }
+  confs[sku] = atual + 1; // 1 por leitura/enter
+  refreshUI();
 }
 
 const setBoot = (msg) => {
@@ -95,61 +114,27 @@ export function initApp() {
 
   const codeInput =
     document.querySelector('#codigoInput') ||
-    document.querySelector('input[placeholder="Código do produto"]') ||
-    document.querySelector('input[type="text"]');
+    document.querySelector('input[placeholder="Código do produto"]');
 
-  const btnRegistrar =
-    document.querySelector('button#btn-registrar') ||
-    Array.from(document.querySelectorAll('button')).find(b => /Registrar/i.test(b.textContent));
-
-  function clearAndFocus(){
-    if (codeInput) { codeInput.select(); codeInput.focus(); }
-  }
-
-  if (!window._bindRegistrarOnce) {
-    window._bindRegistrarOnce = true;
-    codeInput?.addEventListener('keydown', (ev)=>{
-      if (ev.key === 'Enter') {
-        registrarConferido(codeInput.value);
-        clearAndFocus();
-      }
-    });
-    if (btnRegistrar) {
-      btnRegistrar.addEventListener('click', ()=>{
-        registrarConferido(codeInput?.value);
-        clearAndFocus();
-      });
-    }
-  }
-
-  // Captura global para leitores USB que atuam como teclado
-  if (!window._bindGlobalScanOnce) {
-    window._bindGlobalScanOnce = true;
-    let buffer = '';
-    window.addEventListener('keydown', (ev) => {
-      if (isScanning) return; // apenas no modo manual
-      const tgt = ev.target;
-      if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
-      if (ev.key === 'Enter') {
-        if (buffer) {
-          const input = document.querySelector('#codigoInput') || document.querySelector('input[type="text"]');
-          if (input) input.value = buffer;
-          registrarConferido(buffer);
-        }
-        buffer = '';
-      } else if (ev.key === 'Backspace') {
-        buffer = buffer.slice(0, -1);
-      } else if (ev.key.length === 1) {
-        buffer += ev.key;
-      }
-    });
-  }
+  const btnRegistrar = Array.from(document.querySelectorAll('button')).find(b => /registrar/i.test(b.textContent||''));
+  const btnFinalizar = Array.from(document.querySelectorAll('button')).find(b=>/finalizar/i.test(b.textContent||''));
 
   if (!fileInput || !rzSelect || !btnAuto || !videoEl) {
     console.error('[INIT-ERRO] Elementos não encontrados', { fileInput, rzSelect, btnAuto, videoEl });
     setBoot('elementos faltando ❌ (veja Console)');
     return;
   }
+
+  codeInput?.addEventListener('keydown', (ev)=>{
+    if (ev.key === 'Enter') {
+      registrarCodigo(codeInput.value);
+      codeInput.select();
+    }
+  });
+  btnRegistrar?.addEventListener('click', ()=>{
+    registrarCodigo(codeInput?.value);
+    codeInput?.select();
+  });
 
   // ===== Upload planilha → processa → popula RZ =====
   fileInput.addEventListener('change', async (e) => {
@@ -162,14 +147,13 @@ export function initApp() {
       rzSelect.value = list[0];
       store.state.currentRZ = list[0];
     }
-    renderCounts();
+    refreshUI();
   });
 
   // ===== Seleção de RZ =====
-  rzSelect.addEventListener('change', (e) => {
-    const rz = e.target.value || null;
-    store.state.currentRZ = rz;
-    renderCounts();
+  rzSelect.addEventListener('change', (e)=>{
+    store.state.currentRZ = e.target.value || null;
+    refreshUI();
   });
 
   // ===== Iniciar scanner =====
@@ -186,9 +170,10 @@ export function initApp() {
     isScanning = true;
 
     try {
-      await iniciarLeitura(videoEl, (texto) => {
-        registrarConferido(texto);
-        if (codeInput) codeInput.value = texto;
+      await iniciarLeitura(videoEl, (texto)=>{
+        console.log('[SCAN] lido:', texto);
+        registrarCodigo(texto);
+        if (codeInput) { codeInput.value = texto; codeInput.select(); }
       });
       setBoot('Scanner ativo ▶️');
     } catch (e) {
@@ -214,6 +199,18 @@ export function initApp() {
       btnStop.style.display = 'none';
       setBoot('Scanner parado ⏹️');
     }
+  });
+
+  document.querySelector('#sel-limit-pendentes')?.addEventListener('change', refreshUI);
+
+  btnFinalizar?.addEventListener('click', ()=>{
+    const rz = store.state.currentRZ;
+    const totals = store.state.totalByRZSku?.[rz] || {};
+    const confs  = store.state.conferidosByRZSku?.[rz] || {};
+    const total  = sum(totals);
+    const conf   = sum(confs);
+    const pend   = Math.max(0, total - conf);
+    alert(`RZ: ${rz}\nConferidos: ${conf}\nPendentes: ${pend}\nTotal: ${total}`);
   });
 
   // segurança: parar scanner ao sair/navegar

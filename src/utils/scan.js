@@ -1,118 +1,81 @@
-const ZXING_CDN = 'https://cdn.jsdelivr.net/npm/' + '@zxing' + '/browser@0.1.4/+esm';
+// src/utils/scan.js
+let reader = null;
+let currentStream = null;
 
-let zxingReader = null;
-let zxingControls = null;
+const ZXING_CDN = 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/+esm';
 
-const dbg = (...a) => { if (window.__DEBUG_SCAN__) console.log('[SCAN]', ...a); };
+export async function iniciarLeitura(videoEl, onText) {
+  if (!videoEl) throw new Error('videoEl ausente');
 
-/** Carrega ZXing do CDN e inicia leitura contínua no <video> */
-export async function iniciarZXing(videoEl, onResult, opts = {}) {
-  if (zxingReader) return zxingReader;
-  dbg('Carregando ZXing do CDN...');
+  // Tenta BarcodeDetector nativo primeiro
+  const hasNative = 'BarcodeDetector' in window;
+  if (hasNative) {
+    const detector = new window.BarcodeDetector({
+      formats: ['qr_code', 'ean_13', 'code_128', 'code_39', 'upc_a', 'upc_e'],
+    });
+    // abre câmera
+    currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    videoEl.srcObject = currentStream;
+    await videoEl.play();
+
+    const loop = async () => {
+      if (!videoEl.srcObject) return; // parado
+      try {
+        const bitmap = await createImageBitmap(videoEl);
+        const codes = await detector.detect(bitmap);
+        bitmap.close?.();
+        if (codes && codes.length) onText(String(codes[0].rawValue || codes[0].rawValue || codes[0].value));
+      } catch (_) {}
+      requestAnimationFrame(loop);
+    };
+    loop();
+    return;
+  }
+
+  // ZXing via CDN
   const mod = await import(/* @vite-ignore */ ZXING_CDN);
   const { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } = mod;
 
-  const hints = new Map();
-  hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+  // formatos suportados
+  const formats = new Set([
     BarcodeFormat.QR_CODE,
+    BarcodeFormat.EAN_13,
     BarcodeFormat.CODE_128,
-    BarcodeFormat.EAN_13
+    BarcodeFormat.CODE_39,
+    BarcodeFormat.UPC_A,
+    BarcodeFormat.UPC_E,
   ]);
 
-  zxingReader = new BrowserMultiFormatReader(hints);
-  zxingControls = await zxingReader.decodeFromVideoDevice(
-    opts.deviceId ?? undefined,
-    videoEl,
-    (result, err) => {
-      if (result) {
-        try { onResult(result.getText(), result); } catch {}
-      }
-      // erros de frame são normais; ignorar
-    }
-  );
-  dbg('ZXing iniciado.');
-  return zxingReader;
-}
+  const hints = new Map();
+  hints.set(DecodeHintType.POSSIBLE_FORMATS, Array.from(formats));
 
-/** Para ZXing e libera câmera */
-export async function pararZXing(videoEl) {
-  try {
-    if (zxingControls) { zxingControls.stop(); zxingControls = null; }
-    if (zxingReader?.reset) zxingReader.reset();
-    zxingReader = null;
-  } catch (e) { console.warn('Erro ao parar ZXing:', e); }
+  reader = new BrowserMultiFormatReader(hints);
 
-  try {
-    const stream = videoEl?.srcObject;
-    if (stream?.getTracks) stream.getTracks().forEach(t => t.stop());
-    if (videoEl) { videoEl.srcObject = null; videoEl.removeAttribute('src'); videoEl.load?.(); }
-  } catch {}
-}
-
-let detector = null;
-let rafId = null;
-let missCount = 0;
-const MISS_THRESHOLD = 30; // ~1–2s
-
-async function startBarcodeDetector(videoEl, onResult) {
-  dbg('Tentando BarcodeDetector...');
-  detector = new window.BarcodeDetector({
-    formats: ['qr_code','code_128','ean_13','ean_8','upc_e']
+  // abrir câmera
+  const devices = await reader.listVideoInputDevices();
+  const deviceId = devices?.[0]?.deviceId;
+  currentStream = await navigator.mediaDevices.getUserMedia({
+    video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' },
   });
-
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'environment' }, audio: false
-  });
-  videoEl.srcObject = stream;
+  videoEl.srcObject = currentStream;
   await videoEl.play();
 
-  const loop = async () => {
-    try {
-      const barcodes = await detector.detect(videoEl);
-      if (barcodes?.length) {
-        missCount = 0;
-        onResult(barcodes[0].rawValue, barcodes[0]);
-      } else {
-        if (++missCount >= MISS_THRESHOLD) {
-          dbg('Muitas tentativas sem leitura; caindo para ZXing.');
-          await stopBarcodeDetector(videoEl);
-          await iniciarZXing(videoEl, onResult);
-          return;
-        }
-      }
-    } catch (e) {
-      dbg('BarcodeDetector falhou, caindo para ZXing.', e);
-      await stopBarcodeDetector(videoEl);
-      await iniciarZXing(videoEl, onResult);
-      return;
-    }
-    rafId = requestAnimationFrame(loop);
-  };
-  rafId = requestAnimationFrame(loop);
-}
-
-async function stopBarcodeDetector(videoEl) {
-  if (rafId) cancelAnimationFrame(rafId);
-  rafId = null;
-  try {
-    const stream = videoEl?.srcObject;
-    if (stream?.getTracks) stream.getTracks().forEach(t => t.stop());
-  } catch {}
-  if (videoEl) { videoEl.srcObject = null; videoEl.removeAttribute('src'); videoEl.load?.(); }
-  detector = null;
-  missCount = 0;
-}
-
-export async function iniciarLeitura(videoEl, onResult) {
-  dbg('iniciarLeitura()');
-  if ('BarcodeDetector' in window) return startBarcodeDetector(videoEl, onResult);
-  dbg('BarcodeDetector indisponível; iniciando ZXing direto.');
-  return iniciarZXing(videoEl, onResult);
+  // loop do ZXing (interval + draw no <video>)
+  await reader.decodeFromVideoDevice(deviceId ?? undefined, videoEl, (result, err) => {
+    if (result) onText(String(result.getText()));
+    // erros de “NotFound” são normais no streaming; ignorar
+  });
 }
 
 export async function pararLeitura(videoEl) {
-  dbg('pararLeitura()');
-  await pararZXing(videoEl);
-  await stopBarcodeDetector(videoEl);
+  if (reader?.reset) reader.reset();
+  reader = null;
+  if (videoEl) {
+    try { videoEl.pause(); } catch {}
+    videoEl.srcObject = null;
+  }
+  if (currentStream) {
+    currentStream.getTracks().forEach(t => t.stop());
+    currentStream = null;
+  }
 }
-
