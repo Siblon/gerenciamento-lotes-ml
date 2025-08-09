@@ -13,7 +13,24 @@ import store, {
 } from '../store/index.js';
 import { processarPlanilha, exportResult } from '../utils/excel.js';
 import { brl } from '../utils/format.js';
-import { BrowserMultiFormatReader } from '@zxing/browser';
+import { BrowserMultiFormatReader as ZXingBrowserReader } from '@zxing/browser';
+
+let BrowserMultiFormatReader = ZXingBrowserReader;
+
+async function loadZXing() {
+  if (BrowserMultiFormatReader) return BrowserMultiFormatReader;
+  try {
+    const mod = await import('@zxing/browser');
+    BrowserMultiFormatReader = mod.BrowserMultiFormatReader;
+  } catch (err) {
+    console.error(
+      'Biblioteca @zxing/browser não encontrada. Instale @zxing/browser e @zxing/library para habilitar a leitura de códigos.',
+      err,
+    );
+    BrowserMultiFormatReader = null;
+  }
+  return BrowserMultiFormatReader;
+}
 
 const listState = {
   conferidos: { page: 1, perPage: 50, query: '', collapsed: false },
@@ -581,7 +598,7 @@ async function abrirCamera() {
     } else {
       usingZXing = true;
       statusEl.textContent = 'Lendo (ZXing)...';
-      iniciarZXing();
+      await iniciarZXing();
     }
   } catch (err) {
     statusEl.textContent = 'Erro ao abrir câmera';
@@ -618,7 +635,7 @@ async function trocarCamera(deviceId) {
 
   if (usingZXing) {
     statusEl.textContent = 'Lendo (ZXing)...';
-    iniciarZXing();
+    await iniciarZXing();
   } else {
     statusEl.textContent = 'Lendo...';
     loopNativo();
@@ -639,8 +656,10 @@ async function loopNativo() {
   requestAnimationFrame(loopNativo);
 }
 
-function iniciarZXing() {
-  zxingReader = new BrowserMultiFormatReader();
+async function iniciarZXing() {
+  const Reader = await loadZXing();
+  if (!Reader) return;
+  zxingReader = new Reader();
   zxingReader.decodeFromVideoElement(videoEl, (result, err) => {
     if (result) {
       onCodigo(result.getText());
