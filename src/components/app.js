@@ -574,24 +574,10 @@ async function loopNativo() {
 }
 
 async function iniciarZXing() {
-  async function loadLocal() {
-    // tenta o pacote local (se instalado)
-    return await import('@zxing/browser');
-  }
-  async function loadFromCdn() {
-    // fallback ESM por CDN; @vite-ignore impede o Vite de tentar resolver localmente
-    return await import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/+esm');
-  }
-
   try {
-    let mod;
-    try {
-      mod = await loadLocal();
-    } catch (errLocal) {
-      console.warn('ZXing local indisponível, usando CDN…', errLocal);
-      mod = await loadFromCdn();
-    }
-
+    // CDN em ESM; @vite-ignore impede o Vite de tentar resolver localmente
+    const ZXING_CDN = 'https://cdn.jsdelivr.net/npm/' + '@zxing' + '/browser@0.1.4/+esm';
+    const mod = await import(/* @vite-ignore */ ZXING_CDN);
     const { BrowserMultiFormatReader } = mod || {};
     if (!BrowserMultiFormatReader) {
       console.error('ZXing sem BrowserMultiFormatReader');
@@ -599,9 +585,8 @@ async function iniciarZXing() {
       return;
     }
 
-    // cria reader e usa o stream já aberto no <video>
     zxingReader = new BrowserMultiFormatReader();
-    await zxingReader.decodeFromVideoElement(videoEl, (result /*, err */) => {
+    await zxingReader.decodeFromVideoElement(videoEl, (result) => {
       if (!reading || !result) return;
       const text = String(result.getText?.() || '').trim();
       if (text && text !== lastResult) {
@@ -610,7 +595,7 @@ async function iniciarZXing() {
       }
     });
   } catch (err) {
-    console.error('Falha ao carregar ZXing (local e CDN):', err);
+    console.error('Falha ao carregar ZXing do CDN:', err);
     toast?.('Falha ao carregar leitor ZXing');
   }
 }
