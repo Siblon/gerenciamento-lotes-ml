@@ -34,6 +34,13 @@ export function selectRZ(rz) {
   }
 }
 
+export function findRZDeSKU(sku) {
+  for (const [rz, pal] of Object.entries(state.pallets)) {
+    if (pal.expected && pal.expected[sku]) return rz;
+  }
+  return null;
+}
+
 function getCurrent() {
   return state.pallets[state.currentRZ];
 }
@@ -238,6 +245,7 @@ export default {
   selectRZ,
   conferir,
   progress,
+  findRZDeSKU,
   listarConferidos,
   listarFaltantes,
   listarExcedentes,
