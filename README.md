@@ -21,3 +21,10 @@ npm run dev
 ```bash
 npm run test
 ```
+
+## Deploy no Netlify
+1. Víncule o repositório na Netlify.
+2. Build command: `npm run build`
+3. Publish directory: `dist`
+4. Certifique-se de que `public/_redirects` está no repo.
+5. Abrir a URL (HTTPS habilitado) e testar a câmera.

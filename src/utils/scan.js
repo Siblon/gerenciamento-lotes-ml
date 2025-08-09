@@ -1,14 +1,28 @@
 // src/utils/scan.js
 let reader = null;
 let currentStream = null;
+let ZXing = null;
 
-const ZXING_CDN = 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/+esm';
+const ZXING_CDN = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/esm/index.js';
+
+async function loadZXing() {
+  if (ZXing) return ZXing;
+  ZXing = await import(/* @vite-ignore */ ZXING_CDN);
+  return ZXing;
+}
 
 export async function iniciarLeitura(videoEl, onText) {
   if (!videoEl) throw new Error('videoEl ausente');
 
+  if (!window.isSecureContext) {
+    console.warn('[SCAN] Contexto não seguro; câmera pode falhar.');
+  }
+
+  const supportsNative = 'BarcodeDetector' in window;
+  if (!supportsNative) await loadZXing();
+
   // 1) Nativo
-  if ('BarcodeDetector' in window) {
+  if (supportsNative) {
     const detector = new window.BarcodeDetector({
       formats: ['qr_code','ean_13','code_128','code_39','upc_a','upc_e'],
     });
@@ -31,8 +45,8 @@ export async function iniciarLeitura(videoEl, onText) {
     return;
   }
 
-  // 2) ZXing CDN
-  const mod = await import(/* @vite-ignore */ ZXING_CDN);
+  // 2) ZXing via CDN
+  const mod = ZXing;
   const BrowserMultiFormatReader = mod.BrowserMultiFormatReader || mod.default?.BrowserMultiFormatReader;
   if (!BrowserMultiFormatReader) throw new Error('ZXing BrowserMultiFormatReader indisponível');
 

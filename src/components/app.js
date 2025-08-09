@@ -141,6 +141,7 @@ function render(){
 }
 
 export function initApp(){
+  console.log('[DEPLOY] Host:', location.host, '| HTTPS:', location.protocol === 'https:');
   const inputSku = document.querySelector('#codigo-produto') || document.querySelector('#codigo-ml') || document.querySelector('input[placeholder="Código do produto"]');
   const btnCons = document.querySelector('#btn-consultar') || Array.from(document.querySelectorAll('button')).find(b=>/consultar/i.test(b.textContent||''));
   const btnReg  = document.querySelector('#btn-registrar') || Array.from(document.querySelectorAll('button')).find(b=>/registrar/i.test(b.textContent||''));
