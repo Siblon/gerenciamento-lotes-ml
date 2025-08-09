@@ -635,31 +635,37 @@ async function loopNativo() {
 
 async function iniciarZXing() {
   try {
-    const { BrowserMultiFormatReader } = await import('@zxing/browser');
-    const reader = new BrowserMultiFormatReader();
-    reader.decodeFromVideoElement(videoEl, result => {
+    const mod = await import('@zxing/browser');
+    const { BrowserMultiFormatReader } = mod;
+    if (!BrowserMultiFormatReader) {
+      console.error('ZXing módulo sem BrowserMultiFormatReader');
+      toast?.('Leitor ZXing indisponível');
+      return;
+    }
+    zxingReader = new BrowserMultiFormatReader();
+    zxingReader.decodeFromVideoElement(videoEl, result => {
       if (result) onCodigo(result.getText());
     });
-    zxingReader = reader;
   } catch (err) {
     console.error('Falha ao carregar ZXing:', err);
     toast?.('Falha ao carregar leitor ZXing');
   }
 }
 
+function pararZXing() {
+  try {
+    zxingReader?.reset?.();
+  } catch {}
+  zxingReader = null;
+}
+
 function fecharCamera(hide = true) {
   try {
-    if (usingZXing && zxingReader) {
-      zxingReader.reset();
-      zxingReader = null;
-      usingZXing = false;
-    }
-    if (stream) {
-      stream.getTracks().forEach(t => t.stop());
-      stream = null;
-      currentTrack = null;
-      torchOn = false;
-    }
+    pararZXing();
+    stream?.getTracks?.().forEach(t => t.stop());
+    stream = null;
+    currentTrack = null;
+    torchOn = false;
   } finally {
     if (hide) modal.classList.add('hidden');
     statusEl.textContent = 'Pronto';
