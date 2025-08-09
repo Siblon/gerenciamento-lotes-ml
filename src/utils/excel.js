@@ -134,13 +134,27 @@ export async function processarPlanilha(input) {
     }
     const rzList = Object.keys(itemsByRZ).sort();
 
+    const totalByRZSku = {};
+    for (const rz of rzList) {
+      const map = {};
+      for (const it of itemsByRZ[rz]) {
+        const sku = String(it.codigoML || '').trim();
+        const inc = Number(it.qtd) || 0;
+        if (!sku) continue;
+        map[sku] = (map[sku] || 0) + inc;
+      }
+      totalByRZSku[rz] = map;
+    }
+
     store.state = store.state || {};
     store.state.itemsByRZ = itemsByRZ;
     store.state.rzList = rzList;
+    store.state.totalByRZSku = totalByRZSku;
+    store.state.conferidosByRZSku = {};
     if (!store.state.currentRZ) store.state.currentRZ = rzList[0] || null;
 
     DBG('RZs (header):', rzList.length, rzList.slice(0, 30));
-    return { rzList, itemsByRZ };
+    return { rzList, itemsByRZ, totalByRZSku };
   }
 
   // 2) fallback regex se não achar header
@@ -151,10 +165,12 @@ export async function processarPlanilha(input) {
   store.state = store.state || {};
   store.state.itemsByRZ = itemsByRZ;
   store.state.rzList = rzList;
+  store.state.totalByRZSku = {};
+  store.state.conferidosByRZSku = {};
   if (!store.state.currentRZ) store.state.currentRZ = rzList[0] || null;
 
   DBG('RZs (fallback):', rzList.length, rzList.slice(0, 30));
-  return { rzList, itemsByRZ };
+  return { rzList, itemsByRZ, totalByRZSku: {} };
 }
 
 // Exporta os resultados finais em um arquivo .xlsx com quatro abas:
