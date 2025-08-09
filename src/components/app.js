@@ -9,6 +9,7 @@ import store, {
   finalizeCurrent,
   registrarExcedente,
   registrarAjuste,
+  findRZDeSKU,
 } from '../store/index.js';
 import { processarPlanilha, exportResult } from '../utils/excel.js';
 import { brl } from '../utils/format.js';
@@ -32,6 +33,24 @@ function paginate(array, page, perPage) {
   const pages = Math.max(1, Math.ceil(total / perPage));
   const start = (page - 1) * perPage;
   return { slice: array.slice(start, start + perPage), total, pages };
+}
+
+function toast(msg, dur = 2000) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, dur);
+}
+
+function mostrarDialogoTrocaRZ({ sku, rzEncontrado, onTrocar, onExcedente }) {
+  const msg = `SKU ${sku} encontrado no ${rzEncontrado}. Trocar para esse RZ?`;
+  if (confirm(msg)) onTrocar();
+  else onExcedente();
 }
 
 let consultaAtual = null;
@@ -288,9 +307,22 @@ function renderConsulta() {
     excedenteBtn.disabled = false;
     precoInput.placeholder = 'Preço ajustado (obrigatório p/ excedente)';
     if (exForm) exForm.style.display = 'block';
+    const sku = consultaAtual.codigo;
+    const key = `${store.state.currentRZ}::${sku}`;
+    const prev = store.state.excedentes.get(key);
+    if (prev) {
+      if (exDescInput) exDescInput.value = prev.descricao || '';
+      if (exQtdInput) exQtdInput.value = 1;
+      precoInput.value = Number(prev.precoMedio || 0) || '';
+    } else {
+      if (exDescInput) exDescInput.value = '';
+      if (exQtdInput) exQtdInput.value = 1;
+      precoInput.value = '';
+    }
     container.innerHTML = `
       <p>SKU ${consultaAtual.codigo} não está neste RZ. Registro será lançado como Excedente.</p>
     `;
+    if (exDescInput) exDescInput.focus();
   }
 }
 
@@ -368,11 +400,11 @@ function handleRzChange(evt) {
   }
 }
 
-function handleConsultar() {
-  if (!store.state.currentRZ) return;
+function consultar() {
+  if (!store.state.currentRZ) return { status: 'no-rz' };
   const input = document.getElementById('codigoInput');
   const codigo = input.value.trim();
-  if (!codigo) return;
+  if (!codigo) return { status: 'empty' };
 
   const pallet = store.state.pallets[store.state.currentRZ];
   const esperado = pallet.expected[codigo];
@@ -389,6 +421,25 @@ function handleConsultar() {
   };
   renderConsulta();
   renderResumos();
+
+  if (esperado) return { status: 'found' };
+  const other = findRZDeSKU(codigo);
+  if (other && other !== store.state.currentRZ) {
+    mostrarDialogoTrocaRZ({
+      sku: codigo,
+      rzEncontrado: other,
+      onTrocar: () => {
+        selectRZ(other);
+        document.getElementById('rzSelect').value = other;
+        render();
+        salvar();
+        consultar();
+      },
+      onExcedente: () => {},
+    });
+    return { status: 'other', rzEncontrado: other };
+  }
+  return { status: 'not-found' };
 }
 
 function handleRegistrar() {
@@ -424,6 +475,15 @@ function handleRegistrar() {
   codigoInput.select();
 }
 
+function handleCodigoLido(valor) {
+  const codigoInput = document.getElementById('codigoInput');
+  codigoInput.value = valor.trim();
+  const res = consultar();
+  if (res?.status === 'found') toast('Produto localizado.');
+  else if (res?.status === 'other') toast(`Encontrado no ${res.rzEncontrado}.`);
+  else if (res?.status === 'not-found') toast('Não encontrado — excedente.');
+}
+
 function handleRegistrarExcedente() {
   if (!store.state.currentRZ || !consultaAtual || consultaAtual.encontrado) return;
   const sku = consultaAtual.codigo;
@@ -453,6 +513,8 @@ function handleRegistrarExcedente() {
   codigoInput.value = '';
   precoInput.value = '';
   obsInput.value = '';
+  if (exDescInput) exDescInput.value = '';
+  if (exQtdInput) exQtdInput.value = 1;
   render();
   salvar();
   codigoInput.focus();
@@ -589,7 +651,7 @@ function renderTudo() {
 function setup() {
   document.getElementById('fileInput').addEventListener('change', handleFile);
   document.getElementById('rzSelect').addEventListener('change', handleRzChange);
-  document.getElementById('consultarBtn').addEventListener('click', handleConsultar);
+  document.getElementById('consultarBtn').addEventListener('click', consultar);
   document.getElementById('registrarBtn').addEventListener('click', handleRegistrar);
   document
     .getElementById('excedenteBtn')
@@ -598,7 +660,7 @@ function setup() {
   document.getElementById('codigoInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       if (e.ctrlKey) handleRegistrar();
-      else handleConsultar();
+      else consultar();
     }
   });
   document.querySelectorAll('.lista-search').forEach(inp => {
@@ -632,5 +694,6 @@ function setup() {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('DOMContentLoaded', setup);
+  window.handleCodigoLido = handleCodigoLido;
 }
 
