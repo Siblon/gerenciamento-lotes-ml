@@ -40,15 +40,23 @@ button:disabled {
 }
 
 .card,
-.lista-bloco {
+.lista-bloco,
+.section {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 12px;
   background: #fff;
 }
 
-.lista-bloco {
+.lista-bloco,
+.section {
   margin-bottom: 16px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .lista-header {
@@ -163,3 +171,4 @@ tr.pulse {
 .collapsed .lista-body, .collapsed table { display: none; }
 .toast-warn { background:#ad6800 !important; }
 .toast-error { background:#a8071a !important; }
+#produto-info.card { border:1px solid #ddd; border-radius:10px; padding:12px; margin:10px 0; background:#fff; }

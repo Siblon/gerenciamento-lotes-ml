@@ -1,7 +1,7 @@
 // src/components/app.js
 import { iniciarLeitura, pararLeitura } from '../utils/scan.js';
-import { processarPlanilha } from '../utils/excel.js';
-import store, { getTotals, getConferidos, setCurrentRZ } from '../store/index.js';
+import { processarPlanilha, exportarConferencia } from '../utils/excel.js';
+import store, { getTotals, getConferidos, setCurrentRZ, findInRZ, findConferido } from '../store/index.js';
 
 function toast(msg, type='info') {
   const el = document.createElement('div');
@@ -22,6 +22,41 @@ function highlightRowBySKU(sku, tableId) {
   row.scrollIntoView({ block:'center' });
   setTimeout(() => row.classList.remove('flash'), 1500);
   return true;
+}
+
+function mostrarProdutoInfo(item) {
+  const $ = (sel) => document.querySelector(sel);
+  $('#pi-sku').textContent = item.sku;
+  $('#pi-desc').textContent = item.descricao || '';
+  $('#pi-qtd').textContent = item.qtd ?? 0;
+  $('#pi-preco').textContent = Number(item.precoMedio || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  $('#pi-total').textContent = Number((item.qtd || 0) * (item.precoMedio || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  $('#pi-rz').textContent = store.state.rzAtual || '';
+  document.getElementById('produto-info').hidden = false;
+}
+
+function updateToggleLabels() {
+  document.querySelectorAll('button[id^="btn-recolher-"]').forEach(btn => {
+    const sec = document.getElementById(btn.dataset.target);
+    if (sec) btn.textContent = sec.classList.contains('collapsed') ? 'Expandir' : 'Recolher';
+  });
+}
+
+async function onConsultarClick() {
+  const input = document.querySelector('#codigo-ml') || document.querySelector('#codigo-produto') || document.querySelector('input[placeholder="Código do produto"]');
+  const sku = (input?.value || '').trim().toUpperCase();
+  if (!sku) return toast('Informe o SKU', 'warn');
+  const active = document.activeElement;
+  const rz = store.state.rzAtual;
+  const item = findInRZ?.(rz, sku) || findConferido?.(rz, sku);
+  if (!item) {
+    document.getElementById('produto-info').hidden = true;
+    return toast('SKU fora do RZ', 'warn');
+  }
+  mostrarProdutoInfo(item);
+  const precoInput = document.querySelector('#preco-ajustado');
+  if (precoInput && !precoInput.value) precoInput.value = item.precoMedio ?? '';
+  active?.focus?.();
 }
 
 function rowsConferidos(rz){
@@ -64,31 +99,29 @@ function render(){
   if (hdr) hdr.textContent = `Conferência de Lotes ${cont.conferidos} de ${cont.total} conferidos`;
   const bc = document.getElementById('count-conferidos'); if (bc) bc.textContent = cont.conferidos;
   const bp = document.getElementById('count-pendentes'); if (bp) bp.textContent = cont.total - cont.conferidos;
-}
-
-function toggleSection(id){
-  const s = document.getElementById(id);
-  if (!s) return;
-  s.classList.toggle('collapsed');
+  updateToggleLabels();
 }
 
 export function initApp(){
   const inputSku = document.querySelector('#codigo-produto') || document.querySelector('#codigo-ml') || document.querySelector('input[placeholder="Código do produto"]');
   const btnCons = document.querySelector('#btn-consultar') || Array.from(document.querySelectorAll('button')).find(b=>/consultar/i.test(b.textContent||''));
   const btnReg  = document.querySelector('#btn-registrar') || Array.from(document.querySelectorAll('button')).find(b=>/registrar/i.test(b.textContent||''));
-  const btnCollapseConf = document.querySelector('#btn-recolher-conferidos');
-  const btnCollapsePend = document.querySelector('#btn-recolher-pendentes');
+  const btnFinal = document.querySelector('#finalizarBtn');
   const btnScan = document.querySelector('#btn-scan-toggle') || Array.from(document.querySelectorAll('button')).find(b=>/ler c[oó]digo/i.test(b.textContent||''));
   const videoEl = document.querySelector('#preview');
   const fileInput = document.querySelector('#input-arquivo');
   const rzSelect  = document.querySelector('#select-rz');
 
-  btnCons?.addEventListener('click', () => {
-    const sku = (inputSku?.value || '').trim().toUpperCase();
-    if (!sku) return toast('Informe o SKU', 'warn');
-    const ok = highlightRowBySKU(sku, 'tbl-pendentes');
-    if (!ok) toast('SKU fora do RZ', 'warn');
+  document.querySelectorAll('button[id^="btn-recolher-"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.target;
+      const sec = document.getElementById(id);
+      sec.classList.toggle('collapsed');
+      btn.textContent = sec.classList.contains('collapsed') ? 'Expandir' : 'Recolher';
+    });
   });
+
+  btnCons?.addEventListener('click', onConsultarClick);
 
   btnReg?.addEventListener('click', async () => {
     try {
@@ -107,8 +140,39 @@ export function initApp(){
     }
   });
 
-  btnCollapseConf?.addEventListener('click', () => toggleSection('conferidosBloco'));
-  btnCollapsePend?.addEventListener('click', () => toggleSection('faltantesBloco'));
+  btnFinal?.addEventListener('click', () => {
+    try {
+      const rz = store.state.rzAtual;
+      const tot = store.state.totalByRZSku[rz] || {};
+      const meta = store.state.metaByRZSku[rz] || {};
+      const confMap = store.state.conferidosByRZSku[rz] || {};
+      const conferidos = Object.keys(confMap).map(sku => {
+        const m = meta[sku] || {};
+        const qtd = tot[sku] || 0;
+        const preco = Number(m.precoMedio || 0);
+        return { SKU: sku, Descrição: m.descricao || '', Qtd: qtd, 'Preço Médio (R$)': preco, 'Valor Total (R$)': qtd*preco, 'Observação': confMap[sku]?.observacao || '' };
+      });
+      const pendentes = Object.keys(tot).filter(sku => !confMap[sku]).map(sku => {
+        const m = meta[sku] || {};
+        const qtd = tot[sku] || 0;
+        const preco = Number(m.precoMedio || 0);
+        return { SKU: sku, Descrição: m.descricao || '', Qtd: qtd, 'Preço Médio (R$)': preco, 'Valor Total (R$)': qtd*preco };
+      });
+      const excedentes = store.state.movimentos.filter(m => m.rz === rz && !tot[m.sku]).map(m => ({ SKU: m.sku, Descrição: '', Qtd: 1, 'Preço Médio (R$)': Number(m.precoAjustado || 0), 'Valor Total (R$)': Number(m.precoAjustado || 0), 'Observação': m.observacao || '' }));
+      const soma = arr => arr.reduce((a,b)=>a + Number(b['Valor Total (R$)']||0),0);
+      const sumQtd = arr => arr.reduce((a,b)=>a + Number(b.Qtd||0),0);
+      const resumo = {
+        'Itens conferidos': sumQtd(conferidos),
+        'Itens pendentes': sumQtd(pendentes),
+        'Valor conferido (R$)': soma(conferidos),
+        'Valor pendente (R$)': soma(pendentes),
+      };
+      exportarConferencia({ rz, conferidos, pendentes, excedentes, resumo });
+      toast('Planilha exportada', 'info');
+    } catch(e) {
+      console.error(e); toast('Falha ao exportar', 'error');
+    }
+  });
 
   // Scanner toggle
   let scanning = false;
@@ -118,7 +182,7 @@ export function initApp(){
         await iniciarLeitura(videoEl, (texto)=>{
           const sku = (texto||'').trim().toUpperCase();
           if (inputSku) inputSku.value = sku;
-          highlightRowBySKU(sku, 'tbl-pendentes');
+          onConsultarClick();
         });
         scanning = true; btnScan.textContent = 'Parar leitura';
         setBoot('Scanner ativo ▶️');

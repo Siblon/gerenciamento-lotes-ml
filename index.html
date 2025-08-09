@@ -20,6 +20,17 @@
       <video id="preview" playsinline muted style="width:0;height:0;position:absolute;left:-9999px;"></video>
         <input type="number" id="preco-ajustado" placeholder="Preço ajustado" step="0.01" />
         <input type="text" id="observacao" placeholder="Observação" />
+      <section id="produto-info" class="card" hidden>
+        <div class="card-header">
+          <strong id="pi-sku">SKU</strong> — <span id="pi-desc">Descrição</span>
+        </div>
+        <div class="card-body">
+          <div>Qtd: <span id="pi-qtd">0</span></div>
+          <div>Preço médio (R$): <span id="pi-preco">0,00</span></div>
+          <div>Valor total (R$): <span id="pi-total">0,00</span></div>
+          <div>RZ: <span id="pi-rz">—</span></div>
+        </div>
+      </section>
       <div id="excedenteForm" style="display:none">
         <input type="text" id="exDescInput" placeholder="Descrição do produto" />
         <input type="number" id="exQtdInput" min="1" value="1" />
@@ -28,7 +39,6 @@
       <button id="btn-registrar">Registrar</button>
       <button id="excedenteBtn" disabled>Registrar Excedente</button>
       <button id="finalizarBtn">Finalizar Conferência</button>
-      <div id="consultaCard" class="card"></div>
     </section>
 
     <section id="resumos">
@@ -37,66 +47,68 @@
     </section>
 
     <section id="listas">
-        <div class="lista-bloco" id="conferidosBloco">
-            <h2>Conferidos <span id="count-conferidos">0</span></h2>
-            <div>
-              <select id="limit-conferidos">
-                <option>50</option>
-                <option>100</option>
-                <option>200</option>
-              </select>
-              <button id="btn-recolher-conferidos" type="button">Recolher</button>
-            </div>
-            <table id="tbl-conferidos" class="tabela">
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Descrição</th>
-                  <th>Qtd</th>
-                  <th>Preço Médio (R$)</th>
-                  <th>Valor Total (R$)</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-        </div>
-
-      <div class="lista-bloco" id="faltantesBloco">
-            <header class="lista-header">
-              <h2>Pendentes <span class="badge" id="count-pendentes">0</span></h2>
-              <button class="lista-toggle" data-list="faltantes">Recolher</button>
-            </header>
-          <div class="lista-body" id="faltantesBody">
-              <div>
-                <label for="limit-pendentes" style="margin-right:6px">Recolher</label>
-                <select id="limit-pendentes">
-                  <option>50</option>
-                  <option>100</option>
-                  <option>200</option>
-                </select>
-                  <button id="btn-recolher-pendentes" type="button">Recolher</button>
-              </div>
-            <table id="tbl-pendentes" class="tabela">
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Descrição</th>
-                  <th>Qtd</th>
-                  <th>Preço Médio (R$)</th>
-                  <th>Valor Total (R$)</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+      <section id="sec-conferidos" class="section">
+        <div class="section-head">
+          <h2>Conferidos <span id="count-conferidos">0</span></h2>
+          <div>
+            <select id="limit-conferidos">
+              <option>50</option>
+              <option>100</option>
+              <option>200</option>
+            </select>
+            <button id="btn-recolher-conferidos" data-target="sec-conferidos">Recolher</button>
           </div>
-      </div>
+        </div>
+        <div class="section-body">
+          <table id="tbl-conferidos" class="tabela">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Descrição</th>
+                <th>Qtd</th>
+                <th>Preço Médio (R$)</th>
+                <th>Valor Total (R$)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
 
-      <div class="lista-bloco" id="excedentesBloco">
-        <header class="lista-header">
-          <h2>Excedentes <span class="badge" id="excedentesCount">0</span></h2>
-          <button class="lista-toggle" data-list="excedentes">Recolher</button>
-        </header>
-        <div class="lista-body" id="excedentesBody">
+      <section id="sec-pendentes" class="section">
+        <div class="section-head">
+          <h2>Pendentes <span id="count-pendentes">0</span></h2>
+          <div>
+            <select id="limit-pendentes">
+              <option>50</option>
+              <option>100</option>
+              <option>200</option>
+            </select>
+            <button id="btn-recolher-pendentes" data-target="sec-pendentes">Recolher</button>
+          </div>
+        </div>
+        <div class="section-body">
+          <table id="tbl-pendentes" class="tabela">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Descrição</th>
+                <th>Qtd</th>
+                <th>Preço Médio (R$)</th>
+                <th>Valor Total (R$)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="sec-excedentes" class="section">
+        <div class="section-head">
+          <h2>Excedentes <span id="excedentesCount">0</span></h2>
+          <button id="btn-recolher-excedentes" data-target="sec-excedentes">Recolher</button>
+        </div>
+        <div class="section-body">
           <div class="lista-controles">
             <input class="lista-search" data-list="excedentes" placeholder="Buscar por SKU ou descrição" />
             <select class="lista-pagesize" data-list="excedentes">
@@ -119,7 +131,7 @@
           </table>
           <div class="pagination" id="excedentesPagination"></div>
         </div>
-      </div>
+      </section>
     </section>
   </div>
 

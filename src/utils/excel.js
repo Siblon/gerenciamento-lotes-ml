@@ -202,3 +202,21 @@ export function exportResult({
   }
   XLSX.writeFile(wb, filename);
 }
+
+export function exportarConferencia({ rz, conferidos, pendentes, excedentes, resumo }) {
+  const wb = XLSX.utils.book_new();
+  const wsResumo = XLSX.utils.json_to_sheet([resumo]);
+  XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo');
+
+  const wsConf = XLSX.utils.json_to_sheet(conferidos);
+  XLSX.utils.book_append_sheet(wb, wsConf, 'Conferidos');
+
+  const wsPend = XLSX.utils.json_to_sheet(pendentes);
+  XLSX.utils.book_append_sheet(wb, wsPend, 'Pendentes');
+
+  const wsExc = XLSX.utils.json_to_sheet(excedentes || []);
+  XLSX.utils.book_append_sheet(wb, wsExc, 'Excedentes');
+
+  const ts = new Date().toISOString().slice(0,16).replace('T','_').replace(':','');
+  XLSX.writeFile(wb, `conferencia_${rz}_${ts}.xlsx`);
+}
