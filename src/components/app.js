@@ -25,26 +25,55 @@ function renderCounts() {
   if (elPend) elPend.textContent = String(pendentes);
 }
 
-function registrarCodigo(raw) {
+function normalizar(c){
+  return String(c || '').replace(/\s+/g,'').toLowerCase();
+}
+
+function registrarConferido(raw) {
   const rz = store.state.currentRZ;
-  const sku = String(raw || '').trim();
-  if (!rz || !sku) return console.warn('[CONF] sem RZ ou SKU');
+  const lidoBruto = String(raw || '').trim();
+  if (!rz || !lidoBruto) {
+    console.warn('[CONF] sem RZ ou SKU');
+    return;
+  }
+
+  const nLido = normalizar(lidoBruto);
 
   const totalMap = store.state.totalByRZSku?.[rz] || {};
   const confMap  = (store.state.conferidosByRZSku[rz] ||= {});
 
-  const total = Number(totalMap[sku] || 0);
-  const atual = Number(confMap[sku] || 0);
+  let skuMatch = null;
+  for (const sku of Object.keys(totalMap)) {
+    const nSku = normalizar(sku);
+    if (nLido.includes(nSku) || nSku.includes(nLido)) {
+      skuMatch = sku;
+      break;
+    }
+  }
 
-  if (total <= 0) {
-    console.info('[CONF] SKU fora do RZ atual (excedente?):', sku, 'RZ:', rz);
+  if (!skuMatch) {
+    console.log('[SCAN]', lidoBruto, '→ não encontrado');
+    alert('Produto não encontrado no lote atual');
+    const el = document.querySelector('#codigoInput') || document.querySelector('input[type="text"]');
+    if (el) {
+      const old = el.style.backgroundColor;
+      el.style.backgroundColor = '#faa';
+      setTimeout(()=>{ el.style.backgroundColor = old; }, 500);
+    }
     return;
   }
+
+  const total = Number(totalMap[skuMatch] || 0);
+  const atual = Number(confMap[skuMatch] || 0);
+
   if (atual >= total) {
-    console.info('[CONF] SKU já conferido no limite:', sku, `${atual}/${total}`);
+    console.log('[SCAN]', lidoBruto, '→ já conferido');
+    console.info('[CONF] SKU já conferido no limite:', skuMatch, `${atual}/${total}`);
     return;
   }
-  confMap[sku] = atual + 1;
+
+  confMap[skuMatch] = atual + 1;
+  console.log('[SCAN]', lidoBruto, '→ registrado como', skuMatch);
   renderCounts();
 }
 
@@ -81,16 +110,39 @@ export function initApp() {
     window._bindRegistrarOnce = true;
     codeInput?.addEventListener('keydown', (ev)=>{
       if (ev.key === 'Enter') {
-        registrarCodigo(codeInput.value);
+        registrarConferido(codeInput.value);
         clearAndFocus();
       }
     });
     if (btnRegistrar) {
       btnRegistrar.addEventListener('click', ()=>{
-        registrarCodigo(codeInput?.value);
+        registrarConferido(codeInput?.value);
         clearAndFocus();
       });
     }
+  }
+
+  // Captura global para leitores USB que atuam como teclado
+  if (!window._bindGlobalScanOnce) {
+    window._bindGlobalScanOnce = true;
+    let buffer = '';
+    window.addEventListener('keydown', (ev) => {
+      if (isScanning) return; // apenas no modo manual
+      const tgt = ev.target;
+      if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
+      if (ev.key === 'Enter') {
+        if (buffer) {
+          const input = document.querySelector('#codigoInput') || document.querySelector('input[type="text"]');
+          if (input) input.value = buffer;
+          registrarConferido(buffer);
+        }
+        buffer = '';
+      } else if (ev.key === 'Backspace') {
+        buffer = buffer.slice(0, -1);
+      } else if (ev.key.length === 1) {
+        buffer += ev.key;
+      }
+    });
   }
 
   if (!fileInput || !rzSelect || !btnAuto || !videoEl) {
@@ -135,8 +187,7 @@ export function initApp() {
 
     try {
       await iniciarLeitura(videoEl, (texto) => {
-        log('Código lido:', texto);
-        registrarCodigo(texto);
+        registrarConferido(texto);
         if (codeInput) codeInput.value = texto;
       });
       setBoot('Scanner ativo ▶️');

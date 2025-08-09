@@ -10,9 +10,16 @@ export async function iniciarZXing(videoEl, onResult, opts = {}) {
   if (zxingReader) return zxingReader;
   dbg('Carregando ZXing do CDN...');
   const mod = await import(/* @vite-ignore */ ZXING_CDN);
-  const { BrowserMultiFormatReader } = mod;
+  const { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } = mod;
 
-  zxingReader = new BrowserMultiFormatReader();
+  const hints = new Map();
+  hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+    BarcodeFormat.QR_CODE,
+    BarcodeFormat.CODE_128,
+    BarcodeFormat.EAN_13
+  ]);
+
+  zxingReader = new BrowserMultiFormatReader(hints);
   zxingControls = await zxingReader.decodeFromVideoDevice(
     opts.deviceId ?? undefined,
     videoEl,
