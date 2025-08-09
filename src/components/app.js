@@ -575,7 +575,7 @@ async function abrirCamera() {
     } else {
       usingZXing = true;
       statusEl.textContent = 'Lendo (ZXing)...';
-      await iniciarZXing();
+      await iniciarZXing(videoEl, onCodigo);
     }
   } catch (err) {
     statusEl.textContent = 'Erro ao abrir câmera';
@@ -612,7 +612,7 @@ async function trocarCamera(deviceId) {
 
   if (usingZXing) {
     statusEl.textContent = 'Lendo (ZXing)...';
-    await iniciarZXing();
+    await iniciarZXing(videoEl, onCodigo);
   } else {
     statusEl.textContent = 'Lendo...';
     loopNativo();
@@ -633,21 +633,20 @@ async function loopNativo() {
   requestAnimationFrame(loopNativo);
 }
 
-async function iniciarZXing() {
+async function iniciarZXing(videoEl, onCodigo) {
   try {
-    const mod = await import('@zxing/browser');
-    const { BrowserMultiFormatReader } = mod;
+    const { BrowserMultiFormatReader } = await import('@zxing/browser');
     if (!BrowserMultiFormatReader) {
-      console.error('ZXing módulo sem BrowserMultiFormatReader');
+      console.error('BrowserMultiFormatReader não disponível');
       toast?.('Leitor ZXing indisponível');
       return;
     }
     zxingReader = new BrowserMultiFormatReader();
-    zxingReader.decodeFromVideoElement(videoEl, result => {
+    await zxingReader.decodeFromVideoDevice(null, videoEl, result => {
       if (result) onCodigo(result.getText());
     });
   } catch (err) {
-    console.error('Falha ao carregar ZXing:', err);
+    console.error('Erro ao carregar ZXing:', err);
     toast?.('Falha ao carregar leitor ZXing');
   }
 }
@@ -655,15 +654,19 @@ async function iniciarZXing() {
 function pararZXing() {
   try {
     zxingReader?.reset?.();
-  } catch {}
+  } catch (err) {
+    console.error('Erro ao parar ZXing:', err);
+  }
   zxingReader = null;
 }
 
 function fecharCamera(hide = true) {
   try {
     pararZXing();
-    stream?.getTracks?.().forEach(t => t.stop());
-    stream = null;
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      stream = null;
+    }
     currentTrack = null;
     torchOn = false;
   } finally {
