@@ -35,25 +35,23 @@ export async function iniciarLeitura(videoEl, onText) {
   const mod = await import(/* @vite-ignore */ ZXING_CDN);
   const BrowserMultiFormatReader = mod.BrowserMultiFormatReader || mod.default?.BrowserMultiFormatReader;
   if (!BrowserMultiFormatReader) throw new Error('ZXing BrowserMultiFormatReader indisponível');
-  const BarcodeFormat  = mod.BarcodeFormat || {};
-  const DecodeHintType = mod.DecodeHintType || {};
 
-  let hints;
-  if (DecodeHintType.POSSIBLE_FORMATS) {
-    const fmts = [];
-    if (BarcodeFormat.QR_CODE)  fmts.push(BarcodeFormat.QR_CODE);
-    if (BarcodeFormat.EAN_13)   fmts.push(BarcodeFormat.EAN_13);
-    if (BarcodeFormat.CODE_128) fmts.push(BarcodeFormat.CODE_128);
-    if (BarcodeFormat.CODE_39)  fmts.push(BarcodeFormat.CODE_39);
-    if (BarcodeFormat.UPC_A)    fmts.push(BarcodeFormat.UPC_A);
-    if (BarcodeFormat.UPC_E)    fmts.push(BarcodeFormat.UPC_E);
-    hints = new Map([[DecodeHintType.POSSIBLE_FORMATS, fmts]]);
+  const FMTS  = mod.BarcodeFormat ? Object.values(mod.BarcodeFormat) : [];
+  const HINTS = mod.DecodeHintType
+    ? new Map([[mod.DecodeHintType.POSSIBLE_FORMATS, FMTS]])
+    : undefined;
+
+  const devices = (mod.BrowserMultiFormatReader?.listVideoInputDevices)
+    ? await mod.BrowserMultiFormatReader.listVideoInputDevices()
+    : (await navigator.mediaDevices?.enumerateDevices?.())?.filter(d => d.kind === 'videoinput') || [];
+
+  if (!devices.length) {
+    throw new Error('Nenhuma câmera encontrada');
   }
 
-  reader = hints ? new BrowserMultiFormatReader(hints) : new BrowserMultiFormatReader();
+  reader = HINTS ? new BrowserMultiFormatReader(HINTS) : new BrowserMultiFormatReader();
 
-  // Deixe o ZXing escolher a câmera passando undefined
-  await reader.decodeFromVideoDevice(undefined, videoEl, (result, err) => {
+  await reader.decodeFromVideoDevice(devices[0].deviceId, videoEl, (result, err) => {
     if (result) {
       const text = String(result.getText?.() || result.text || '');
       if (text) onText(text);

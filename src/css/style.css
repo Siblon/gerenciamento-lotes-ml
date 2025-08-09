@@ -153,3 +153,13 @@ th, td {
 tr.pulse {
   animation: pulseRow 2s ease-in-out;
 }
+
+.flash { animation: flashBg 1.5s ease; }
+@keyframes flashBg {
+  0% { background: #fffa9e; }
+  100% { background: transparent; }
+}
+.section.collapsed .section-body { display: none; }
+.collapsed .lista-body, .collapsed table { display: none; }
+.toast-warn { background:#ad6800 !important; }
+.toast-error { background:#a8071a !important; }

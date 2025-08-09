@@ -1,6 +1,7 @@
 // src/store/index.js
 const state = {
   currentRZ: null,
+  rzAtual: null,
 
   // listas e dados brutos
   rzList: [],
@@ -12,11 +13,14 @@ const state = {
   // metadados por RZ → SKU (vindo do Excel)
   metaByRZSku: {},        // { [rz]: { [sku]: { descricao, precoMedio } } }
 
-  // conferidos em runtime
-  conferidosByRZSku: {},  // { [rz]: { [sku]: qtdConferida } }
+  // conferidos em runtime (sem duplicidade)
+  conferidosByRZSku: {},  // { [rz]: { [sku]: { precoAjustado, observacao } } }
+
+  // contadores por RZ
+  contadores: {},         // { [rz]: { conferidos, total } }
 
   // eventos de conferência (para auditoria/finalizar)
-  movimentos: [],         // [{ ts, rz, sku, delta, precoAjustado, observacao }]
+  movimentos: [],         // [{ ts, rz, sku, precoAjustado, observacao }]
 
   limits: {
     conferidos: 50,
@@ -24,17 +28,27 @@ const state = {
   },
 };
 
-export function setCurrentRZ(rz){ state.currentRZ = rz; }
+function updateContadores(rz){
+  const total = Object.keys(state.totalByRZSku[rz] || {}).length;
+  const conf = Object.keys(state.conferidosByRZSku[rz] || {}).length;
+  state.contadores[rz] = { conferidos: conf, total };
+}
+
+export function setCurrentRZ(rz){
+  state.currentRZ = state.rzAtual = rz;
+  if (rz) updateContadores(rz);
+}
+
 export function addMovimento(m){ state.movimentos.push(m); }
 export function setLimits(part, v){ state.limits[part] = Number(v)||50; }
 
 // Helpers de acesso seguro
 export function getTotals(rz) {
-  return store.state.totalByRZSku[rz] || {};
+  return state.totalByRZSku[rz] || {};
 }
 
 export function getConferidos(rz) {
-  return store.state.conferidosByRZSku[rz] || {};
+  return state.conferidosByRZSku[rz] || {};
 }
 
 export function sumQuant(obj) {
@@ -45,16 +59,34 @@ export function totalPendentesCount(rz) {
   const tot = getTotals(rz);
   const conf = getConferidos(rz);
   const totalAll = sumQuant(tot);
-  const doneAll = sumQuant(conf);
+  const doneAll = Object.keys(conf).length; // cada SKU conta 1
   return Math.max(0, totalAll - doneAll);
 }
 
-// nunca deixar negativo
-export function addConferido(rz, sku, delta = 1) {
+// evita duplicidade
+export function addConferido(rz, sku, payload = {}) {
   const map = (state.conferidosByRZSku[rz] ||= {});
-  map[sku] = Math.max(0, (Number(map[sku]) || 0) + (Number(delta) || 0));
+  if (map[sku]) return; // já conferido
+  map[sku] = { precoAjustado: payload.precoAjustado || null, observacao: payload.observacao || null };
+  state.movimentos.push({ ts: Date.now(), rz, sku, ...map[sku] });
+  updateContadores(rz);
 }
 
-const store = { state };
+export function getSkuInRZ(rz, sku){
+  return !!(state.totalByRZSku[rz] || {})[sku];
+}
+
+export function isConferido(rz, sku){
+  return !!(state.conferidosByRZSku[rz] || {})[sku];
+}
+
+export function dispatch(action){
+  if (action?.type === 'REGISTRAR'){
+    const { rz, sku, precoAjustado, observacao } = action;
+    addConferido(rz, sku, { precoAjustado, observacao });
+  }
+}
+
+const store = { state, dispatch, getSkuInRZ, isConferido };
 
 export default store;
