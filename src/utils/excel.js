@@ -1,11 +1,11 @@
 import * as XLSX from 'xlsx';
 import store from '../store/index.js';
 
-const DBG = (...a) => {
-  if (typeof window !== 'undefined' && window.__DEBUG_SCAN__) {
-    console.log('[XLSX]', ...a);
-  }
-};
+const isDev =
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) ||
+  (typeof window !== 'undefined' && window.__DEBUG_SCAN__ === true);
+
+const DBG = (...a) => { if (isDev) console.log('[XLSX]', ...a); };
 
 function toNumberBR(v) {
   if (v == null) return 0;
@@ -305,7 +305,9 @@ export async function processarPlanilha(file) {
       }
 
       const verbose =
-        process.env.VERBOSE === '1' || process.env.CONFER_VERBOSE === '1';
+        typeof import.meta !== 'undefined' &&
+        import.meta.env &&
+        (import.meta.env.VERBOSE === '1' || import.meta.env.CONFER_VERBOSE === '1');
       if (ignored.length && verbose) {
         console.warn(
           `${ignored.length} linha(s) ignoradas por falta de dados essenciais: ${ignored.join(', ')}`,
