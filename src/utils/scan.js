@@ -7,10 +7,10 @@ const ZXING_CDN = 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/+esm';
 export async function iniciarLeitura(videoEl, onText) {
   if (!videoEl) throw new Error('videoEl ausente');
 
-  // 1) nativo se disponível
+  // 1) Nativo
   if ('BarcodeDetector' in window) {
     const detector = new window.BarcodeDetector({
-      formats: ['qr_code','ean_13','code_128','code_39','upc_a','upc_e']
+      formats: ['qr_code','ean_13','code_128','code_39','upc_a','upc_e'],
     });
     currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     videoEl.srcObject = currentStream; await videoEl.play();
@@ -20,7 +20,10 @@ export async function iniciarLeitura(videoEl, onText) {
       try {
         const bitmap = await createImageBitmap(videoEl);
         const codes = await detector.detect(bitmap); bitmap.close?.();
-        if (codes?.length) onText(String(codes[0].rawValue || codes[0].value || ''));
+        if (codes?.length) {
+          const v = String(codes[0].rawValue ?? codes[0].value ?? '');
+          if (v) onText(v);
+        }
       } catch {}
       requestAnimationFrame(loop);
     };
@@ -28,42 +31,34 @@ export async function iniciarLeitura(videoEl, onText) {
     return;
   }
 
-  // 2) ZXing via CDN
+  // 2) ZXing CDN
   const mod = await import(/* @vite-ignore */ ZXING_CDN);
   const BrowserMultiFormatReader = mod.BrowserMultiFormatReader || mod.default?.BrowserMultiFormatReader;
   if (!BrowserMultiFormatReader) throw new Error('ZXing BrowserMultiFormatReader indisponível');
+  const BarcodeFormat  = mod.BarcodeFormat || {};
+  const DecodeHintType = mod.DecodeHintType || {};
 
-  const BarcodeFormat   = mod.BarcodeFormat || {};
-  const DecodeHintType  = mod.DecodeHintType || {};
-
-  // cria reader com hints somente se os enums existirem
   let hints;
   if (DecodeHintType.POSSIBLE_FORMATS) {
-    const formats = [];
-    if (BarcodeFormat.QR_CODE) formats.push(BarcodeFormat.QR_CODE);
-    if (BarcodeFormat.EAN_13)  formats.push(BarcodeFormat.EAN_13);
-    if (BarcodeFormat.CODE_128)formats.push(BarcodeFormat.CODE_128);
-    if (BarcodeFormat.CODE_39) formats.push(BarcodeFormat.CODE_39);
-    if (BarcodeFormat.UPC_A)   formats.push(BarcodeFormat.UPC_A);
-    if (BarcodeFormat.UPC_E)   formats.push(BarcodeFormat.UPC_E);
-
-    hints = new Map();
-    hints.set(DecodeHintType.POSSIBLE_FORMATS, formats);
+    const fmts = [];
+    if (BarcodeFormat.QR_CODE)  fmts.push(BarcodeFormat.QR_CODE);
+    if (BarcodeFormat.EAN_13)   fmts.push(BarcodeFormat.EAN_13);
+    if (BarcodeFormat.CODE_128) fmts.push(BarcodeFormat.CODE_128);
+    if (BarcodeFormat.CODE_39)  fmts.push(BarcodeFormat.CODE_39);
+    if (BarcodeFormat.UPC_A)    fmts.push(BarcodeFormat.UPC_A);
+    if (BarcodeFormat.UPC_E)    fmts.push(BarcodeFormat.UPC_E);
+    hints = new Map([[DecodeHintType.POSSIBLE_FORMATS, fmts]]);
   }
 
   reader = hints ? new BrowserMultiFormatReader(hints) : new BrowserMultiFormatReader();
 
-  const devices = await reader.listVideoInputDevices();
-  const deviceId = devices?.[0]?.deviceId;
-
-  currentStream = await navigator.mediaDevices.getUserMedia({
-    video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' }
-  });
-  videoEl.srcObject = currentStream; await videoEl.play();
-
-  await reader.decodeFromVideoDevice(deviceId ?? undefined, videoEl, (result, err) => {
-    if (result) onText(String(result.getText?.() || result.text || ''));
-    // erros transitórios são normais
+  // Deixe o ZXing escolher a câmera passando undefined
+  await reader.decodeFromVideoDevice(undefined, videoEl, (result, err) => {
+    if (result) {
+      const text = String(result.getText?.() || result.text || '');
+      if (text) onText(text);
+    }
+    // erros transitórios (NotFoundException) são normais; ignore
   });
 }
 
@@ -73,3 +68,4 @@ export async function pararLeitura(videoEl) {
   if (videoEl) { try { videoEl.pause(); } catch {} videoEl.srcObject = null; }
   if (currentStream) { currentStream.getTracks().forEach(t=>t.stop()); currentStream = null; }
 }
+

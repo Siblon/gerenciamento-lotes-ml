@@ -3,14 +3,9 @@ import { iniciarLeitura, pararLeitura } from '../utils/scan.js';
 import { processarPlanilha } from '../utils/excel.js';
 import store from '../store/index.js';
 
+// normalizadores/helpers
 const up = s => String(s||'').trim().toUpperCase();
 const sum = o => Object.values(o||{}).reduce((a,b)=>a+(Number(b)||0),0);
-
-function getCountsForRZ(rz){
-  const total = sum(store.state.totalByRZSku?.[rz] || {});
-  const conf  = sum(store.state.conferidosByRZSku?.[rz] || {});
-  return { conf, pend: Math.max(0, total - conf) };
-}
 
 function groupPendentes(rz){
   const items  = store.state.itemsByRZ?.[rz] || [];
@@ -36,7 +31,8 @@ function renderPendentes(){
   const rz = store.state.currentRZ;
   const limit = Number(document.querySelector('#limit-pendentes')?.value || 50);
   const rows = groupPendentes(rz).slice(0, limit);
-  const tb = document.querySelector('#tbl-pendentes tbody'); if (!tb) return;
+  const tb = document.querySelector('#tbl-pendentes tbody');
+  if (!tb) return;
   tb.innerHTML = rows.length ? rows.map(r=>`
     <tr>
       <td>${r.sku}</td>
@@ -50,11 +46,11 @@ function renderPendentes(){
 
 function refreshUI(){
   const rz = store.state.currentRZ;
-  const { conf, pend } = getCountsForRZ(rz);
-  const elC = document.getElementById('count-conferidos');
-  const elP = document.getElementById('count-pendentes');
-  if (elC) elC.textContent = String(conf);
-  if (elP) elP.textContent = String(pend);
+  const total = sum(store.state.totalByRZSku?.[rz] || {});
+  const conf  = sum(store.state.conferidosByRZSku?.[rz] || {});
+  const pend  = Math.max(0, total - conf);
+  (document.getElementById('count-conferidos')||{}).textContent = String(conf);
+  (document.getElementById('count-pendentes')||{}).textContent = String(pend);
   renderPendentes();
 }
 
@@ -64,12 +60,12 @@ function registrarCodigo(raw){
   if (!rz || !sku) return;
 
   const totals = store.state.totalByRZSku?.[rz] || {};
-  if (!totals[sku]) { console.info('[CONF] SKU fora do RZ:', sku); refreshUI(); return; }
+  const confs  = (store.state.conferidosByRZSku[rz] ||= {});
 
-  const confs = (store.state.conferidosByRZSku[rz] ||= {});
+  if (!totals[sku]) { console.info('[CONF] SKU fora do RZ:', sku); refreshUI(); return; }
   const atual = Number(confs[sku]||0);
   const max   = Number(totals[sku]||0);
-  if (atual >= max) { console.info('[CONF] SKU já completo', sku, `${atual}/${max}`); refreshUI(); return; }
+  if (atual >= max) { console.info('[CONF] SKU completo', sku, `${atual}/${max}`); refreshUI(); return; }
 
   confs[sku] = atual + 1;
   refreshUI();
@@ -78,41 +74,49 @@ function registrarCodigo(raw){
 export function initApp(){
   const fileInput = document.querySelector('#input-arquivo');
   const rzSelect = document.querySelector('#select-rz');
-  const input = document.querySelector('#codigo-ml') || document.querySelector('input[placeholder="Código do produto"]');
-  const btnReg = document.querySelector('#btn-registrar') || Array.from(document.querySelectorAll('button')).find(b=>/registrar/i.test(b.textContent||''));
-  const btnScan = document.querySelector('#btn-scan-toggle') || Array.from(document.querySelectorAll('button')).find(b=>/ler c[oó]digo/i.test(b.textContent||''));
+  const input =
+    document.querySelector('#codigo-ml') ||
+    document.querySelector('input[placeholder="Código do produto"]');
+  const btnReg = document.querySelector('#btn-registrar') ||
+    Array.from(document.querySelectorAll('button')).find(b=>/registrar/i.test(b.textContent||''));
+  const btnScan = document.querySelector('#btn-scan-toggle') ||
+    Array.from(document.querySelectorAll('button')).find(b=>/ler c[oó]digo/i.test(b.textContent||''));
+  const limitSel = document.querySelector('#limit-pendentes');
+  const btnRecolher = document.querySelector('#btn-recolher') ||
+    Array.from(document.querySelectorAll('button')).find(b=>/recolher/i.test(b.textContent||''));
   const videoEl = document.querySelector('#preview');
 
-  input?.addEventListener('keydown', e=>{
+  input?.addEventListener('keydown', (e)=>{
     if (e.key === 'Enter'){ registrarCodigo(input.value); input.select(); }
   });
   btnReg?.addEventListener('click', ()=>{ registrarCodigo(input?.value); input?.select(); });
 
-  // ligar/desligar scanner
+  limitSel?.addEventListener('change', renderPendentes);
+  btnRecolher?.addEventListener('click', renderPendentes);
+
   let scanning = false;
   btnScan?.addEventListener('click', async ()=>{
     try{
       if (!scanning){
-        await iniciarLeitura(videoEl, (texto)=>{ registrarCodigo(texto); if (input){ input.value = texto; input.select(); } });
-        scanning = true;
-        btnScan.textContent = 'Parar leitura';
+        await iniciarLeitura(videoEl, (texto)=>{
+          registrarCodigo(texto);
+          if (input){ input.value = texto; input.select(); }
+        });
+        scanning = true; btnScan.textContent = 'Parar leitura';
         setBoot('Scanner ativo ▶️');
       } else {
         await pararLeitura(videoEl);
-        scanning = false;
-        btnScan.textContent = 'Ler código';
+        scanning = false; btnScan.textContent = 'Ler código';
         setBoot('Scanner parado ⏹️');
       }
     } catch (err){
       console.error('Erro iniciarLeitura', err);
       setBoot('Falha ao iniciar scanner ❌ (veja Console)');
-      scanning = false;
-      if (btnScan) btnScan.textContent = 'Ler código';
+      scanning = false; btnScan.textContent = 'Ler código';
     }
   });
 
   rzSelect?.addEventListener('change', ()=> refreshUI());
-  document.querySelector('#limit-pendentes')?.addEventListener('change', ()=> renderPendentes());
 
   // upload planilha
   fileInput?.addEventListener('change', async (e)=>{
@@ -135,3 +139,4 @@ export function initApp(){
 function setBoot(msg){
   const st = document.getElementById('boot-status'); if (st) st.textContent = `Boot: ${msg}`;
 }
+
