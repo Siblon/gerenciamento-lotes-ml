@@ -8,14 +8,13 @@
 <body>
   <div id="app-container">
     <header id="topbar">
-      <h1>Conferência de Lotes</h1>
+      <h1>Conferência de Lotes <span id="hdr-conferidos">0 de 0 conferidos</span></h1>
       <button id="helpBtn" title="Ajuda/Atalhos">?</button>
     </header>
 
     <section id="painel-controle">
       <input type="file" id="input-arquivo" accept=".xlsx" />
       <select id="select-rz"></select>
-      <div id="progresso">0 de 0 conferidos</div>
       <input type="text" id="codigo-ml" placeholder="Código do produto" />
       <button id="btn-scan-toggle" type="button">Ler código</button>
       <video id="preview" playsinline muted style="width:0;height:0;position:absolute;left:-9999px;"></video>
@@ -25,7 +24,7 @@
         <input type="text" id="exDescInput" placeholder="Descrição do produto" />
         <input type="number" id="exQtdInput" min="1" value="1" />
       </div>
-      <button id="consultarBtn">Consultar</button>
+      <button id="btn-consultar">Consultar</button>
       <button id="btn-registrar">Registrar</button>
       <button id="excedenteBtn" disabled>Registrar Excedente</button>
       <button id="finalizarBtn">Finalizar Conferência</button>

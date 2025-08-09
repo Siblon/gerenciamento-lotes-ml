@@ -1,13 +1,25 @@
 // src/components/app.js
 import { iniciarLeitura, pararLeitura } from '../utils/scan.js';
 import { processarPlanilha } from '../utils/excel.js';
-import store, { setCurrentRZ, addConferido, addMovimento, setLimits } from '../store/index.js';
+import store, {
+  getTotals, getConferidos, sumQuant, totalPendentesCount,
+  addConferido, addMovimento, setCurrentRZ, setLimits
+} from '../store/index.js';
 
 const up = s => String(s||'').trim().toUpperCase();
-const sum = o => Object.values(o||{}).reduce((a,b)=>a+(Number(b)||0),0);
+
+function highlightRow(tableId, sku) {
+  const tb = document.querySelector(`${tableId} tbody`);
+  if (!tb) return;
+  const row = tb.querySelector(`tr[data-sku="${sku}"]`);
+  if (!row) return;
+  row.classList.add('pulse');
+  row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => row.classList.remove('pulse'), 2000);
+}
 
 function rowsConferidos(rz){
-  const conf = store.state.conferidosByRZSku[rz] || {};
+  const conf = getConferidos(rz);
   const meta = store.state.metaByRZSku[rz] || {};
   return Object.entries(conf).map(([sku, qtd])=>{
     const m = meta[sku] || {};
@@ -17,8 +29,8 @@ function rowsConferidos(rz){
 }
 
 function rowsPendentes(rz){
-  const tot = store.state.totalByRZSku[rz] || {};
-  const conf= store.state.conferidosByRZSku[rz] || {};
+  const tot = getTotals(rz);
+  const conf= getConferidos(rz);
   const meta= store.state.metaByRZSku[rz] || {};
   return Object.entries(tot).map(([sku, qtdTotal])=>{
     const done = Number(conf[sku]||0);
@@ -30,16 +42,25 @@ function rowsPendentes(rz){
   }).filter(Boolean).sort((a,b)=> b.qtd - a.qtd);
 }
 
+function renderHeaderCounts() {
+  const rz = store.state.currentRZ;
+  if (!rz) return;
+  const totAll = sumQuant(getTotals(rz));
+  const confAll = sumQuant(getConferidos(rz));
+  const el = document.querySelector('#hdr-conferidos');
+  if (el) el.textContent = `${confAll} de ${totAll} conferidos`;
+}
+
 function renderConferidos(){
   const rz = store.state.currentRZ; if (!rz) return;
   const limit = store.state.limits.conferidos || 50;
   const data = rowsConferidos(rz).slice(0, limit);
   const tb = document.querySelector('#tbl-conferidos tbody');
   document.getElementById('count-conferidos').textContent =
-    String(sum(store.state.conferidosByRZSku[rz]||{}));
+    String(sumQuant(getConferidos(rz)));
   if (!tb) return;
   tb.innerHTML = data.length ? data.map(r=>`
-    <tr>
+    <tr data-sku="${r.sku}">
       <td>${r.sku}</td>
       <td>${r.descricao}</td>
       <td style="text-align:right">${r.qtd}</td>
@@ -47,19 +68,20 @@ function renderConferidos(){
       <td style="text-align:right">${r.total.toFixed(2)}</td>
     </tr>`).join('') :
     `<tr><td colspan="5" style="text-align:center;color:#777">Nenhum item conferido</td></tr>`;
+  renderHeaderCounts();
 }
 
 function renderPendentes(){
   const rz = store.state.currentRZ; if (!rz) return;
   const limit = store.state.limits.pendentes || 50;
-  const tot = sum(store.state.totalByRZSku[rz]||{});
-  const conf= sum(store.state.conferidosByRZSku[rz]||{});
+  const tot = sumQuant(getTotals(rz));
+  const conf= sumQuant(getConferidos(rz));
   document.getElementById('count-pendentes').textContent = String(Math.max(0, tot-conf));
   const data = rowsPendentes(rz).slice(0, limit);
   const tb = document.querySelector('#tbl-pendentes tbody');
   if (!tb) return;
   tb.innerHTML = data.length ? data.map(r=>`
-    <tr>
+    <tr data-sku="${r.sku}">
       <td>${r.sku}</td>
       <td>${r.descricao}</td>
       <td style="text-align:right">${r.qtd}</td>
@@ -67,20 +89,29 @@ function renderPendentes(){
       <td style="text-align:right">${r.total.toFixed(2)}</td>
     </tr>`).join('') :
     `<tr><td colspan="5" style="text-align:center;color:#777">Sem pendências para este RZ</td></tr>`;
+  renderHeaderCounts();
 }
 
-function refreshUI(){ renderConferidos(); renderPendentes(); }
+function refreshUI(){
+  renderConferidos();
+  renderPendentes();
+  renderHeaderCounts();
+}
 
 function registrarCodigo(raw){
-  const rz = store.state.currentRZ;
+  const rz  = store.state.currentRZ;
   const sku = up(raw);
   if (!rz || !sku) return;
 
-  const tot = store.state.totalByRZSku[rz] || {};
-  if (!tot[sku]) { console.info('[CONF] SKU fora do RZ:', sku); refreshUI(); return; }
+  const tot = getTotals(rz);
+  if (!tot[sku]) {
+    console.info('[CONF] SKU fora do RZ:', sku);
+    toast?.warn?.(`SKU ${sku} não pertence ao ${rz}`);
+    refreshUI();
+    return;
+  }
 
-  // incrementa
-  addConferido(rz, sku, 1);
+  addConferido(rz, sku, 1); // apenas incrementa
 
   // captura ajustes (se existirem na tela)
   const preco = Number(document.querySelector('#preco-ajustado')?.value || NaN);
@@ -94,6 +125,35 @@ function registrarCodigo(raw){
   });
 
   refreshUI();
+
+  const pendentesRest = Math.max(0, (tot[sku] || 0) - (getConferidos(rz)[sku] || 0));
+  if (pendentesRest > 0) highlightRow('#tbl-pendentes', sku);
+  else highlightRow('#tbl-conferidos', sku);
+}
+
+function consultarSku() {
+  const rz = store.state.currentRZ;
+  const sku = up(document.querySelector('#codigo-ml')?.value);
+  if (!rz || !sku) return;
+  const tot  = getTotals(rz);
+  const conf = getConferidos(rz);
+
+  if (!tot[sku]) {
+    toast?.warn?.(`SKU ${sku} não pertence ao ${rz}`);
+    return;
+  }
+
+  const rest = Math.max(0, (tot[sku]||0) - (conf[sku]||0));
+  if (rest > 0) highlightRow('#tbl-pendentes', sku);
+  else          highlightRow('#tbl-conferidos', sku);
+}
+
+let regLock = false;
+async function safeRegistrar(raw) {
+  if (regLock) return;
+  regLock = true;
+  try { registrarCodigo(raw); }
+  finally { setTimeout(() => regLock = false, 150); }
 }
 
 export function initApp(){
@@ -108,23 +168,31 @@ export function initApp(){
   const videoEl = document.querySelector('#preview');
 
   inSku?.addEventListener('keydown', e => {
-    if (e.key === 'Enter'){ registrarCodigo(inSku.value); inSku.select(); }
+    if (e.key === 'Enter'){ safeRegistrar(inSku.value); inSku.select(); }
   });
-  btnReg?.addEventListener('click', () => { registrarCodigo(inSku?.value); inSku?.select(); });
+  btnReg?.addEventListener('click', () => { safeRegistrar(inSku?.value); inSku?.select(); });
 
   // Recolher conferidos/pendentes
-  document.querySelector('#limit-conferidos')?.addEventListener('change', e=>{
-    setLimits('conferidos', e.target.value); renderConferidos();
+  document.querySelector('#limit-conferidos')?.addEventListener('change', (e)=>{
+    setLimits('conferidos', e.target.value);
+    renderConferidos();
   });
   document.querySelector('#btn-recolher-conferidos')?.addEventListener('click', ()=>{
-    const v = document.querySelector('#limit-conferidos')?.value; setLimits('conferidos', v); renderConferidos();
+    const v = document.querySelector('#limit-conferidos')?.value;
+    setLimits('conferidos', v);
+    renderConferidos();
   });
-  document.querySelector('#limit-pendentes')?.addEventListener('change', e=>{
-    setLimits('pendentes', e.target.value); renderPendentes();
+  document.querySelector('#limit-pendentes')?.addEventListener('change', (e)=>{
+    setLimits('pendentes', e.target.value);
+    renderPendentes();
   });
   document.querySelector('#btn-recolher-pendentes')?.addEventListener('click', ()=>{
-    const v = document.querySelector('#limit-pendentes')?.value; setLimits('pendentes', v); renderPendentes();
+    const v = document.querySelector('#limit-pendentes')?.value;
+    setLimits('pendentes', v);
+    renderPendentes();
   });
+
+  document.querySelector('#btn-consultar')?.addEventListener('click', consultarSku);
 
   // Scanner toggle
   let scanning = false;
