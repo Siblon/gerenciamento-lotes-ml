@@ -97,12 +97,14 @@ async function stopBarcodeDetector(videoEl) {
 }
 
 export async function iniciarLeitura(videoEl, onResult) {
+  dbg('iniciarLeitura()');
   if ('BarcodeDetector' in window) return startBarcodeDetector(videoEl, onResult);
   dbg('BarcodeDetector indisponível; iniciando ZXing direto.');
   return iniciarZXing(videoEl, onResult);
 }
 
 export async function pararLeitura(videoEl) {
+  dbg('pararLeitura()');
   await pararZXing(videoEl);
   await stopBarcodeDetector(videoEl);
 }

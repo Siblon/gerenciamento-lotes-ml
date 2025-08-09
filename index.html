@@ -22,7 +22,9 @@
         <button id="scanManualBtn" type="button">Manual</button>
         <button id="scanAutoBtn" type="button">Automático</button>
       </div>
-      <button id="btn-ler-codigo" type="button">📷 Ler código</button>
+      <button id="btn-scan-auto" type="button">Ler código</button>
+      <button id="btn-scan-stop" type="button" style="display:none">Parar leitura</button>
+      <video id="preview" playsinline muted style="width:0;height:0;position:absolute;left:-9999px;"></video>
       <input type="number" id="precoInput" placeholder="Preço ajustado" step="0.01" />
       <input type="text" id="obsInput" placeholder="Observação" />
       <div id="excedenteForm" style="display:none">
@@ -111,19 +113,7 @@
       </div>
     </section>
 
-    <script type="module" src="/src/components/app.js"></script>
-  </div>
-
-  <div id="cameraModal" class="scan-modal hidden" aria-hidden="true">
-    <div class="scan-box">
-      <video id="preview" autoplay playsinline muted></video>
-      <div class="scan-actions">
-        <span id="scanStatus">Pronto</span>
-        <select id="cameraSelect" class="hidden"></select>
-        <button id="toggleTorchBtn" class="hidden" type="button">Lanterna</button>
-        <button id="btn-scan-stop" type="button">Fechar</button>
-      </div>
-    </div>
+    <script type="module" src="/src/main.js"></script>
   </div>
 </body>
 </html>
