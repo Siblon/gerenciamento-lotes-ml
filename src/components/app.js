@@ -13,6 +13,7 @@ import store, {
 } from '../store/index.js';
 import { processarPlanilha, exportResult } from '../utils/excel.js';
 import { brl } from '../utils/format.js';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 
 const listState = {
   conferidos: { page: 1, perPage: 50, query: '', collapsed: false },
@@ -48,6 +49,28 @@ function toast(msg, dur = 2000) {
 }
 
 let scanMode = 'manual';
+
+let stream = null;
+let detector = null;
+let zxingReader = null;
+let usingZXing = false;
+
+const abrirBtn = document.getElementById('abrirCameraBtn');
+const modal = document.getElementById('cameraModal');
+const fecharBtn = document.getElementById('fecharCameraBtn');
+const videoEl = document.getElementById('videoPreview');
+const statusEl = document.getElementById('scanStatus');
+const cameraSelect = document.getElementById('cameraSelect');
+const torchBtn = document.getElementById('toggleTorchBtn');
+
+let currentTrack = null;
+let torchOn = false;
+
+abrirBtn?.addEventListener('click', async () => {
+  await abrirCamera();
+});
+
+fecharBtn?.addEventListener('click', () => fecharCamera());
 
 function setScanMode(mode) {
   scanMode = mode;
@@ -501,7 +524,7 @@ function handleRegistrar() {
   codigoInput.select();
 }
 
-function handleCodigoLido(valor) {
+function onCodigo(valor) {
   const v = String(valor || '').trim();
   if (!v) return;
   const codigoInput = document.getElementById('codigoInput');
@@ -513,6 +536,133 @@ function handleCodigoLido(valor) {
     else if (res?.status === 'not-found') toast('Não encontrado — excedente.');
   } else {
     document.getElementById('consultarBtn')?.focus();
+  }
+  fecharCamera();
+}
+
+async function abrirCamera() {
+  try {
+    modal.classList.remove('hidden');
+    statusEl.textContent = 'Solicitando câmera...';
+
+    const constraints = { video: { facingMode: { ideal: 'environment' } } };
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    videoEl.srcObject = stream;
+    await videoEl.play();
+
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoInputs = devices.filter(d => d.kind === 'videoinput');
+    if (videoInputs.length > 1) {
+      cameraSelect.classList.remove('hidden');
+      cameraSelect.innerHTML = videoInputs
+        .map(d => `<option value="${d.deviceId}">${d.label || 'Câmera'}</option>`)
+        .join('');
+      cameraSelect.onchange = async () => {
+        await trocarCamera(cameraSelect.value);
+      };
+    }
+
+    currentTrack = stream.getVideoTracks()[0];
+    const caps = currentTrack?.getCapabilities?.();
+    if (caps && 'torch' in caps) {
+      torchBtn.classList.remove('hidden');
+      torchBtn.onclick = async () => {
+        torchOn = !torchOn;
+        await currentTrack.applyConstraints({ advanced: [{ torch: torchOn }] });
+        torchBtn.textContent = torchOn ? 'Lanterna (on)' : 'Lanterna';
+      };
+    }
+
+    if ('BarcodeDetector' in window) {
+      detector = new BarcodeDetector({ formats: ['code_128', 'ean_13', 'ean_8', 'upc_a', 'upc_e'] });
+      statusEl.textContent = 'Lendo...';
+      loopNativo();
+      usingZXing = false;
+    } else {
+      usingZXing = true;
+      statusEl.textContent = 'Lendo (ZXing)...';
+      iniciarZXing();
+    }
+  } catch (err) {
+    statusEl.textContent = 'Erro ao abrir câmera';
+    if (err?.name === 'NotAllowedError') {
+      toast?.('Permissão negada. Verifique as permissões do navegador (HTTPS obrigatório no mobile).');
+    } else {
+      toast?.('Não foi possível acessar a câmera. Verifique permissões (HTTPS obrigatório no mobile).');
+    }
+    console.error(err);
+  }
+}
+
+async function trocarCamera(deviceId) {
+  const wasZXing = usingZXing;
+  fecharCamera(false);
+  usingZXing = wasZXing;
+  const constraints = { video: { deviceId: { exact: deviceId } } };
+  stream = await navigator.mediaDevices.getUserMedia(constraints);
+  videoEl.srcObject = stream;
+  await videoEl.play();
+  currentTrack = stream.getVideoTracks()[0];
+
+  const caps = currentTrack?.getCapabilities?.();
+  if (caps && 'torch' in caps) {
+    torchBtn.classList.remove('hidden');
+    torchBtn.onclick = async () => {
+      torchOn = !torchOn;
+      await currentTrack.applyConstraints({ advanced: [{ torch: torchOn }] });
+      torchBtn.textContent = torchOn ? 'Lanterna (on)' : 'Lanterna';
+    };
+  } else {
+    torchBtn.classList.add('hidden');
+  }
+
+  if (usingZXing) {
+    statusEl.textContent = 'Lendo (ZXing)...';
+    iniciarZXing();
+  } else {
+    statusEl.textContent = 'Lendo...';
+    loopNativo();
+  }
+}
+
+async function loopNativo() {
+  if (!detector || modal.classList.contains('hidden')) return;
+  try {
+    const results = await detector.detect(videoEl);
+    if (results?.length) {
+      onCodigo(results[0].rawValue);
+      return;
+    }
+  } catch (e) {
+    /* ignore */
+  }
+  requestAnimationFrame(loopNativo);
+}
+
+function iniciarZXing() {
+  zxingReader = new BrowserMultiFormatReader();
+  zxingReader.decodeFromVideoElement(videoEl, (result, err) => {
+    if (result) {
+      onCodigo(result.getText());
+    }
+  });
+}
+
+function fecharCamera(hide = true) {
+  try {
+    if (zxingReader) {
+      zxingReader.reset();
+      zxingReader = null;
+    }
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+      currentTrack = null;
+      torchOn = false;
+    }
+  } finally {
+    if (hide) modal.classList.add('hidden');
+    statusEl.textContent = 'Pronto';
   }
 }
 
@@ -693,7 +843,7 @@ function setup() {
     if (e.key === 'Enter') {
       e.preventDefault();
       if (e.ctrlKey) handleRegistrar();
-      else handleCodigoLido(e.target.value);
+      else onCodigo(e.target.value);
     }
   });
   document
@@ -704,6 +854,20 @@ function setup() {
     .addEventListener('click', () => setScanMode('auto'));
   scanMode = localStorage.getItem('scanMode') || 'manual';
   setScanMode(scanMode);
+  if (!navigator.mediaDevices?.getUserMedia) {
+    abrirBtn.disabled = true;
+    abrirBtn.title = 'Câmera não disponível';
+  } else {
+    navigator.mediaDevices
+      .enumerateDevices()
+      .then(devices => {
+        if (!devices.some(d => d.kind === 'videoinput')) {
+          abrirBtn.disabled = true;
+          abrirBtn.title = 'Câmera não disponível';
+        }
+      })
+      .catch(() => {});
+  }
   document.querySelectorAll('.lista-search').forEach(inp => {
     const list = inp.dataset.list;
     inp.addEventListener(
@@ -735,6 +899,6 @@ function setup() {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('DOMContentLoaded', setup);
-  window.handleCodigoLido = handleCodigoLido;
+  window.handleCodigoLido = onCodigo;
 }
 
