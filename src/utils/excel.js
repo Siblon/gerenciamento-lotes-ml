@@ -138,7 +138,7 @@ export async function processarPlanilha(input) {
     for (const rz of rzList) {
       const map = {};
       for (const it of itemsByRZ[rz]) {
-        const sku = String(it.codigoML || '').trim();
+        const sku = String(it.codigoML || '').trim().toUpperCase();
         const inc = Number(it.qtd) || 0;
         if (!sku) continue;
         map[sku] = (map[sku] || 0) + inc;

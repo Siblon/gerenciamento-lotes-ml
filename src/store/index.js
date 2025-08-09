@@ -1,9 +1,9 @@
 // src/store/index.js
 const state = {
   rzList: [],
-  itemsByRZ: {},          // { RZ-xxxxx: [ { codigoML, codigoRZ, qtd, valorUnit, ... } ] }
-  totalByRZSku: {},       // { RZ-xxxxx: { SKU: totalQtd } }  // preenchido no parse
-  conferidosByRZSku: {},  // { RZ-xxxxx: { SKU: qtdConferida } }
+  itemsByRZ: {},          // { RZ: [ { codigoML, descricao, qtd, valorUnit, ... } ] }
+  totalByRZSku: {},       // { RZ: { SKU: totalQtd } }
+  conferidosByRZSku: {},  // { RZ: { SKU: qtdConferida } }
   currentRZ: null,
 };
 

@@ -69,16 +69,26 @@
               <button class="lista-toggle" data-list="faltantes">Recolher</button>
             </header>
           <div class="lista-body" id="faltantesBody">
-            <div class="lista-controles">
-              <input class="lista-search" data-list="faltantes" placeholder="Buscar por SKU ou descrição" />
-              <select class="lista-pagesize" data-list="faltantes">
-                <option value="20">20</option>
-                <option value="50" selected>50</option>
-                <option value="100">100</option>
+            <div>
+              <label for="sel-limit-pendentes" style="margin-right:6px">Recolher</label>
+              <select id="sel-limit-pendentes">
+                <option>50</option>
+                <option>100</option>
+                <option>200</option>
               </select>
             </div>
-            <table><tbody id="faltantesTable"></tbody></table>
-            <div class="pagination" id="faltantesPagination"></div>
+            <table id="tbl-pendentes" class="tabela">
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Descrição</th>
+                  <th>Qtd</th>
+                  <th>Preço Médio (R$)</th>
+                  <th>Valor Total (R$)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
           </div>
       </div>
 
