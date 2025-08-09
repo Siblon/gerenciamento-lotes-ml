@@ -80,6 +80,22 @@ export function isConferido(rz, sku){
   return !!(state.conferidosByRZSku[rz] || {})[sku];
 }
 
+export function findInRZ(rz, sku){
+  const tot = state.totalByRZSku[rz] || {};
+  const conf = state.conferidosByRZSku[rz] || {};
+  if (!tot[sku] || conf[sku]) return null;
+  const meta = state.metaByRZSku[rz]?.[sku] || {};
+  return { sku, descricao: meta.descricao || '', qtd: tot[sku], precoMedio: meta.precoMedio };
+}
+
+export function findConferido(rz, sku){
+  const conf = state.conferidosByRZSku[rz] || {};
+  if (!conf[sku]) return null;
+  const tot = state.totalByRZSku[rz] || {};
+  const meta = state.metaByRZSku[rz]?.[sku] || {};
+  return { sku, descricao: meta.descricao || '', qtd: tot[sku] || 0, precoMedio: meta.precoMedio };
+}
+
 export function dispatch(action){
   if (action?.type === 'REGISTRAR'){
     const { rz, sku, precoAjustado, observacao } = action;
@@ -87,6 +103,6 @@ export function dispatch(action){
   }
 }
 
-const store = { state, dispatch, getSkuInRZ, isConferido };
+const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido };
 
 export default store;
