@@ -40,26 +40,30 @@ const consultaCard   = document.getElementById('consultaCard');
 const resumoRZEl     = document.getElementById('resumoRZ');
 const resumoGeralEl  = document.getElementById('resumoGeral');
 
-// scan UI
-const abrirCameraBtn = document.getElementById('abrirCameraBtn');
-const cameraModal    = document.getElementById('cameraModal');
-const videoPreview   = document.getElementById('videoPreview');
-const fecharCameraBtn= document.getElementById('fecharCameraBtn');
-const cameraSelect   = document.getElementById('cameraSelect');
-const toggleTorchBtn = document.getElementById('toggleTorchBtn');
-const scanStatusEl   = document.getElementById('scanStatus');
-
-// inputs do excedente (mini‑form)
-const exDescInput    = document.getElementById('exDescInput');
-const exQtdInput     = document.getElementById('exQtdInput');
-
-// ====== SCAN STATE ======
+// ====== SCAN STATE/DOM ======
 let stream = null;
 let detector = null;
 let zxingReader = null;
 let usingZXing = false;
 let currentTrack = null;
 let torchOn = false;
+let lastResult = null;            // evita duplicados
+let reading = false;
+
+const abrirCameraBtn = document.getElementById('abrirCameraBtn');
+const cameraModal    = document.getElementById('cameraModal');
+const videoEl        = document.getElementById('videoPreview');
+const fecharBtn      = document.getElementById('fecharCameraBtn');
+const cameraSelect   = document.getElementById('cameraSelect');
+const torchBtn       = document.getElementById('toggleTorchBtn');
+const statusEl       = document.getElementById('scanStatus');
+
+abrirCameraBtn?.addEventListener('click', abrirCamera);
+fecharBtn?.addEventListener('click', () => fecharCamera(true));
+
+// inputs do excedente (mini‑form)
+const exDescInput    = document.getElementById('exDescInput');
+const exQtdInput     = document.getElementById('exQtdInput');
 
 let scanMode = localStorage.getItem('scanMode') || 'manual'; // 'auto' | 'manual'
 
@@ -106,10 +110,6 @@ function init() {
   excedenteBtn?.addEventListener('click', registrarExcedente);
   finalizarBtn?.addEventListener('click', finalizarConferencia);
   exportarBtn?.addEventListener('click', exportarXLSX);
-
-  // Scan UI
-  abrirCameraBtn?.addEventListener('click', abrirCamera);
-  fecharCameraBtn?.addEventListener('click', () => fecharCamera(true));
 
   // Atalhos mínimos
   document.addEventListener('keydown', (ev) => {
@@ -173,6 +173,10 @@ function montarListasBase(itens) {
 
 // ====== CONSULTAR / REGISTRAR ======
 function consultar() {
+  if (!consultaCard || !precoInput || !obsInput || !codigoInput || !registrarBtn || !excedenteBtn) {
+    console.error('Elementos da interface ausentes');
+    return;
+  }
   const sku = (codigoInput.value || '').trim();
   const it = skuIndex.get(sku);
 
@@ -473,90 +477,136 @@ function exportarXLSX() {
 
 // ====== SCAN (CÂMERA) ======
 async function abrirCamera() {
+  const isBrowser = typeof window !== 'undefined';
+  const hasMedia = isBrowser && !!(navigator?.mediaDevices?.getUserMedia);
+  const isSecure = isBrowser && (location.protocol === 'https:' || location.hostname === 'localhost');
+  const isMobile = isBrowser && /Mobi|Android/i.test(navigator.userAgent);
+
+  if (!hasMedia) { toast?.('Seu navegador não suporta câmera.'); return; }
+  if (isMobile && !isSecure) { toast?.('No celular, a câmera exige HTTPS.'); }
+
+  if (!cameraModal || !videoEl) { console.error('Modal/Video ausente no DOM'); return; }
+
   try {
     cameraModal.classList.remove('hidden');
-    if (scanStatusEl) scanStatusEl.textContent = 'Solicitando câmera...';
+    statusEl && (statusEl.textContent = 'Solicitando câmera...');
 
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
-    videoPreview.srcObject = stream;
-    await videoPreview.play();
+    videoEl.srcObject = stream;
+    await videoEl.play();
 
     // listar câmeras
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const inputs = devices.filter(d => d.kind === 'videoinput');
-    if (inputs.length > 1 && cameraSelect) {
-      cameraSelect.classList.remove('hidden');
-      cameraSelect.innerHTML = inputs.map(d => `<option value="${d.deviceId}">${d.label || 'Câmera'}</option>`).join('');
-      cameraSelect.onchange = async () => await trocarCamera(cameraSelect.value);
-    }
+    try {
+      const devs = await navigator.mediaDevices.enumerateDevices();
+      const inputs = devs.filter(d => d.kind === 'videoinput');
+      if (inputs.length > 1 && cameraSelect) {
+        cameraSelect.classList.remove('hidden');
+        cameraSelect.innerHTML = inputs.map(d => `<option value="${d.deviceId}">${d.label || 'Câmera'}</option>`).join('');
+        cameraSelect.onchange = async () => { await trocarCamera(cameraSelect.value); };
+      }
+    } catch { /* ignore */ }
 
-    // torch
+    // torch (se suportado)
     currentTrack = stream.getVideoTracks()[0];
     const caps = currentTrack?.getCapabilities?.();
-    if (caps && 'torch' in caps && toggleTorchBtn) {
-      toggleTorchBtn.classList.remove('hidden');
-      toggleTorchBtn.onclick = async () => {
+    if (caps && 'torch' in caps && torchBtn) {
+      torchBtn.classList.remove('hidden');
+      torchBtn.onclick = async () => {
         torchOn = !torchOn;
         await currentTrack.applyConstraints({ advanced: [{ torch: torchOn }] });
-        toggleTorchBtn.textContent = torchOn ? 'Lanterna (on)' : 'Lanterna';
+        torchBtn.textContent = torchOn ? 'Lanterna (on)' : 'Lanterna';
       };
     }
 
+    lastResult = null;
+    reading = true;
+
     if ('BarcodeDetector' in window) {
       detector = new BarcodeDetector({ formats: ['code_128','ean_13','ean_8','upc_a','upc_e'] });
-      if (scanStatusEl) scanStatusEl.textContent = 'Lendo...';
+      statusEl && (statusEl.textContent = 'Lendo...');
       loopNativo();
     } else {
       usingZXing = true;
-      if (scanStatusEl) scanStatusEl.textContent = 'Lendo (ZXing)...';
-      await iniciarZXing();
+      statusEl && (statusEl.textContent = 'Lendo (ZXing)...');
+      await iniciarZXing(); // import dinâmico
     }
   } catch (err) {
-    if (scanStatusEl) scanStatusEl.textContent = 'Erro ao abrir câmera';
-    console.error(err);
-    alert('Não foi possível acessar a câmera. Em celular, use HTTPS.');
+    statusEl && (statusEl.textContent = 'Erro ao abrir câmera');
+    console.error('getUserMedia falhou:', err);
+    toast?.('Não foi possível acessar a câmera. Verifique permissões.');
   }
 }
 
 async function trocarCamera(deviceId) {
-  fecharCamera(false);
-  stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } } });
-  videoPreview.srcObject = stream;
-  await videoPreview.play();
-  currentTrack = stream.getVideoTracks()[0];
+  try {
+    await fecharCamera(false);
+    stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } } });
+    videoEl.srcObject = stream;
+    await videoEl.play();
+    currentTrack = stream.getVideoTracks()[0];
+    // reiniciar leitura
+    if ('BarcodeDetector' in window) {
+      detector = new BarcodeDetector({ formats: ['code_128','ean_13','ean_8','upc_a','upc_e'] });
+      loopNativo();
+    } else {
+      usingZXing = true;
+      await iniciarZXing();
+    }
+  } catch (e) {
+    console.error('Troca de câmera falhou', e);
+  }
 }
 
 async function loopNativo() {
-  if (!detector || cameraModal.classList.contains('hidden')) return;
+  if (!reading || !detector || cameraModal.classList.contains('hidden')) return;
   try {
-    const results = await detector.detect(videoPreview);
-    if (results?.length) {
-      onCodigo(results[0].rawValue);
-      return;
+    const res = await detector.detect(videoEl);
+    if (res?.length) {
+      const value = String(res[0].rawValue || '').trim();
+      if (value && value !== lastResult) {
+        lastResult = value;
+        onCodigo(value);
+        return;
+      }
     }
-  } catch {}
+  } catch { /* silencioso */ }
   requestAnimationFrame(loopNativo);
 }
 
 async function iniciarZXing() {
   try {
-    const { BrowserMultiFormatReader } = await import('@zxing/browser');
+    const mod = await import('@zxing/browser');   // <-- IMPORT DINÂMICO
+    const { BrowserMultiFormatReader } = mod || {};
+    if (!BrowserMultiFormatReader) {
+      console.error('ZXing sem BrowserMultiFormatReader');
+      toast?.('Leitor ZXing indisponível');
+      return;
+    }
     zxingReader = new BrowserMultiFormatReader();
-    await zxingReader.decodeFromVideoElement(videoPreview, (result) => {
-      if (result) onCodigo(result.getText());
+
+    // Preferir decodeFromVideoElement (mantém stream já aberto)
+    await zxingReader.decodeFromVideoElement(videoEl, (result/*, err*/) => {
+      if (!reading || !result) return;
+      const text = String(result.getText?.() || '').trim();
+      if (text && text !== lastResult) {
+        lastResult = text;
+        onCodigo(text);
+      }
     });
-  } catch (e) {
-    console.error('ZXing indisponível', e);
+  } catch (err) {
+    console.error('Falha ao carregar ZXing:', err);
+    toast?.('Falha ao carregar leitor ZXing');
   }
 }
 
 function pararZXing() {
-  try { zxingReader?.reset?.(); } catch {}
+  try { zxingReader?.reset?.(); } catch (e) { console.warn('ZXing reset falhou', e); }
   zxingReader = null;
   usingZXing = false;
 }
 
-function fecharCamera(hide = true) {
+async function fecharCamera(hide = true) {
+  reading = false;
   try {
     pararZXing();
     if (stream) {
@@ -565,31 +615,32 @@ function fecharCamera(hide = true) {
     }
     currentTrack = null;
     torchOn = false;
+  } catch (e) {
+    console.warn('Erro ao fechar câmera', e);
   } finally {
-    if (hide) cameraModal.classList.add('hidden');
-    if (scanStatusEl) scanStatusEl.textContent = 'Pronto';
+    if (hide) cameraModal?.classList?.add('hidden');
+    statusEl && (statusEl.textContent = 'Pronto');
   }
 }
 
 function onCodigo(valor) {
   const v = String(valor || '').trim();
   if (!v) return;
-  codigoInput.value = v;
+  const input = document.getElementById('codigoInput');
+  if (input) input.value = v;
 
-  const mode = (localStorage.getItem('scanMode') || scanMode || 'manual');
-  if (mode === 'auto') consultar();
-  else codigoInput.focus();
-
-  fecharCamera(true);
+  const mode = (localStorage.getItem('scanMode') || 'manual');
+  if (mode === 'auto') {
+    // só consulta automaticamente; registro automático fica pra um modo "scan rápido"
+    consultar?.();
+  } else {
+    input?.focus();
+  }
+  fecharCamera(true); // fecha após a primeira leitura válida
 }
 
 // ====== TOAST MINI ======
-function toast(msg) {
-  try {
-    // Minimalista: usa alert se não tiver um sistema de toasts
-    console.log('[toast]', msg);
-  } catch {}
-}
+function toast(msg){ try{console.log('[toast]', msg);}catch{} }
 
 // ====== EXTRAS ======
 // Expor algumas funções no window pra debug opcional
