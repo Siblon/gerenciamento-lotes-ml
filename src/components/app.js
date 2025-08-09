@@ -50,7 +50,12 @@ export function initApp() {
       // auto‑seleciona se só houver 1 RZ
       if (list.length === 1) {
         rzSelect.value = list[0];
-        store.dispatch(selectRZ(list[0]));
+        if (store && typeof store.dispatch === 'function') {
+          store.dispatch(selectRZ(list[0]));
+        } else {
+          if (!store.state) store.state = {};
+          store.state.currentRZ = list[0];
+        }
         log('RZ auto‑selecionado:', list[0]);
       }
 
@@ -65,7 +70,13 @@ export function initApp() {
   // ===== Seleção de RZ =====
   rzSelect.addEventListener('change', (e) => {
     const rz = e.target.value || null;
-    store.dispatch(selectRZ(rz));
+    if (store && typeof store.dispatch === 'function') {
+      store.dispatch(selectRZ(rz));
+    } else {
+      // fallback para store simples
+      if (!store.state) store.state = {};
+      store.state.currentRZ = rz;
+    }
     log('RZ selecionado:', rz);
     if (typeof window.render === 'function') window.render();
   });
@@ -126,6 +137,8 @@ export function initApp() {
   window.addEventListener('beforeunload', async () => {
     try { await pararLeitura(videoEl); } catch {}
   });
+
+  window.store = store;
 }
 
 function renderRZOptions(rzSelect, list) {
