@@ -4,51 +4,9 @@ import store from '../store/index.js';
 const isDev =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) ||
   (typeof window !== 'undefined' && window.__DEBUG_SCAN__ === true);
-
-const DBG = (...a) => { if (isDev) console.log('[XLSX]', ...a); };
-
-function toNumberBR(v) {
-  if (v == null) return 0;
-  const s = String(v);
-  if (s.includes(',')) {
-    return Number(s.replace(/\./g, '').replace(',', '.')) || 0;
-  }
-  return Number(s) || 0;
-}
-
-function pickByRegex(row, regexArray) {
-  const key = Object.keys(row).find(k => regexArray.some(r => r.test(k)));
-  return key ? row[key] : undefined;
-}
-
-const RX_UNIT = [
-  /valor\s*unit/i,
-  /pre(ç|c)o\s*unit/i,
-  /unit(á|a)rio/i,
-  /^pre(ç|c)o$/i,
-  /^valor(?!.*total)/i,
-];
-const RX_TOTAL = [/valor\s*total/i, /total/i, /vlr\s*total/i];
-
-// Remove acentos, espaços e coloca tudo em minúsculas
-function normalize(str) {
-  return String(str)
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]/g, '');
-}
-
-// Encontra o índice de uma coluna dado o cabeçalho e uma lista de aliases
-export function getColIndex(headers, aliases) {
-  const normHeaders = headers.map(h => normalize(h));
-  for (const alias of aliases) {
-    const idx = normHeaders.indexOf(normalize(alias));
-    if (idx !== -1) return idx;
-  }
-  return -1;
-}
+const DBG = (...a) => {
+  if (isDev) console.log('[XLSX]', ...a);
+};
 
 // Lê a planilha do Mercado Livre e retorna um mapeamento
 // de RZ -> { codigo: quantidade }.
@@ -72,8 +30,7 @@ export function readPlanilha(data) {
   return pallets;
 }
 
-// Processa uma planilha possivelmente bagunçada e retorna
-// um array de objetos padronizados
+// Processa a planilha e monta itemsByRZ
 export async function processarPlanilha(file) {
   try {
     let data;
@@ -87,249 +44,89 @@ export async function processarPlanilha(file) {
       throw new Error('Formato de arquivo não suportado');
     }
 
-    const workbook = XLSX.read(data, {
-      type: 'array',
-      raw: true,
-      cellFormula: false,
-    });
+    const workbook = XLSX.read(data, { type: 'array', raw: true, cellFormula: false });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
+    if (!rows.length) return { rzList: [], itemsByRZ: {} };
 
-    DBG('Abas:', workbook.SheetNames);
-
-    const rzSet = new Set();
-    const RZ_REGEX = /\bRZ-\d+\b/i;
-
-    for (const name of workbook.SheetNames) {
-      const ws = workbook.Sheets[name];
-      if (!ws) continue;
-
-      const rows = XLSX.utils.sheet_to_json(ws, {
-        header: 1,
-        raw: false,
-        defval: '',
-      });
-      if (rows.length === 0) continue;
-
-      DBG(`Aba: ${name} — linhas: ${rows.length}`);
-      if (rows[0] && rows[0].length) DBG('Headers(guess):', rows[0]);
-
-      for (const row of rows) {
-        for (const cell of row) {
-          if (typeof cell === 'string' && cell) {
-            const m = cell.match(RZ_REGEX);
-            if (m) rzSet.add(m[0].toUpperCase());
-          }
-        }
-      }
-    }
-
-    const rzList = Array.from(rzSet).sort();
-    store.state = store.state || {};
-    store.state.rzList = rzList;
-    DBG('RZs encontrados:', rzList.length, rzList.slice(0, 20));
-
-    // Alias das colunas aceitando diversos nomes
-    // para tornar o parser mais tolerante a planilhas variadas
-    const aliases = {
-      // Código do produto no Mercado Livre. Aceita variações comuns
-      codigoML: [
-        'Código ML',
-        'ML',
-        'Cod. ML',
-        'Código',
-        'Código do Produto',
-        'SKU',
-        'Código Mercado Livre',
-      ],
-      // Texto descritivo do item
-      descricao: [
-        'Descrição',
-        'Descrição do Produto',
-        'Descrição do Item',
-        'Produto',
-        'Item',
-      ],
-      // Preço unitário do produto
-      preco: [
-        'Preço',
-        'Preco',
-        'Preço Unitário',
-        'Preco Unitario',
-        'Valor',
-        'Valor Unitário',
-        'Valor Unitario',
-      ],
-      // Quantidade esperada do produto
-      quantidade: [
-        'Qtd',
-        'Quantidade',
-        'Qtde',
-        'Quantidade Esperada',
-        'Qtd Esperada',
-      ],
-      // Identificador do palete ou RZ onde o item está armazenado
-      rz: [
-        'RZ',
-        'Código RZ',
-        'Palete',
-        'Código do Palete',
-        'Paletização',
-        'Paletizacao',
-      ],
+    const headerAliases = {
+      tipo: /^tipo$/i,
+      enderecoWMS: /end.*wms/i,
+      codigoML: /(c[oó]digo|cod)\s*ml/i,
+      codigoRZ: /(c[oó]digo|cod)\s*rz/i,
+      codigoP7: /(c[oó]digo|cod)\s*p7/i,
+      qtd: /^qt[d]?$|quant/i,
+      descricao: /descr/i,
+      seller: /^seller$/i,
+      vertical: /^vertical$/i,
+      valorUnit: /valor\s*uni/i,
+      valorTotal: /valor\s*tot/i,
+      categoria: /^categoria$/i,
+      subcategoria: /subcat/i,
     };
 
-    let lastMissingFields = [];
-    for (const sheetName of workbook.SheetNames) {
-      const sheet = workbook.Sheets[sheetName];
-      if (!sheet || !sheet['!ref']) {
-        console.warn(`⚠️ Aba '${sheetName}' está vazia.`);
-        continue;
-      }
-
-      // Converte a planilha para uma matriz ignorando colunas ocultas e fórmulas
-      const range = XLSX.utils.decode_range(sheet['!ref']);
-      const hiddenCols = new Set();
-      (sheet['!cols'] || []).forEach((col, idx) => {
-        if (col && col.hidden) hiddenCols.add(idx);
-      });
-
-      const rows = [];
-      for (let R = range.s.r; R <= range.e.r; R++) {
-        const row = [];
-        for (let C = range.s.c; C <= range.e.c; C++) {
-          if (hiddenCols.has(C)) {
-            row.push(null);
-            continue;
-          }
-          const cell = sheet[XLSX.utils.encode_cell({ r: R, c: C })];
-          if (!cell || cell.f) {
-            row.push(null);
-            continue;
-          }
-          row.push(cell.v);
-        }
-        rows.push(row);
-      }
-
-      if (!rows.length) {
-        console.warn(`⚠️ Aba '${sheetName}' sem linhas.`);
-        continue;
-      }
-
-      // Busca cabeçalho nas primeiras 10 linhas
-      let headerRow = -1;
-      let indices = {};
-      let lastHeaderIndices = {};
-      for (let i = 0; i < Math.min(10, rows.length); i++) {
-        const row = rows[i];
-        const headerIndices = {
-          codigoML: getColIndex(row, aliases.codigoML),
-          descricao: getColIndex(row, aliases.descricao),
-          quantidade: getColIndex(row, aliases.quantidade),
-          rz: getColIndex(row, aliases.rz),
-          preco: getColIndex(row, aliases.preco),
-        };
-        lastHeaderIndices = headerIndices;
-
-        if (
-          headerIndices.codigoML !== -1 &&
-          headerIndices.quantidade !== -1 &&
-          headerIndices.rz !== -1
-        ) {
-          headerRow = i;
-          indices = headerIndices;
-          console.log(`📄 Usando aba '${sheetName}' com cabeçalho na linha ${i + 1}`);
-          break;
-        }
-      }
-
-      const missingFields = ['codigoML', 'quantidade', 'rz'].filter(
-        f => lastHeaderIndices[f] === -1,
-      );
-
-      if (headerRow === -1) {
-        lastMissingFields = missingFields;
-        console.warn(
-          `⚠️ Cabeçalho não detectado nas primeiras linhas da aba '${sheetName}'.`,
-          missingFields,
-        );
-        continue;
-      }
-
-      const headerCols = rows[headerRow];
-      const dataRows = rows
-        .slice(headerRow + 1)
-        .filter(r => r && r.some(c => c !== null && String(c).trim() !== ''));
-
-      console.log('✅ Colunas detectadas:', headerCols);
-      console.log('🔢 Total de linhas:', dataRows.length);
-      console.log('🔍 Primeira linha da planilha:', dataRows[0]);
-
-      if (indices.codigoML === -1) {
-        console.warn('⚠️ Nenhuma coluna de código de produto detectada.');
-      }
-      if (indices.rz === -1) {
-        console.warn('⚠️ Nenhuma coluna de RZ (palete) detectada.');
-      }
-
-      const produtos = [];
-      const ignored = [];
-      for (let i = 0; i < dataRows.length; i++) {
-        const row = dataRows[i];
-        const codigoML = row[indices.codigoML]
-          ? String(row[indices.codigoML]).trim()
-          : '';
-        const descricao =
-          indices.descricao !== -1 && row[indices.descricao]
-            ? String(row[indices.descricao]).trim()
-            : '';
-        const quantidadeRaw = row[indices.quantidade];
-        let quantidade = Number(quantidadeRaw);
-        if (!quantidade || Number.isNaN(quantidade)) quantidade = 1;
-        const rz = row[indices.rz] ? String(row[indices.rz]).trim() : '';
-        const rowObj = {};
-        headerCols.forEach((h, idx) => {
-          rowObj[h] = row[idx];
+    let headerRow = -1;
+    let colMap = {};
+    for (let i = 0; i < rows.length; i++) {
+      const header = rows[i];
+      const map = {};
+      header.forEach((h, idx) => {
+        Object.entries(headerAliases).forEach(([key, rx]) => {
+          if (rx.test(String(h))) map[key] = idx;
         });
-        const rawUnit = pickByRegex(rowObj, RX_UNIT);
-        const rawTotal = pickByRegex(rowObj, RX_TOTAL);
-        const preco = toNumberBR(rawUnit);
-        let valorTotal = toNumberBR(rawTotal);
-        if (!valorTotal && preco) valorTotal = preco * quantidade;
-
-        if (!codigoML || !descricao || !rz) {
-          ignored.push(headerRow + i + 2);
-          continue;
-        }
-
-        produtos.push({ codigoML, descricao, quantidade, rz, preco, valorTotal });
+      });
+      if (Object.keys(map).length) {
+        headerRow = i;
+        colMap = map;
+        break;
       }
-
-      const verbose =
-        typeof import.meta !== 'undefined' &&
-        import.meta.env &&
-        (import.meta.env.VERBOSE === '1' || import.meta.env.CONFER_VERBOSE === '1');
-      if (ignored.length && verbose) {
-        console.warn(
-          `${ignored.length} linha(s) ignoradas por falta de dados essenciais: ${ignored.join(', ')}`,
-        );
-      }
-
-      const rzs = Array.from(new Set(produtos.map(p => p.rz)));
-      return {
-        produtos,
-        totalItens: produtos.length,
-        rzs,
-        headerRow: headerRow + 1,
-        missingFields: [],
-        rzList,
-      };
+    }
+    if (headerRow === -1) {
+      DBG('Cabeçalho não encontrado');
+      return { rzList: [], itemsByRZ: {} };
     }
 
-    console.warn('⚠️ Planilha lida, mas está vazia ou sem colunas esperadas.');
-    return { produtos: [], totalItens: 0, rzs: [], headerRow: null, missingFields: lastMissingFields, rzList };
+    const dataRows = rows.slice(headerRow + 1).filter(r => r.some(c => String(c).trim() !== ''));
+    const linhas = [];
+    for (const row of dataRows) {
+      const get = key => row[colMap[key]];
+      const codigoRZRaw = get('codigoRZ');
+      const m = String(codigoRZRaw || '').match(/RZ\s*[-–—_:]?\s*(\d+)/i);
+      const codigoRZ = m ? `RZ-${m[1]}` : '';
+      const valorUnit = Number(String(get('valorUnit')).replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.')) || 0;
+      const valorTotal = Number(String(get('valorTotal')).replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.')) || 0;
+      const qtd = Number(get('qtd')) || 0;
+      linhas.push({
+        tipo: get('tipo'),
+        enderecoWMS: get('enderecoWMS'),
+        codigoML: get('codigoML'),
+        codigoRZ,
+        codigoP7: get('codigoP7'),
+        qtd,
+        descricao: get('descricao'),
+        seller: get('seller'),
+        vertical: get('vertical'),
+        valorUnit,
+        valorTotal,
+        categoria: get('categoria'),
+        subcategoria: get('subcategoria'),
+      });
+    }
+
+    const itemsByRZ = {};
+    for (const o of linhas) {
+      if (!o.codigoRZ) continue;
+      (itemsByRZ[o.codigoRZ] ||= []).push(o);
+    }
+
+    store.state.rzList = Object.keys(itemsByRZ).sort();
+    store.state.itemsByRZ = itemsByRZ;
+    if (!store.state.currentRZ) store.state.currentRZ = store.state.rzList[0] || null;
+
+    return { rzList: store.state.rzList, itemsByRZ };
   } catch (error) {
     console.error('❌ Erro ao processar planilha:', error);
-    return { produtos: [], totalItens: 0, rzs: [], headerRow: null, missingFields: [], rzList: store.state?.rzList || [] };
+    return { rzList: store.state?.rzList || [], itemsByRZ: store.state?.itemsByRZ || {} };
   }
 }
 

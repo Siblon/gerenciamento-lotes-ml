@@ -1,9 +1,25 @@
 // src/components/app.js
 import { iniciarLeitura, pararLeitura } from '../utils/scan.js';
 import { processarPlanilha } from '../utils/excel.js';
-import store, { init as storeInit, selectRZ } from '../store/index.js';
+import store, { init as storeInit } from '../store/index.js';
 
 const log = (...a) => console.log('[CONF-DBG]', ...a);
+
+function getCountsForRZ(rz) {
+  const items = store?.state?.itemsByRZ?.[rz] || [];
+  const conferidos = 0;
+  const faltantes = items.length;
+  return { conferidos, faltantes };
+}
+
+function renderCounts() {
+  const rz = store?.state?.currentRZ;
+  const { conferidos, faltantes } = getCountsForRZ(rz);
+  const elConf = document.getElementById('count-conferidos');
+  const elFalt = document.getElementById('count-faltantes');
+  if (elConf) elConf.textContent = String(conferidos);
+  if (elFalt) elFalt.textContent = String(faltantes);
+}
 const setBoot = (msg) => {
   const st = document.getElementById('boot-status');
   if (st) st.innerHTML = `<strong>Boot:</strong> ${msg}`;
@@ -41,45 +57,38 @@ export function initApp() {
 
     try {
       const buf = (f.arrayBuffer ? await f.arrayBuffer() : f);
-      const { rzList } = await processarPlanilha(buf);
-      const list = store?.state?.rzList || rzList || [];
-      log('RZs carregados:', list.length, list);
+        const { rzList } = await processarPlanilha(buf);
+        const list = store?.state?.rzList || rzList || [];
+        log('RZs carregados:', list.length, list);
 
-      renderRZOptions(rzSelect, list);
+        renderRZOptions(rzSelect, list);
 
       // auto‑seleciona se só houver 1 RZ
-      if (list.length === 1) {
-        rzSelect.value = list[0];
-        if (store && typeof store.dispatch === 'function') {
-          store.dispatch(selectRZ(list[0]));
-        } else {
+        if (list.length === 1) {
+          rzSelect.value = list[0];
           if (!store.state) store.state = {};
           store.state.currentRZ = list[0];
+          log('RZ auto‑selecionado:', list[0]);
         }
-        log('RZ auto‑selecionado:', list[0]);
-      }
 
-      if (typeof window.render === 'function') window.render();
-      setBoot(`Planilha OK (${list.length} RZs) ✅`);
-    } catch (err) {
+        renderCounts();
+        if (typeof window.render === 'function') window.render();
+        setBoot(`Planilha OK (${list.length} RZs) ✅`);
+      } catch (err) {
       console.error('Falha processarPlanilha', err);
       setBoot('Erro na planilha ❌ (veja Console)');
     }
   });
 
   // ===== Seleção de RZ =====
-  rzSelect.addEventListener('change', (e) => {
-    const rz = e.target.value || null;
-    if (store && typeof store.dispatch === 'function') {
-      store.dispatch(selectRZ(rz));
-    } else {
-      // fallback para store simples
+    rzSelect.addEventListener('change', (e) => {
+      const rz = e.target.value || null;
       if (!store.state) store.state = {};
       store.state.currentRZ = rz;
-    }
-    log('RZ selecionado:', rz);
-    if (typeof window.render === 'function') window.render();
-  });
+      log('RZ selecionado:', rz);
+      renderCounts();
+      if (typeof window.render === 'function') window.render();
+    });
 
   // ===== Iniciar scanner =====
   btnAuto.addEventListener('click', async () => {
