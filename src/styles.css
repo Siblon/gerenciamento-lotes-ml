@@ -1,0 +1,38 @@
+@import './css/style.css';
+
+.layout-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 1024px) {
+  .layout-grid {
+    grid-template-areas:
+      "importacao scanner"
+      "acoes resultados";
+    grid-template-columns: 1fr 1fr;
+  }
+  #card-importacao { grid-area: importacao; }
+  #card-acoes { grid-area: acoes; }
+  #card-scanner { grid-area: scanner; }
+  #card-resultados { grid-area: resultados; }
+}
+
+@media (max-width: 1023px) {
+  .layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card.collapsed .card-body {
+  display: none;
+}
+
+#preview {
+  width: 100%;
+  max-height: 360px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #000;
+  object-fit: cover;
+}
