@@ -74,14 +74,17 @@ export function addConferido(rz, sku, payload = {}) {
   const map = (state.conferidosByRZSku[rz] ||= {});
   const total = state.totalByRZSku[rz]?.[sku] || 0;
   const qty = Math.max(1, parseInt(payload.qty ?? 1, 10));
-  const existente = map[sku] || { qtd: 0, precoAjustado: null, observacao: null, status: null };
+  const existente = map[sku] || { qtd: 0, precoAjustado: null, observacao: null, status: null, avariados: 0 };
   const restante = Math.max(0, total - existente.qtd);
   const efetivo = Math.min(qty, restante);
   if (efetivo <= 0) return;
   existente.qtd += efetivo;
   if (payload.precoAjustado !== undefined) existente.precoAjustado = payload.precoAjustado;
   if (payload.observacao) existente.observacao = payload.observacao;
-  if (payload.avaria) existente.status = 'avariado';
+  if (payload.avaria) {
+    existente.status = 'avariado';
+    existente.avariados = (existente.avariados || 0) + efetivo;
+  }
   map[sku] = existente;
   state.movimentos.push({ ts: Date.now(), rz, sku, qty: efetivo, precoAjustado: existente.precoAjustado, observacao: existente.observacao, status: existente.status });
   updateContadores(rz);
