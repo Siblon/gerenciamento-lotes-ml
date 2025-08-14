@@ -1,4 +1,6 @@
 // src/utils/scan.js
+// TODO: limitar tamanho/visibilidade do <video> de pré-visualização para evitar uso excessivo de espaço
+// TODO: informar ao usuário (ex.: aria-live) quando scanner iniciar/parar para acessibilidade
 let reader = null;
 let currentStream = null;
 let ZXing = null;
