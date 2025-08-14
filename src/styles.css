@@ -18,10 +18,11 @@
   }
 }
 
-/* Collapsible cards */
-.card.collapsed .card-body {
-  display: none;
-}
+/* Scanner fechado: esconde tudo dentro do card */
+#card-scanner.collapsed .card-body { display: none; }
+
+/* Scanner aberto mas desligado: oculta o <video> */
+#card-scanner:not(.is-on) #preview { display: none; }
 
 /* Scanner preview */
 #preview {
@@ -38,23 +39,12 @@
     max-height: 420px;
   }
 }
-#card-scanner:not(.is-on) #preview {
-  display: none;
-}
 
-/* Boot status box */
-#boot-status {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--card);
-  box-shadow: var(--shadow);
-  font-size: 0.75rem;
-  line-height: 1.2;
-  z-index: 9999;
+/* Status flutuante (remover estilo inline do HTML) */
+#boot-status{
+  position:fixed; right:10px; bottom:10px; z-index:9999;
+  padding:6px 10px; border:1px solid var(--border); border-radius:8px;
+  background:var(--card); box-shadow:var(--shadow); font:12px/1.2 var(--font);
 }
 #boot-status button {
   margin-left: var(--space-2);

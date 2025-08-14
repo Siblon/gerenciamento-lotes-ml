@@ -10,6 +10,68 @@ function updateBoot(msg) {
   if (el) el.innerHTML = `<strong>Boot:</strong> ${msg} <button id="btn-debug" type="button" class="btn ghost">Debug</button>`;
 }
 
+// ---- SCANNER: controle de UI + getUserMedia ----
+let __stream = null;
+
+async function startScanner() {
+  const video = document.getElementById('preview');
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error('getUserMedia não suportado');
+  }
+  const constraints = { video: { facingMode: 'environment' } };
+  __stream = await navigator.mediaDevices.getUserMedia(constraints);
+  if (video) {
+    video.srcObject = __stream;
+    await video.play();
+  }
+}
+
+function stopScanner() {
+  try {
+    __stream?.getTracks()?.forEach(t => t.stop());
+    __stream = null;
+  } catch {}
+  const video = document.getElementById('preview');
+  if (video) {
+    try { video.pause?.(); } catch {}
+    video.srcObject = null;
+  }
+}
+
+function wireScannerUI() {
+  const card = document.getElementById('card-scanner');
+  const openBtn = document.getElementById('btn-open-scanner');
+  const toggleBtn = document.getElementById('btn-scan-toggle');
+
+  openBtn?.addEventListener('click', () => {
+    card?.classList.remove('collapsed');
+    toggleBtn?.focus();
+  });
+
+  toggleBtn?.addEventListener('click', async () => {
+    if (!card) return;
+    const willTurnOn = !card.classList.contains('is-on');
+    if (willTurnOn) {
+      try {
+        await startScanner();
+        card.classList.add('is-on');
+        toggleBtn.textContent = 'Parar Scanner';
+        updateBoot('Scanner ligado ✅');
+      } catch (e) {
+        console.error('[SCAN] falha ao iniciar', e);
+        updateBoot('Falha ao iniciar scanner ❌ (veja Console)');
+        card.classList.remove('is-on');
+        toggleBtn.textContent = 'Ativar Scanner';
+      }
+    } else {
+      stopScanner();
+      card.classList.remove('is-on');
+      toggleBtn.textContent = 'Ativar Scanner';
+      updateBoot('Scanner desligado ⏹️');
+    }
+  });
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   console.log('[BOOT] DOM pronto → initApp()');
   updateBoot('DOM pronto, iniciando app…');
@@ -54,30 +116,48 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Scanner UI controls
-  const scannerCard = document.getElementById('card-scanner');
-  const openScannerBtn = document.getElementById('btn-open-scanner');
-  const scanToggleBtn = document.getElementById('btn-scan-toggle');
-  const preview = document.getElementById('preview');
+    wireScannerUI();
 
-  if (scannerCard && openScannerBtn && scanToggleBtn) {
-    openScannerBtn.addEventListener('click', () => {
-      scannerCard.classList.remove('collapsed');
-      openScannerBtn.setAttribute('aria-expanded', 'true');
-      scanToggleBtn.focus();
+    // ---- Delegação para "Recolher/Expandir" ----
+    document.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('button[data-target]');
+      if (!btn) return;
+      const targetId = btn.getAttribute('data-target');
+      const sec = document.getElementById(targetId);
+      if (!sec) return;
+      sec.classList.toggle('collapsed');
+      btn.textContent = sec.classList.contains('collapsed') ? 'Expandir' : 'Recolher';
     });
 
-    scanToggleBtn.addEventListener('click', () => {
-      const isOn = scannerCard.classList.toggle('is-on');
-      scanToggleBtn.textContent = isOn ? 'Parar Scanner' : 'Ativar Scanner';
-      scanToggleBtn.setAttribute('aria-pressed', String(isOn));
-      if (!isOn && preview) {
-        if (typeof preview.pause === 'function') preview.pause();
-        preview.srcObject = null;
+    // ---- Registrar com quantidade ----
+    const regBtn = document.getElementById('btn-registrar');
+    regBtn?.addEventListener('click', () => {
+      const sku = (document.getElementById('codigo-ml')?.value || '').trim();
+      const price = parseFloat(document.getElementById('preco-ajustado')?.value || '') || undefined;
+      const note = document.getElementById('observacao')?.value || '';
+
+      const pendente = Number(window.store?.findInRZ?.(window.store.state.rzAtual, sku)?.qtd ?? 1);
+
+      let qty = 1;
+      if (pendente > 1) {
+        const entrada = window.prompt(`Quantidade a registrar (restantes: ${pendente})`, '1');
+        const n = parseInt(entrada || '1', 10);
+        qty = Number.isFinite(n) ? Math.max(1, Math.min(pendente, n)) : 1;
+      }
+
+      if (typeof window.store?.conferir === 'function') {
+        try {
+          window.store.conferir(sku, { qty, price, note });
+          updateBoot(`Registrado ${qty} un. de ${sku} ✅`);
+        } catch (e) {
+          console.error('[REG] falha ao conferir', e);
+          updateBoot('Falha ao registrar ❌ (veja Console)');
+        }
+      } else {
+        console.warn('store.conferir não encontrado');
       }
     });
-  }
-});
+  });
 
 // para testar no Console
 window.__appPing = () => console.log('pong from app');
