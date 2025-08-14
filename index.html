@@ -8,7 +8,12 @@
 <body>
   <main class="container">
     <header class="toolbar">
-      <h1>Conferência de Lotes <span id="hdr-conferidos">0 de 0 conferidos</span></h1>
+      <h1>
+        Conferência de Lotes <span id="hdr-conferidos">0 de 0 conferidos</span>
+        <span id="chip-palete" class="chip-info" style="margin-left:8px;" hidden>
+          Preço médio do palete: <span id="val-palete">R$ 0,00</span>
+        </span>
+      </h1>
       <div class="actions">
         <button id="helpBtn" title="Ajuda/Atalhos" aria-label="Ajuda" class="btn ghost">?</button>
       </div>
@@ -51,9 +56,20 @@
               <label for="preco-ajustado" class="label">Preço ajustado</label>
               <input type="number" id="preco-ajustado" placeholder="Preço ajustado" step="0.01" class="input" />
             </div>
+
             <div class="field">
-              <label for="observacao" class="label">Observação</label>
-              <input type="text" id="observacao" placeholder="Observação" class="input" />
+              <label for="obs-preset" class="label">Observação (pré-definida)</label>
+              <select id="obs-preset" class="input" aria-label="Observação padrão">
+                <option value="">— Nenhuma —</option>
+                <option value="excedente">Produto excedente (não listado)</option>
+                <option value="avaria">Avaria grave (descartar)</option>
+                <option value="nao_encontrado">Não encontrado no RZ</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="observacao" class="label">Observação (texto livre)</label>
+              <input type="text" id="observacao" placeholder="Escreva um detalhe (opcional)" class="input" />
             </div>
           </div>
 
@@ -103,7 +119,8 @@
                 <h2>Conferidos <span id="count-conferidos">0</span></h2>
                 <div class="actions">
                   <select id="limit-conferidos" class="input" aria-label="Limite de conferidos">
-                    <option>50</option>
+                    <option>25</option>
+                    <option selected>50</option>
                     <option>100</option>
                     <option>200</option>
                   </select>
@@ -133,7 +150,8 @@
                 <h2>Pendentes <span id="count-pendentes">0</span></h2>
                 <div class="actions">
                   <select id="limit-pendentes" class="input" aria-label="Limite de pendentes">
-                    <option>50</option>
+                    <option>25</option>
+                    <option selected>50</option>
                     <option>100</option>
                     <option>200</option>
                   </select>
@@ -228,6 +246,26 @@
       <menu>
         <button value="cancel" class="btn ghost">Cancelar</button>
         <button id="exc-salvar" value="default" class="btn primary">Salvar excedente</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <button id="btn-settings" class="btn ghost" aria-label="Configurações" title="Configurações" style="position:fixed;right:12px;top:12px">⚙️</button>
+  <dialog id="dlg-settings">
+    <form method="dialog" class="card" style="min-width:320px">
+      <h3>Configurações</h3>
+      <div class="field">
+        <label><input type="checkbox" id="cfg-hide-scanner" /> Ocultar painel do scanner</label>
+      </div>
+      <div class="field">
+        <label for="cfg-page-size" class="label">Itens por seção (padrão)</label>
+        <select id="cfg-page-size" class="input">
+          <option>25</option><option selected>50</option><option>100</option><option>200</option>
+        </select>
+      </div>
+      <menu style="display:flex;gap:8px;justify-content:flex-end">
+        <button value="cancel" class="btn ghost">Cancelar</button>
+        <button value="default" class="btn primary">Salvar</button>
       </menu>
     </form>
   </dialog>

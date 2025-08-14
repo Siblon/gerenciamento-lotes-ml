@@ -14,7 +14,7 @@ const state = {
   metaByRZSku: {},        // { [rz]: { [sku]: { descricao, precoMedio } } }
 
     // conferidos em runtime (pode acumular quantidade)
-    conferidosByRZSku: {},  // { [rz]: { [sku]: { qtd, precoAjustado, observacao } } }
+    conferidosByRZSku: {},  // { [rz]: { [sku]: { qtd, precoAjustado, observacao, status } } }
 
   // contadores por RZ
   contadores: {},         // { [rz]: { conferidos, total } }
@@ -74,15 +74,16 @@ export function addConferido(rz, sku, payload = {}) {
   const map = (state.conferidosByRZSku[rz] ||= {});
   const total = state.totalByRZSku[rz]?.[sku] || 0;
   const qty = Math.max(1, parseInt(payload.qty ?? 1, 10));
-  const existente = map[sku] || { qtd: 0, precoAjustado: null, observacao: null };
+  const existente = map[sku] || { qtd: 0, precoAjustado: null, observacao: null, status: null };
   const restante = Math.max(0, total - existente.qtd);
   const efetivo = Math.min(qty, restante);
   if (efetivo <= 0) return;
   existente.qtd += efetivo;
   if (payload.precoAjustado !== undefined) existente.precoAjustado = payload.precoAjustado;
   if (payload.observacao) existente.observacao = payload.observacao;
+  if (payload.avaria) existente.status = 'avariado';
   map[sku] = existente;
-  state.movimentos.push({ ts: Date.now(), rz, sku, qty: efetivo, precoAjustado: existente.precoAjustado, observacao: existente.observacao });
+  state.movimentos.push({ ts: Date.now(), rz, sku, qty: efetivo, precoAjustado: existente.precoAjustado, observacao: existente.observacao, status: existente.status });
   updateContadores(rz);
 }
 
@@ -162,9 +163,14 @@ export function dispatch(action){
 
 export function conferir(sku, opts = {}) {
   const rz = state.rzAtual;
-  addConferido(rz, sku, { qty: opts.qty, precoAjustado: opts.price, observacao: opts.note });
+  addConferido(rz, sku, { qty: opts.qty, precoAjustado: opts.price, observacao: opts.note, avaria: opts.avaria });
 }
 
-const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir };
+export function registrarExcedente({ sku, qty, price, note }) {
+  const rz = state.rzAtual;
+  addExcedente(rz, { sku, descricao: '', qtd: qty, preco: price, obs: note, fonte: 'preset' });
+}
+
+const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir, registrarExcedente };
 
 export default store;

@@ -103,7 +103,7 @@ export function initActionsPanel(render){
         const m = meta[sku] || {};
         const qtd = tot[sku] || 0;
         const preco = Number(m.precoMedio || 0);
-        return { SKU: sku, Descrição: m.descricao || '', Qtd: qtd, 'Preço Médio (R$)': preco, 'Valor Total (R$)': qtd*preco, 'Observação': confMap[sku]?.observacao || '' };
+        return { SKU: sku, Descrição: m.descricao || '', Qtd: qtd, 'Preço Médio (R$)': preco, 'Valor Total (R$)': qtd*preco, Observação: confMap[sku]?.observacao || '' };
       });
       const pendentes = Object.keys(tot).filter(sku => !confMap[sku]).map(sku => {
         const m = meta[sku] || {};
@@ -112,7 +112,18 @@ export function initActionsPanel(render){
         return { SKU: sku, Descrição: m.descricao || '', Qtd: qtd, 'Preço Médio (R$)': preco, 'Valor Total (R$)': qtd*preco };
       });
       const excedentes = (store.state.excedentes[rz] || []).map(it=>({ SKU: it.sku, Descrição: it.descricao || '', Qtd: it.qtd, 'Preço Médio (R$)': Number(it.preco || 0), 'Valor Total (R$)': Number(it.qtd||0) * Number(it.preco||0), Observação: it.obs || '' }));
-      exportarConferencia({ rz, conferidos, pendentes, excedentes });
+
+      const sumQtd = arr => arr.reduce((s,it)=>s + Number(it.Qtd||0),0);
+      const sumVal = arr => arr.reduce((s,it)=>s + Number(it['Valor Total (R$)']||0),0);
+      const resumoRZ = [{
+        RZ: rz,
+        Conferidos: sumQtd(conferidos),
+        Pendentes: sumQtd(pendentes),
+        Excedentes: sumQtd(excedentes),
+        'Valor Total (R$)': sumVal(conferidos) + sumVal(pendentes) + sumVal(excedentes),
+      }];
+
+      exportarConferencia({ conferidos, pendentes, excedentes, resumoRZ });
       toast('Conferência finalizada', 'info');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch(e) {

@@ -9,7 +9,8 @@ function rowsConferidos(rz){
     const m = meta[sku] || {};
     const qtd = tot[sku] || 0;
     const preco = Number(m.precoMedio||0);
-    return { sku, descricao: m.descricao||'', qtd, preco, total: qtd*preco };
+    const status = store.state.conferidosByRZSku[rz]?.[sku]?.status;
+    return { sku, descricao: m.descricao||'', qtd, preco, total: qtd*preco, status };
   }).sort((a,b)=> b.qtd - a.qtd);
 }
 
@@ -48,7 +49,7 @@ export function renderResults(){
   const tbExc  = document.querySelector('#excedentesTable');
   if (tbConf) {
     tbConf.innerHTML = confRows.length
-      ? confRows.map(r=>`<tr data-sku="${r.sku}"><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco.toFixed(2)}</td><td class="num">${r.total.toFixed(2)}</td></tr>`).join('')
+      ? confRows.map(r=>`<tr data-sku="${r.sku}"${r.status==='avariado'?' class="avariado"':''}><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco.toFixed(2)}</td><td class="num">${r.total.toFixed(2)}</td></tr>`).join('')
       : `<tr><td colspan="5" style="text-align:center;color:#777">Nenhum item conferido</td></tr>`;
   }
   if (tbPend) {
@@ -64,9 +65,10 @@ export function renderResults(){
   }
   const cont = store.state.contadores[rz] || { conferidos:0, total:0 };
   const hdr = document.getElementById('hdr-conferidos');
-  if (hdr) hdr.textContent = `Conferência de Lotes ${cont.conferidos} de ${cont.total} conferidos`;
+  if (hdr) hdr.textContent = `${cont.conferidos} de ${cont.total} conferidos`;
   const bc = document.getElementById('count-conferidos'); if (bc) bc.textContent = cont.conferidos;
   const bp = document.getElementById('count-pendentes'); if (bp) bp.textContent = cont.total - cont.conferidos;
   const be = document.getElementById('excedentesCount'); if (be) be.textContent = cont.excedentes || 0;
   updateToggleLabels();
+  window.updateChipPalete?.();
 }
