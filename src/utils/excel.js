@@ -54,6 +54,7 @@ function buildHeaderMap(headerCells) {
     if (/valor\s*tot/.test(n)) map.valorTotal = idx;
     if (/^categoria$/.test(n)) map.categoria = idx;
     if (/subcat/.test(n)) map.subcategoria = idx;
+    if (n.replace(/\./g, '') === 'ncm' || n === 'ncm_code') map.ncm = idx;
   });
   return map;
 }
@@ -65,6 +66,11 @@ function parseNumberBR(v) {
   const t = s.replace(/\./g, '').replace(',', '.');
   const n = Number(t);
   return Number.isFinite(n) ? n : 0;
+}
+
+function sanitizeNCM(n) {
+  const onlyDigits = String(n ?? '').replace(/\D/g, '');
+  return /^\d{8}$/.test(onlyDigits) ? onlyDigits : null;
 }
 
 function normalizeRZ(v) {
@@ -123,6 +129,7 @@ export async function processarPlanilha(input) {
         valorTotal: parseNumberBR(get('valorTotal')),
         categoria: get('categoria'),
         subcategoria: get('subcategoria'),
+        ncm: sanitizeNCM(get('ncm')),
         _rowIndex: i + 1,
       };
       if (obj.codigoRZ) items.push(obj);
@@ -146,8 +153,9 @@ export async function processarPlanilha(input) {
 
         const descricao = String(it.descricao || '').trim();
         const precoMedio = Number(it.valorUnit || 0);
+        const ncm = it.ncm || null;
         (metaByRZSku[rz] ||= {});
-        if (!metaByRZSku[rz][sku]) metaByRZSku[rz][sku] = { descricao, precoMedio };
+        if (!metaByRZSku[rz][sku]) metaByRZSku[rz][sku] = { descricao, precoMedio, ncm };
       }
       totalByRZSku[rz] = map;
     }
