@@ -13,8 +13,8 @@ const state = {
   // metadados por RZ → SKU (vindo do Excel)
   metaByRZSku: {},        // { [rz]: { [sku]: { descricao, precoMedio } } }
 
-  // conferidos em runtime (sem duplicidade)
-  conferidosByRZSku: {},  // { [rz]: { [sku]: { precoAjustado, observacao } } }
+    // conferidos em runtime (pode acumular quantidade)
+    conferidosByRZSku: {},  // { [rz]: { [sku]: { qtd, precoAjustado, observacao } } }
 
   // contadores por RZ
   contadores: {},         // { [rz]: { conferidos, total } }
@@ -32,8 +32,10 @@ const state = {
 };
 
 function updateContadores(rz){
-  const total = Object.keys(state.totalByRZSku[rz] || {}).length;
-  const conf = Object.keys(state.conferidosByRZSku[rz] || {}).length;
+  const totalMap = state.totalByRZSku[rz] || {};
+  const confMap = state.conferidosByRZSku[rz] || {};
+  const total = Object.keys(totalMap).length;
+  const conf = Object.keys(confMap).filter(sku => (confMap[sku]?.qtd || 0) >= (totalMap[sku] || 0)).length;
   const exc  = (state.excedentes[rz] || []).length;
   state.contadores[rz] = { conferidos: conf, total, excedentes: exc };
 }
@@ -70,9 +72,17 @@ export function totalPendentesCount(rz) {
 // evita duplicidade
 export function addConferido(rz, sku, payload = {}) {
   const map = (state.conferidosByRZSku[rz] ||= {});
-  if (map[sku]) return; // já conferido
-  map[sku] = { precoAjustado: payload.precoAjustado || null, observacao: payload.observacao || null };
-  state.movimentos.push({ ts: Date.now(), rz, sku, ...map[sku] });
+  const total = state.totalByRZSku[rz]?.[sku] || 0;
+  const qty = Math.max(1, parseInt(payload.qty ?? 1, 10));
+  const existente = map[sku] || { qtd: 0, precoAjustado: null, observacao: null };
+  const restante = Math.max(0, total - existente.qtd);
+  const efetivo = Math.min(qty, restante);
+  if (efetivo <= 0) return;
+  existente.qtd += efetivo;
+  if (payload.precoAjustado !== undefined) existente.precoAjustado = payload.precoAjustado;
+  if (payload.observacao) existente.observacao = payload.observacao;
+  map[sku] = existente;
+  state.movimentos.push({ ts: Date.now(), rz, sku, qty: efetivo, precoAjustado: existente.precoAjustado, observacao: existente.observacao });
   updateContadores(rz);
 }
 
@@ -81,23 +91,25 @@ export function getSkuInRZ(rz, sku){
 }
 
 export function isConferido(rz, sku){
-  return !!(state.conferidosByRZSku[rz] || {})[sku];
+  const tot = state.totalByRZSku[rz]?.[sku] || 0;
+  const conf = state.conferidosByRZSku[rz]?.[sku]?.qtd || 0;
+  return conf >= tot && tot > 0;
 }
 
 export function findInRZ(rz, sku){
   const tot = state.totalByRZSku[rz] || {};
-  const conf = state.conferidosByRZSku[rz] || {};
-  if (!tot[sku] || conf[sku]) return null;
+  if (!tot[sku]) return null;
+  const confQtd = state.conferidosByRZSku[rz]?.[sku]?.qtd || 0;
+  if (confQtd >= tot[sku]) return null;
   const meta = state.metaByRZSku[rz]?.[sku] || {};
-  return { sku, descricao: meta.descricao || '', qtd: tot[sku], precoMedio: meta.precoMedio };
+  return { sku, descricao: meta.descricao || '', qtd: tot[sku] - confQtd, precoMedio: meta.precoMedio };
 }
 
 export function findConferido(rz, sku){
-  const conf = state.conferidosByRZSku[rz] || {};
-  if (!conf[sku]) return null;
-  const tot = state.totalByRZSku[rz] || {};
+  const conf = state.conferidosByRZSku[rz]?.[sku];
+  if (!conf) return null;
   const meta = state.metaByRZSku[rz]?.[sku] || {};
-  return { sku, descricao: meta.descricao || '', qtd: tot[sku] || 0, precoMedio: meta.precoMedio };
+  return { sku, descricao: meta.descricao || '', qtd: conf.qtd || 0, precoMedio: meta.precoMedio };
 }
 
 export function findEmOutrosRZ(sku){
@@ -143,11 +155,16 @@ export function moveItemEntreRZ(origem, destino, sku, qtd=1){
 
 export function dispatch(action){
   if (action?.type === 'REGISTRAR'){
-    const { rz, sku, precoAjustado, observacao } = action;
-    addConferido(rz, sku, { precoAjustado, observacao });
+    const { rz, sku, qty, precoAjustado, observacao } = action;
+    addConferido(rz, sku, { qty, precoAjustado, observacao });
   }
 }
 
-const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ };
+export function conferir(sku, opts = {}) {
+  const rz = state.rzAtual;
+  addConferido(rz, sku, { qty: opts.qty, precoAjustado: opts.price, observacao: opts.note });
+}
+
+const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir };
 
 export default store;
