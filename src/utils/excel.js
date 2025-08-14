@@ -205,33 +205,25 @@ export function exportResult({
   XLSX.writeFile(wb, filename);
 }
 
-export function exportarConferencia({ rz, conferidos, pendentes, excedentes }) {
-  const soma = arr => arr.reduce((a,b)=>a + Number(b['Valor Total (R$)']||0),0);
-  const sumQtd = arr => arr.reduce((a,b)=>a + Number(b.Qtd||0),0);
-  const resumo = {
-    qtd_conferidos: sumQtd(conferidos),
-    valor_conferidos: soma(conferidos),
-    qtd_pendentes: sumQtd(pendentes),
-    valor_pendentes: soma(pendentes),
-    qtd_excedentes: sumQtd(excedentes),
-    valor_excedentes: soma(excedentes),
-  };
-  resumo.qtd_total = resumo.qtd_conferidos + resumo.qtd_pendentes + resumo.qtd_excedentes;
-  resumo.valor_total = resumo.valor_conferidos + resumo.valor_pendentes + resumo.valor_excedentes;
-
+export function exportarConferencia({ conferidos, pendentes, excedentes, resumoRZ }) {
   const wb = XLSX.utils.book_new();
-  const wsResumo = XLSX.utils.json_to_sheet([resumo]);
-  XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo');
 
-  const wsConf = XLSX.utils.json_to_sheet(conferidos);
-  XLSX.utils.book_append_sheet(wb, wsConf, 'Conferidos');
+  function addSheet(nome, data, headers) {
+    const ws = XLSX.utils.json_to_sheet(data, { header: headers });
+    headers.forEach((h, i) => {
+      const addr = XLSX.utils.encode_cell({ r:0, c:i });
+      ws[addr].s = { font: { bold: true } };
+    });
+    ws['!cols'] = headers.map(h => ({ wch: Math.max(12, h.length + 2) }));
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
 
-  const wsPend = XLSX.utils.json_to_sheet(pendentes);
-  XLSX.utils.book_append_sheet(wb, wsPend, 'Pendentes');
+    XLSX.utils.book_append_sheet(wb, ws, nome);
+  }
 
-  const wsExc = XLSX.utils.json_to_sheet(excedentes || []);
-  XLSX.utils.book_append_sheet(wb, wsExc, 'Excedentes');
+  addSheet('Conferidos', conferidos, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
+  addSheet('Pendentes', pendentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
+  addSheet('Excedentes', excedentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
+  addSheet('Resumo RZ', resumoRZ, ['RZ','Conferidos','Pendentes','Excedentes','Valor Total (R$)']);
 
-  const ts = new Date().toISOString().slice(0,16).replace('T','_').replace(':','');
-  XLSX.writeFile(wb, `conferencia_${rz}_${ts}.xlsx`);
+  XLSX.writeFile(wb, `conferencia_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
