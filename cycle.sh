@@ -26,14 +26,12 @@ else
     echo "🏗 Nenhuma alteração de código → Pulando build"
 fi
 
-# Perguntar mensagem do commit
-read -p "📝 Digite a mensagem do commit: " mensagem
+# Mensagem de commit automática
+COMMIT_MSG="update $(date +'%Y-%m-%d %H:%M:%S')"
+echo "📝 Commitando alterações com mensagem: '$COMMIT_MSG'"
 
-# Adicionar e commitar
 git add .
-git commit -m "$mensagem"
-
-# Push pro GitHub
+git commit -m "$COMMIT_MSG"
 git push origin main
 
 # Função para verificar se preview está rodando
