@@ -86,6 +86,13 @@ export function initActionsPanel(render){
     }
   });
 
+  inputSku?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      btnReg?.click();
+    }
+  });
+
   btnFinal?.addEventListener('click', () => {
     try {
       const rz = store.state.rzAtual;
@@ -106,7 +113,8 @@ export function initActionsPanel(render){
       });
       const excedentes = (store.state.excedentes[rz] || []).map(it=>({ SKU: it.sku, Descrição: it.descricao || '', Qtd: it.qtd, 'Preço Médio (R$)': Number(it.preco || 0), 'Valor Total (R$)': Number(it.qtd||0) * Number(it.preco||0), Observação: it.obs || '' }));
       exportarConferencia({ rz, conferidos, pendentes, excedentes });
-      toast('Planilha exportada', 'info');
+      toast('Conferência finalizada', 'info');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch(e) {
       console.error(e); toast('Falha ao exportar', 'error');
     }

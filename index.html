@@ -208,11 +208,26 @@
   <dialog id="dlg-excedente">
     <form method="dialog" id="form-exc">
       <h3>Registrar Excedente</h3>
-      <label>SKU <input id="exc-sku" readonly class="input"></label>
-      <label>Descrição <input id="exc-desc" required class="input"></label>
-      <label>Qtd <input id="exc-qtd" type="number" min="1" value="1" required class="input"></label>
-      <label>Preço unitário (R$) <input id="exc-preco" type="number" step="0.01" min="0.01" required class="input"></label>
-      <label>Observação <input id="exc-obs" class="input"></label>
+      <div class="field">
+        <label for="exc-sku">SKU</label>
+        <input id="exc-sku" readonly class="input" />
+      </div>
+      <div class="field">
+        <label for="exc-desc">Descrição</label>
+        <input id="exc-desc" required class="input" />
+      </div>
+      <div class="field">
+        <label for="exc-qtd">Qtd</label>
+        <input id="exc-qtd" type="number" min="1" value="1" required class="input" />
+      </div>
+      <div class="field">
+        <label for="exc-preco">Preço unitário (R$)</label>
+        <input id="exc-preco" type="number" step="0.01" min="0.01" required class="input" />
+      </div>
+      <div class="field">
+        <label for="exc-obs">Observação</label>
+        <input id="exc-obs" class="input" />
+      </div>
       <menu>
         <button value="cancel" class="btn ghost">Cancelar</button>
         <button id="exc-salvar" value="default" class="btn primary">Salvar excedente</button>
