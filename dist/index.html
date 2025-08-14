@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sistema de Conferência</title>
+  
+  <script type="module" crossorigin src="/assets/index-009300ff.js"></script>
+  <link rel="stylesheet" href="/assets/index-124750c4.css">
+</head>
+<body>
+  <main class="container">
+    <header class="toolbar">
+      <h1>Conferência de Lotes <span id="hdr-conferidos">0 de 0 conferidos</span></h1>
+      <div class="actions">
+        <button id="helpBtn" title="Ajuda/Atalhos" class="btn ghost">?</button>
+      </div>
+    </header>
+
+    <section id="painel-controle" class="card">
+      <div class="card-body">
+        <div class="row">
+          <div class="field">
+            <label for="input-arquivo" class="label">Planilha</label>
+            <input type="file" id="input-arquivo" accept=".xlsx" class="input" />
+          </div>
+          <div class="field">
+            <label for="select-rz" class="label">RZ</label>
+            <select id="select-rz" class="input"></select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="codigo-ml" class="label">Código do produto</label>
+            <input type="text" id="codigo-ml" placeholder="Código do produto" class="input" />
+          </div>
+          <div class="actions">
+            <button id="btn-scan-toggle" type="button" class="btn">Ler código</button>
+          </div>
+        </div>
+        <video id="preview" playsinline muted></video>
+        <div class="row">
+          <div class="field">
+            <label for="preco-ajustado" class="label">Preço ajustado</label>
+            <input type="number" id="preco-ajustado" placeholder="Preço ajustado" step="0.01" class="input" />
+          </div>
+          <div class="field">
+            <label for="observacao" class="label">Observação</label>
+            <input type="text" id="observacao" placeholder="Observação" class="input" />
+          </div>
+        </div>
+
+        <section id="produto-info" class="card" hidden>
+          <div class="card-header">
+            <strong id="pi-sku">SKU</strong> — <span id="pi-desc">Descrição</span>
+          </div>
+          <div class="card-body">
+            <div class="kv"><span class="muted">Qtd</span><span id="pi-qtd">0</span></div>
+            <div class="kv"><span class="muted">Preço médio (R$)</span><span id="pi-preco">0,00</span></div>
+            <div class="kv"><span class="muted">Valor total (R$)</span><span id="pi-total">0,00</span></div>
+            <div class="kv"><span class="muted">RZ</span><span id="pi-rz">—</span></div>
+          </div>
+        </section>
+
+        <div class="actions">
+          <button id="btn-consultar" class="btn">Consultar</button>
+          <button id="btn-registrar" class="btn primary">Registrar</button>
+          <button id="finalizarBtn" class="btn ghost">Finalizar Conferência</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="resumos">
+      <div id="resumoRZ"></div>
+      <div id="resumoGeral"></div>
+    </section>
+
+    <section id="listas">
+      <section id="sec-conferidos" class="section card">
+        <div class="card-header">
+          <h2>Conferidos <span id="count-conferidos">0</span></h2>
+          <div class="actions">
+            <select id="limit-conferidos" class="input">
+              <option>50</option>
+              <option>100</option>
+              <option>200</option>
+            </select>
+            <button id="btn-recolher-conferidos" data-target="sec-conferidos" class="btn ghost">Recolher</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-wrap">
+            <table id="tbl-conferidos">
+              <thead>
+                <tr>
+                  <th class="sticky">SKU</th>
+                  <th>Descrição</th>
+                  <th class="num">Qtd</th>
+                  <th class="num">Preço Médio (R$)</th>
+                  <th class="num">Valor Total (R$)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="sec-pendentes" class="section card">
+        <div class="card-header">
+          <h2>Pendentes <span id="count-pendentes">0</span></h2>
+          <div class="actions">
+            <select id="limit-pendentes" class="input">
+              <option>50</option>
+              <option>100</option>
+              <option>200</option>
+            </select>
+            <button id="btn-recolher-pendentes" data-target="sec-pendentes" class="btn ghost">Recolher</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-wrap">
+            <table id="tbl-pendentes">
+              <thead>
+                <tr>
+                  <th class="sticky">SKU</th>
+                  <th>Descrição</th>
+                  <th class="num">Qtd</th>
+                  <th class="num">Preço Médio (R$)</th>
+                  <th class="num">Valor Total (R$)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="sec-excedentes" class="section card">
+        <div class="card-header">
+          <h2>Excedentes <span id="excedentesCount">0</span></h2>
+          <div class="actions">
+            <button id="btn-recolher-excedentes" data-target="sec-excedentes" class="btn ghost">Recolher</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="lista-controles">
+            <input class="lista-search input" data-list="excedentes" placeholder="Buscar por SKU ou descrição" />
+            <select class="lista-pagesize input" data-list="excedentes">
+              <option value="20">20</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th class="sticky">SKU</th>
+                  <th>Descrição</th>
+                  <th class="num">Qtd</th>
+                  <th class="num">Preço Médio (R$)</th>
+                  <th class="num">Valor Total (R$)</th>
+                </tr>
+              </thead>
+              <tbody id="excedentesTable"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="excedentesPagination"></div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div id="boot-status" style="position:fixed;right:10px;bottom:10px;padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;font:12px/1.2 system-ui, sans-serif;background-clip:padding-box;box-shadow:0 2px 8px rgba(0,0,0,.08);z-index:9999">
+    <strong>Boot:</strong> aguardando…
+    <button id="btn-debug" type="button" style="margin-left:8px">Debug</button>
+  </div>
+
+  <dialog id="dlg-excedente">
+    <form method="dialog" id="form-exc">
+      <h3>Registrar Excedente</h3>
+      <label>SKU <input id="exc-sku" readonly class="input"></label>
+      <label>Descrição <input id="exc-desc" required class="input"></label>
+      <label>Qtd <input id="exc-qtd" type="number" min="1" value="1" required class="input"></label>
+      <label>Preço unitário (R$) <input id="exc-preco" type="number" step="0.01" min="0.01" required class="input"></label>
+      <label>Observação <input id="exc-obs" class="input"></label>
+      <menu>
+        <button value="cancel" class="btn ghost">Cancelar</button>
+        <button id="exc-salvar" value="default" class="btn primary">Salvar excedente</button>
+      </menu>
+    </form>
+  </dialog>
+
+  
+</body>
+</html>
