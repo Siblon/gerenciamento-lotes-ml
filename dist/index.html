@@ -1,14 +1,11 @@
 <!DOCTYPE html>
-<!-- TODO: revisar tamanho/visibilidade do <video id="preview"> para não ocupar espaço quando o scanner está desligado -->
-<!-- TODO: agrupar inputs e botões em fieldsets/seções para hierarquia mais clara -->
-<!-- TODO: adicionar labels/aria para botões (ex.: ajuda '?') e campos de busca -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <title>Sistema de Conferência</title>
   
-  <script type="module" crossorigin src="/assets/index-1e9720d3.js"></script>
-  <link rel="stylesheet" href="/assets/index-0dec281c.css">
+  <script type="module" crossorigin src="/assets/index-c5396697.js"></script>
+  <link rel="stylesheet" href="/assets/index-f2bc62a5.css">
 </head>
 <body>
   <main class="container">
@@ -47,8 +44,8 @@
               <input type="text" id="codigo-ml" placeholder="Código do produto" class="input" />
             </div>
             <div class="field">
-              <label class="label">&nbsp;</label>
-              <button id="btn-open-scanner" type="button" class="btn">Ler código</button>
+              <label class="label" for="btn-open-scanner">&nbsp;</label>
+              <button id="btn-open-scanner" type="button" class="btn" aria-controls="card-scanner" aria-expanded="false">Ler código</button>
             </div>
           </div>
           <div class="row">
@@ -82,13 +79,13 @@
         </div>
       </section>
 
-      <section id="card-scanner" class="card collapsed">
+      <section id="card-scanner" class="card collapsed" aria-live="polite">
         <div class="card-header">
           <h2>Scanner</h2>
         </div>
         <div class="card-body">
-          <button id="btn-scan-toggle" type="button" class="btn">Ativar Scanner</button>
-          <video id="preview" playsinline muted></video>
+          <button id="btn-scan-toggle" type="button" class="btn" aria-pressed="false">Ativar Scanner</button>
+          <video id="preview" playsinline muted aria-hidden="true"></video>
         </div>
       </section>
 
@@ -202,9 +199,9 @@
     </div>
   </main>
 
-  <div id="boot-status" style="position:fixed;right:10px;bottom:10px;padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;font:12px/1.2 system-ui, sans-serif;background-clip:padding-box;box-shadow:0 2px 8px rgba(0,0,0,.08);z-index:9999">
+  <div id="boot-status">
     <strong>Boot:</strong> aguardando…
-    <button id="btn-debug" type="button" style="margin-left:8px">Debug</button>
+    <button id="btn-debug" type="button" class="btn ghost">Debug</button>
   </div>
 
   <dialog id="dlg-excedente">
