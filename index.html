@@ -13,7 +13,7 @@
     <header class="toolbar">
       <h1>Conferência de Lotes <span id="hdr-conferidos">0 de 0 conferidos</span></h1>
       <div class="actions">
-        <button id="helpBtn" title="Ajuda/Atalhos" class="btn ghost">?</button>
+        <button id="helpBtn" title="Ajuda/Atalhos" aria-label="Ajuda" class="btn ghost">?</button>
       </div>
     </header>
 
@@ -105,7 +105,7 @@
               <div class="card-header">
                 <h2>Conferidos <span id="count-conferidos">0</span></h2>
                 <div class="actions">
-                  <select id="limit-conferidos" class="input">
+                  <select id="limit-conferidos" class="input" aria-label="Limite de conferidos">
                     <option>50</option>
                     <option>100</option>
                     <option>200</option>
@@ -135,7 +135,7 @@
               <div class="card-header">
                 <h2>Pendentes <span id="count-pendentes">0</span></h2>
                 <div class="actions">
-                  <select id="limit-pendentes" class="input">
+                  <select id="limit-pendentes" class="input" aria-label="Limite de pendentes">
                     <option>50</option>
                     <option>100</option>
                     <option>200</option>
@@ -170,8 +170,8 @@
               </div>
               <div class="card-body">
                 <div class="lista-controles">
-                  <input class="lista-search input" data-list="excedentes" placeholder="Buscar por SKU ou descrição" />
-                  <select class="lista-pagesize input" data-list="excedentes">
+                  <input class="lista-search input" data-list="excedentes" placeholder="Buscar por SKU ou descrição" aria-label="Buscar por SKU ou descrição" />
+                  <select class="lista-pagesize input" data-list="excedentes" aria-label="Itens por página">
                     <option value="20">20</option>
                     <option value="50" selected>50</option>
                     <option value="100">100</option>
