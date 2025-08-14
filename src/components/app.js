@@ -152,6 +152,8 @@ export function initApp(){
   const btnReg  = document.querySelector('#btn-registrar') || Array.from(document.querySelectorAll('button')).find(b=>/registrar/i.test(b.textContent||''));
   const btnFinal = document.querySelector('#finalizarBtn');
   const btnScan = document.querySelector('#btn-scan-toggle') || Array.from(document.querySelectorAll('button')).find(b=>/ler c[oó]digo/i.test(b.textContent||''));
+  const btnOpenScanner = document.getElementById('btn-open-scanner');
+  const scannerCard = document.getElementById('card-scanner');
   const videoEl = document.querySelector('#preview');
   const fileInput = document.querySelector('#input-arquivo');
   const rzSelect  = document.querySelector('#select-rz');
@@ -165,6 +167,10 @@ export function initApp(){
       sec.classList.toggle('collapsed');
       btn.textContent = sec.classList.contains('collapsed') ? 'Expandir' : 'Recolher';
     });
+  });
+
+  btnOpenScanner?.addEventListener('click', () => {
+    scannerCard?.classList.toggle('collapsed');
   });
 
   btnCons?.addEventListener('click', ()=>onConsultarClick('manual'));
@@ -228,13 +234,13 @@ export function initApp(){
         setBoot('Scanner ativo ▶️');
       } else {
         await pararLeitura(videoEl);
-        scanning = false; btnScan.textContent = 'Ler código';
+        scanning = false; btnScan.textContent = 'Ativar Scanner';
         setBoot('Scanner parado ⏹️');
       }
     } catch(err){
       console.error('Erro iniciarLeitura', err);
       setBoot('Falha ao iniciar scanner ❌ (veja Console)');
-      scanning = false; btnScan.textContent = 'Ler código';
+      scanning = false; btnScan.textContent = 'Ativar Scanner';
     }
   });
 
