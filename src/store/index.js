@@ -62,7 +62,7 @@ export function sumQuant(obj) {
 export function totalPendentesCount(rz) {
   const tot = getTotals(rz);
   const conf = getConferidos(rz);
-  const totalAll = sumQuant(tot);
+  const totalAll = Object.keys(tot).length; // cada SKU conta 1
   const doneAll = Object.keys(conf).length; // cada SKU conta 1
   return Math.max(0, totalAll - doneAll);
 }
