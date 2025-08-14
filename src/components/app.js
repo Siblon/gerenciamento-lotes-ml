@@ -2,7 +2,7 @@
 // TODO: reduzir espaço do <video> do scanner quando inativo e evitar ocupar toda a largura
 // TODO: agrupar inputs/botões em estruturas semânticas (fieldset, seções) para melhorar hierarquia
 // TODO: garantir acessibilidade básica (rótulos consistentes, foco navegável, atributos aria)
-import { iniciarLeitura, pararLeitura } from '../utils/scan.js';
+import { iniciarLeitura, pararLeitura, listarCameras } from '../utils/scan.js';
 import { processarPlanilha, exportarConferencia } from '../utils/excel.js';
 import store, { getTotals, getConferidos, setCurrentRZ, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ } from '../store/index.js';
 
@@ -158,6 +158,31 @@ export function initApp(){
   const fileInput = document.querySelector('#input-arquivo');
   const rzSelect  = document.querySelector('#select-rz');
 
+  videoEl?.setAttribute('hidden', '');
+
+  const camSelect = document.createElement('select');
+  camSelect.id = 'camera-select';
+  camSelect.className = 'input';
+  camSelect.hidden = true;
+  btnScan?.insertAdjacentElement('beforebegin', camSelect);
+
+  const scanMsg = document.createElement('p');
+  scanMsg.id = 'scan-msg';
+  scanMsg.className = 'muted';
+  scanMsg.hidden = true;
+  btnScan?.insertAdjacentElement('afterend', scanMsg);
+
+  listarCameras()?.then(devs => {
+    if (devs.length > 1) {
+      camSelect.innerHTML = devs
+        .map((d,i)=>`<option value="${d.deviceId}">${d.label || ('Câmera ' + (i+1))}</option>`)
+        .join('');
+      camSelect.hidden = false;
+    }
+  });
+
+  let scanning = false;
+
   function iniciarLeituraUI(){ btnScan?.click(); }
 
   document.querySelectorAll('button[id^="btn-recolher-"]').forEach(btn => {
@@ -171,6 +196,9 @@ export function initApp(){
 
   btnOpenScanner?.addEventListener('click', () => {
     scannerCard?.classList.toggle('collapsed');
+    if (scannerCard?.classList.contains('collapsed') && scanning) {
+      btnScan?.click();
+    }
   });
 
   btnCons?.addEventListener('click', ()=>onConsultarClick('manual'));
@@ -219,7 +247,6 @@ export function initApp(){
   });
 
   // Scanner toggle
-  let scanning = false;
   btnScan?.addEventListener('click', async ()=>{
     try {
       if (!scanning) {
@@ -229,16 +256,23 @@ export function initApp(){
           if (inputSku) inputSku.value = sku;
           onConsultarClick('scanner');
         },350);
-        await iniciarLeitura(videoEl, (texto)=>{ onDecoded(texto); });
-        scanning = true; btnScan.textContent = 'Parar leitura';
+        scanMsg.hidden = true;
+        const deviceId = !camSelect.hidden ? camSelect.value : undefined;
+        videoEl.hidden = false;
+        await iniciarLeitura(videoEl, (texto)=>{ onDecoded(texto); }, deviceId);
+        scanning = true; btnScan.textContent = 'Parar Scanner';
         setBoot('Scanner ativo ▶️');
       } else {
         await pararLeitura(videoEl);
         scanning = false; btnScan.textContent = 'Ativar Scanner';
+        videoEl.hidden = true;
         setBoot('Scanner parado ⏹️');
       }
     } catch(err){
       console.error('Erro iniciarLeitura', err);
+      scanMsg.textContent = 'Não foi possível acessar a câmera. Digite o código manualmente.';
+      scanMsg.hidden = false;
+      videoEl.hidden = true;
       setBoot('Falha ao iniciar scanner ❌ (veja Console)');
       scanning = false; btnScan.textContent = 'Ativar Scanner';
     }
