@@ -1,4 +1,7 @@
 // src/components/app.js
+// TODO: reduzir espaço do <video> do scanner quando inativo e evitar ocupar toda a largura
+// TODO: agrupar inputs/botões em estruturas semânticas (fieldset, seções) para melhorar hierarquia
+// TODO: garantir acessibilidade básica (rótulos consistentes, foco navegável, atributos aria)
 import { iniciarLeitura, pararLeitura } from '../utils/scan.js';
 import { processarPlanilha, exportarConferencia } from '../utils/excel.js';
 import store, { getTotals, getConferidos, setCurrentRZ, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ } from '../store/index.js';

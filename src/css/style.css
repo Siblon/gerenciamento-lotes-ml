@@ -1,3 +1,6 @@
+/* TODO: ajustar tamanho/visibilidade do #preview para não ocupar espaço desnecessário fora do uso do scanner */
+/* TODO: mover estilos inline como #boot-status para cá e unificar espaçamentos */
+/* TODO: verificar contraste e estados de foco para melhor acessibilidade */
 :root{
   --bg:#0b0f14;
   --card:#0f172a;
