@@ -69,18 +69,46 @@ export function initActionsPanel(render){
 
   btnCons?.addEventListener('click', ()=>consultar('manual'));
 
-  btnReg?.addEventListener('click', async () => {
+  btnReg?.addEventListener('click', () => {
+    const sku = (inputSku?.value || '').trim().toUpperCase();
+    const price = parseFloat(document.getElementById('preco-ajustado')?.value || '') || undefined;
+    const noteFree = document.getElementById('observacao')?.value || '';
+    const obsPreset = document.getElementById('obs-preset')?.value || '';
+
+    const pendente = Number(store.findInRZ?.(store.state.rzAtual, sku)?.qtd ?? 1);
+    let qty = 1;
+    if (pendente > 1) {
+      const entrada = window.prompt(`Quantidade a registrar (restantes: ${pendente})`, '1');
+      const n = parseInt(entrada || '1', 10);
+      qty = Number.isFinite(n) ? Math.max(1, Math.min(pendente, n)) : 1;
+    }
+
+    const toExcedentes = obsPreset === 'excedente';
+    const isAvaria = obsPreset === 'avaria';
+
+    const note = [
+      obsPreset === 'excedente' ? 'Excedente: não listado' :
+      obsPreset === 'avaria' ? 'Avaria grave: descartar' :
+      obsPreset === 'nao_encontrado' ? 'Não encontrado no RZ' : null,
+      noteFree || null,
+    ].filter(Boolean).join(' | ');
+
     try {
-      const sku = (inputSku?.value || '').trim().toUpperCase();
-      if (!sku) return toast('Informe o SKU', 'warn');
-      const rz  = store.state.rzAtual;
-      if (!store.getSkuInRZ(rz, sku)) return abrirModalExcedente(sku);
-      if (store.isConferido(rz, sku))   return toast('SKU já conferido', 'warn');
-      const preco = (document.querySelector('#preco-ajustado')?.value || '').trim();
-      const obs   = (document.querySelector('#observacao')?.value || '').trim();
-      store.dispatch({ type: 'REGISTRAR', rz, sku, precoAjustado: preco, observacao: obs });
+      if (toExcedentes && typeof store.registrarExcedente === 'function') {
+        store.registrarExcedente({ sku, qty, price, note });
+        toast(`Excedente registrado (${qty} un.)`, 'info');
+      } else if (typeof store.conferir === 'function') {
+        store.conferir(sku, { qty, price, note, avaria: isAvaria });
+        toast(`Registrado ${qty} un. de ${sku}`, 'info');
+        if (isAvaria) {
+          const it = window.computeFinancials?.().byItem.find(i=>i.sku===sku);
+          if (it && it.unitsVend <= 0) alert('Sem unidades vendáveis após avaria');
+        }
+      } else {
+        console.warn('Ação de registro não disponível no store.');
+      }
       render();
-      toast('Registrado!', 'info');
+      window.refreshFinancialChips?.();
     } catch(e) {
       console.error(e); toast('Falha ao registrar', 'error');
     }
@@ -116,11 +144,11 @@ export function initActionsPanel(render){
       const sumQtd = arr => arr.reduce((s,it)=>s + Number(it.Qtd||0),0);
       const sumVal = arr => arr.reduce((s,it)=>s + Number(it['Valor Total (R$)']||0),0);
       const resumoRZ = [{
-        RZ: rz,
-        Conferidos: sumQtd(conferidos),
-        Pendentes: sumQtd(pendentes),
-        Excedentes: sumQtd(excedentes),
-        'Valor Total (R$)': sumVal(conferidos) + sumVal(pendentes) + sumVal(excedentes),
+        rz,
+        conferidos: sumQtd(conferidos),
+        pendentes: sumQtd(pendentes),
+        excedentes: sumQtd(excedentes),
+        valorTotal: sumVal(conferidos) + sumVal(pendentes) + sumVal(excedentes),
       }];
 
       exportarConferencia({ conferidos, pendentes, excedentes, resumoRZ });
@@ -143,10 +171,16 @@ export function initActionsPanel(render){
     dlg.close();
     toast('Excedente salvo', 'info');
     render();
+    window.refreshFinancialChips?.();
   });
 
   document.addEventListener('keydown',(e)=>{
     if (e.ctrlKey && e.key.toLowerCase()==='k'){ e.preventDefault(); document.querySelector('#codigo-ml')?.focus(); }
+    if (e.ctrlKey && e.key === 'Enter'){ e.preventDefault(); btnReg?.click(); }
+    if (e.ctrlKey && e.key.toLowerCase()==='s'){
+      const dlg = document.getElementById('dlg-excedente');
+      if (dlg?.open) { e.preventDefault(); document.getElementById('exc-salvar')?.click(); }
+    }
     if (e.key==='Escape') document.getElementById('dlg-excedente')?.close();
   });
 

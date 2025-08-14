@@ -10,27 +10,115 @@ function updateBoot(msg) {
   if (el) el.innerHTML = `<strong>Boot:</strong> ${msg} <button id="btn-debug" type="button" class="btn ghost">Debug</button>`;
 }
 
-function formatBR(n){ return (n||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }
+function brl(n){ return (n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 
-function updateChipPalete() {
-  try {
-    const rz = window.store?.state?.rzAtual;
-    const itens = window.store?.state?.itemsByRZ?.[rz] || [];
-    const totQ = itens.reduce((s, it)=> s + Number(it.qtd||0), 0);
-    const totV = itens.reduce((s, it)=> s + Number(it.valorUnit||0) * Number(it.qtd||0), 0);
-    const media = totQ > 0 ? (totV / totQ) : 0;
-
-    const chip = document.getElementById('chip-palete');
-    const val = document.getElementById('val-palete');
-    if (chip && val) {
-      val.textContent = formatBR(media);
-      chip.hidden = false;
+function getAllItemsCurrentRZ(){
+  const rz = window.store?.state?.rzAtual;
+  const totals = window.store?.state?.totalByRZSku?.[rz] || {};
+  const meta = window.store?.state?.metaByRZSku?.[rz] || {};
+  const conf = window.store?.state?.conferidosByRZSku?.[rz] || {};
+  const exc  = window.store?.state?.excedentes?.[rz] || [];
+  const items = Object.keys(totals).map(sku => ({
+    sku,
+    descricao: meta[sku]?.descricao || '',
+    qtd: totals[sku],
+    precoMedioML: meta[sku]?.precoMedio,
+    conferidos: conf[sku]?.qtd || 0,
+    avariados: conf[sku]?.avariados || 0,
+    excedentes: 0,
+  }));
+  const map = Object.fromEntries(items.map(it=>[it.sku,it]));
+  exc.forEach(it=>{
+    if(map[it.sku]){
+      map[it.sku].excedentes = (map[it.sku].excedentes||0) + Number(it.qtd||0);
+    } else {
+      items.push({ sku: it.sku, descricao: it.descricao||'', qtd: 0, precoMedioML: Number(it.preco||0), conferidos: 0, avariados: 0, excedentes: Number(it.qtd||0) });
     }
-  } catch (e) {
-    console.warn('updateChipPalete', e);
-  }
+  });
+  return items;
 }
-window.updateChipPalete = updateChipPalete;
+
+function computeFinancials(){
+  const s = loadSettings();
+  const items = getAllItemsCurrentRZ();
+
+  const discount = (s.discountPct ?? 25) / 100;
+  const auction  = (s.auctionFeePct ?? 8) / 100;
+  const freight  = Number(s.freightTotal ?? 0);
+  const freightMode = s.freightMode || 'por_unidade';
+
+  const totalUnits = items.reduce((sum,it)=> sum + Number(it.qtd||0), 0);
+  const totalValor = items.reduce((sum,it)=> sum + Number(it.precoMedioML||0) * Number(it.qtd||0), 0);
+
+  let sumRevenue = 0, sumCost = 0, sumUnitsVendaveis = 0, sumMLValor = 0, sumMLUnits = 0;
+
+  const byItem = items.map((it)=>{
+    const q = Number(it.qtd||0);
+    const ml = Number(it.precoMedioML||0);
+    const conferidos = Number(it.conferidos||0);
+    const avariados  = Number(it.avariados||0);
+    const excedentes = Number(it.excedentes||0);
+
+    const unitsVend = Math.max(0, conferidos + excedentes - avariados);
+    const target = ml * (1 - discount);
+    const costAuctionUnit = ml * auction;
+
+    let costFreightUnit = 0;
+    if (freight > 0) {
+      if (freightMode === 'por_valor' && totalValor > 0) {
+        const pesoValor = (ml * q) / totalValor;
+        costFreightUnit = (freight * pesoValor) / Math.max(1, q);
+      } else {
+        costFreightUnit = freight / Math.max(1, totalUnits);
+      }
+    }
+
+    const unitCost = costAuctionUnit + costFreightUnit;
+    const revenue  = target * unitsVend;
+    const cost     = unitCost * unitsVend;
+    const profit   = revenue - cost;
+
+    sumUnitsVendaveis += unitsVend;
+    sumRevenue += revenue;
+    sumCost += cost;
+    sumMLValor += ml * q;
+    sumMLUnits += q;
+
+    return { sku: it.sku, descricao: it.descricao, ml, target, unitCost, unitsVend, revenue, cost, profit };
+  });
+
+  const paleteMLavg   = sumMLUnits > 0 ? sumMLValor / sumMLUnits : 0;
+  const paleteTarget  = paleteMLavg * (1 - (loadSettings().discountPct ?? 25)/100);
+  const lucroPrevisto = sumRevenue - sumCost;
+
+  return { byItem, totals: { paleteMLavg, paleteTarget, revenue: sumRevenue, cost: sumCost, lucroPrevisto } };
+}
+window.computeFinancials = computeFinancials;
+
+function refreshFinancialChips(){
+  try{
+    const f = computeFinancials();
+    const chipML = document.getElementById('chip-palete');
+    const chipTg = document.getElementById('chip-palete-target');
+    const chipLu = document.getElementById('chip-lucro');
+    const chipFm = document.getElementById('chip-frete-mode');
+
+    const vML = document.getElementById('val-palete');
+    const vTG = document.getElementById('val-palete-target');
+    const vLU = document.getElementById('val-lucro');
+    const vFM = document.getElementById('val-frete-mode');
+
+    if (chipML && vML) { vML.textContent = brl(f.totals.paleteMLavg); chipML.hidden = false; }
+    if (chipTg && vTG) { vTG.textContent = brl(f.totals.paleteTarget); chipTg.hidden = false; }
+    if (chipLu && vLU) { vLU.textContent = brl(f.totals.lucroPrevisto); chipLu.hidden = false; }
+    if (chipFm && vFM) {
+      const s = loadSettings();
+      vFM.textContent = s.freightMode === 'por_valor' ? 'por valor' : 'por unidade';
+      chipFm.hidden = false;
+    }
+  }catch(e){ console.warn('refreshFinancialChips', e); }
+}
+window.refreshFinancialChips = refreshFinancialChips;
 
 const SETTINGS_KEY = 'confApp.settings';
 
@@ -49,6 +137,9 @@ function applySettings() {
   const selP = document.getElementById('limit-pendentes');
   if (selC && s.pageSize) selC.value = String(s.pageSize);
   if (selP && s.pageSize) selP.value = String(s.pageSize);
+
+  // Atualiza chips financeiros
+  refreshFinancialChips();
 }
 
 function wireSettingsUI() {
@@ -57,10 +148,19 @@ function wireSettingsUI() {
   const chkHide = document.getElementById('cfg-hide-scanner');
   const selSize = document.getElementById('cfg-page-size');
 
+  const inDiscount   = document.getElementById('cfg-discount');
+  const inAuctionFee = document.getElementById('cfg-auction-fee');
+  const inFreight    = document.getElementById('cfg-freight');
+  const selFreight   = document.getElementById('cfg-freight-mode');
+
   btn?.addEventListener('click', ()=> {
     const s = loadSettings();
     chkHide.checked = !!s.hideScanner;
     selSize.value = String(s.pageSize || 50);
+    inDiscount.value  = String(s.discountPct ?? 25);
+    inAuctionFee.value= String(s.auctionFeePct ?? 8);
+    inFreight.value   = String(s.freightTotal ?? 0);
+    selFreight.value  = String(s.freightMode ?? 'por_unidade');
     dlg.showModal();
   });
 
@@ -69,6 +169,10 @@ function wireSettingsUI() {
       const s = loadSettings();
       s.hideScanner = chkHide.checked;
       s.pageSize = parseInt(selSize.value, 10);
+       s.discountPct   = Math.max(0, Number(inDiscount.value || 0));
+       s.auctionFeePct = Math.max(0, Number(inAuctionFee.value || 0));
+       s.freightTotal  = Math.max(0, Number(inFreight.value || 0));
+       s.freightMode   = selFreight.value;
       saveSettings(s);
       applySettings();
       updateBoot('Configurações salvas ⚙️');
@@ -196,50 +300,9 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     // ---- Registrar com quantidade e observações ----
-    const regBtn = document.getElementById('btn-registrar');
-    regBtn?.addEventListener('click', () => {
-      const sku = (document.getElementById('codigo-ml')?.value || '').trim();
-      const price = parseFloat(document.getElementById('preco-ajustado')?.value || '') || undefined;
-      const noteFree = document.getElementById('observacao')?.value || '';
-      const obsPreset = document.getElementById('obs-preset')?.value || '';
-
-      const pendente = Number(window.store?.findInRZ?.(window.store.state.rzAtual, sku)?.qtd ?? 1);
-      let qty = 1;
-      if (pendente > 1) {
-        const entrada = window.prompt(`Quantidade a registrar (restantes: ${pendente})`, '1');
-        const n = parseInt(entrada || '1', 10);
-        qty = Number.isFinite(n) ? Math.max(1, Math.min(pendente, n)) : 1;
-      }
-
-      const toExcedentes = obsPreset === 'excedente';
-      const isAvaria = obsPreset === 'avaria';
-
-      const note = [
-        obsPreset === 'excedente' ? 'Excedente: não listado' :
-        obsPreset === 'avaria' ? 'Avaria grave: descartar' :
-        obsPreset === 'nao_encontrado' ? 'Não encontrado no RZ' : null,
-        noteFree || null,
-      ].filter(Boolean).join(' | ');
-
-      try {
-        if (toExcedentes && typeof window.store?.registrarExcedente === 'function') {
-          window.store.registrarExcedente({ sku, qty, price, note });
-          updateBoot(`Excedente registrado (${qty} un.) ✅`);
-        } else if (typeof window.store?.conferir === 'function') {
-          window.store.conferir(sku, { qty, price, note, avaria: isAvaria });
-          updateBoot(`Registrado ${qty} un. de ${sku} ✅`);
-        } else {
-          console.warn('Ação de registro não disponível no store.');
-        }
-      } catch (e) {
-        console.error('[REG] falha', e);
-        updateBoot('Falha ao registrar ❌ (veja Console)');
-      }
-    });
-
     applySettings();
     wireSettingsUI();
-    updateChipPalete();
+    refreshFinancialChips();
   });
 
 // para testar no Console

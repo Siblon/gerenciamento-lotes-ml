@@ -220,10 +220,41 @@ export function exportarConferencia({ conferidos, pendentes, excedentes, resumoR
     XLSX.utils.book_append_sheet(wb, ws, nome);
   }
 
+  function sheetFinanceiroPorItem(){
+    const f = (typeof window !== 'undefined' && window.computeFinancials) ? window.computeFinancials() : null;
+    if (!f) return [];
+    return f.byItem.map(it => ({
+      'SKU': it.sku,
+      'Descrição': it.descricao,
+      'Preço ML (R$)': it.ml,
+      'Preço‑alvo (R$)': it.target,
+      'Custo unit. (R$)': it.unitCost,
+      'Unid. vendáveis': it.unitsVend,
+      'Receita (R$)': it.revenue,
+      'Custo (R$)': it.cost,
+      'Lucro (R$)': it.profit
+    }));
+  }
+
   addSheet('Conferidos', conferidos, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
   addSheet('Pendentes', pendentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
   addSheet('Excedentes', excedentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
-  addSheet('Resumo RZ', resumoRZ, ['RZ','Conferidos','Pendentes','Excedentes','Valor Total (R$)']);
+  const fin = (typeof window !== 'undefined' && window.computeFinancials) ? window.computeFinancials() : null;
+  addSheet('Resumo RZ', resumoRZ.map(r => ({
+    'RZ': r.rz,
+    'Conferidos': r.conferidos,
+    'Pendentes': r.pendentes,
+    'Excedentes': r.excedentes,
+    'Valor Total (R$)': r.valorTotal,
+    'Palete ML (R$)': fin?.totals.paleteMLavg,
+    'Palete alvo (R$)': fin?.totals.paleteTarget,
+    'Lucro previsto (R$)': fin?.totals.lucroPrevisto,
+  })), ['RZ','Conferidos','Pendentes','Excedentes','Valor Total (R$)','Palete ML (R$)','Palete alvo (R$)','Lucro previsto (R$)']);
+
+  addSheet('Financeiro (por item)', sheetFinanceiroPorItem(), [
+    'SKU','Descrição','Preço ML (R$)','Preço‑alvo (R$)','Custo unit. (R$)',
+    'Unid. vendáveis','Receita (R$)','Custo (R$)','Lucro (R$)'
+  ]);
 
   XLSX.writeFile(wb, `conferencia_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
