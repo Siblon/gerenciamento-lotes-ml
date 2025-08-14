@@ -7,7 +7,7 @@ window.__DEBUG_SCAN__ = true;
 function updateBoot(msg) {
   const el = document.getElementById('boot-status');
   if (el) el.firstChild.nodeValue = ''; // limpa texto anterior
-  if (el) el.innerHTML = `<strong>Boot:</strong> ${msg} <button id="btn-debug" type="button" style="margin-left:8px">Debug</button>`;
+  if (el) el.innerHTML = `<strong>Boot:</strong> ${msg} <button id="btn-debug" type="button" class="btn ghost">Debug</button>`;
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -50,6 +50,30 @@ window.addEventListener('DOMContentLoaded', () => {
         console.log('[DEBUG] ZXing CDN carregado:', Object.keys(m).slice(0,5));
       } catch (e) {
         console.error('[DEBUG] Falha import ZXing CDN', e);
+      }
+    });
+  }
+
+  // Scanner UI controls
+  const scannerCard = document.getElementById('card-scanner');
+  const openScannerBtn = document.getElementById('btn-open-scanner');
+  const scanToggleBtn = document.getElementById('btn-scan-toggle');
+  const preview = document.getElementById('preview');
+
+  if (scannerCard && openScannerBtn && scanToggleBtn) {
+    openScannerBtn.addEventListener('click', () => {
+      scannerCard.classList.remove('collapsed');
+      openScannerBtn.setAttribute('aria-expanded', 'true');
+      scanToggleBtn.focus();
+    });
+
+    scanToggleBtn.addEventListener('click', () => {
+      const isOn = scannerCard.classList.toggle('is-on');
+      scanToggleBtn.textContent = isOn ? 'Parar Scanner' : 'Ativar Scanner';
+      scanToggleBtn.setAttribute('aria-pressed', String(isOn));
+      if (!isOn && preview) {
+        if (typeof preview.pause === 'function') preview.pause();
+        preview.srcObject = null;
       }
     });
   }
