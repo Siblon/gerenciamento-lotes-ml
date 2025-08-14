@@ -27,6 +27,15 @@ export function initScannerPanel({ onCode }){
   scanMsg.hidden = true;
   btnScan?.insertAdjacentElement('afterend', scanMsg);
 
+  const liveRegion = document.createElement('p');
+  liveRegion.id = 'scanner-live';
+  liveRegion.className = 'sr-only';
+  liveRegion.setAttribute('aria-live', 'polite');
+  liveRegion.setAttribute('role', 'status');
+  btnScan?.insertAdjacentElement('afterend', liveRegion);
+
+  const announce = (msg) => { liveRegion.textContent = msg; };
+
   listarCameras()?.then(devs => {
     if (devs.length > 1) {
       camSelect.innerHTML = devs
@@ -56,11 +65,13 @@ export function initScannerPanel({ onCode }){
         await iniciarLeitura(videoEl, (texto)=>{ onDecoded(texto); }, deviceId);
         scanning = true; btnScan.textContent = 'Parar Scanner';
         setBoot('Scanner ativo ▶️');
+        announce('Scanner ativado');
       } else {
         await pararLeitura(videoEl);
         scanning = false; btnScan.textContent = 'Ativar Scanner';
         videoEl.hidden = true;
         setBoot('Scanner parado ⏹️');
+        announce('Scanner parado');
       }
     } catch(err){
       console.error('Erro iniciarLeitura', err);
@@ -69,6 +80,7 @@ export function initScannerPanel({ onCode }){
       videoEl.hidden = true;
       setBoot('Falha ao iniciar scanner ❌ (veja Console)');
       scanning = false; btnScan.textContent = 'Ativar Scanner';
+      announce('Falha ao iniciar scanner');
     }
   });
 
