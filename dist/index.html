@@ -7,15 +7,15 @@
   <meta charset="UTF-8" />
   <title>Sistema de Conferência</title>
   
-  <script type="module" crossorigin src="/assets/index-69588427.js"></script>
-  <link rel="stylesheet" href="/assets/index-187701e4.css">
+  <script type="module" crossorigin src="/assets/index-28b5e61a.js"></script>
+  <link rel="stylesheet" href="/assets/index-0385cf17.css">
 </head>
 <body>
   <main class="container">
     <header class="toolbar">
       <h1>Conferência de Lotes <span id="hdr-conferidos">0 de 0 conferidos</span></h1>
       <div class="actions">
-        <button id="helpBtn" title="Ajuda/Atalhos" class="btn ghost">?</button>
+        <button id="helpBtn" title="Ajuda/Atalhos" aria-label="Ajuda" class="btn ghost">?</button>
       </div>
     </header>
 
@@ -107,7 +107,7 @@
               <div class="card-header">
                 <h2>Conferidos <span id="count-conferidos">0</span></h2>
                 <div class="actions">
-                  <select id="limit-conferidos" class="input">
+                  <select id="limit-conferidos" class="input" aria-label="Limite de conferidos">
                     <option>50</option>
                     <option>100</option>
                     <option>200</option>
@@ -137,7 +137,7 @@
               <div class="card-header">
                 <h2>Pendentes <span id="count-pendentes">0</span></h2>
                 <div class="actions">
-                  <select id="limit-pendentes" class="input">
+                  <select id="limit-pendentes" class="input" aria-label="Limite de pendentes">
                     <option>50</option>
                     <option>100</option>
                     <option>200</option>
@@ -172,8 +172,8 @@
               </div>
               <div class="card-body">
                 <div class="lista-controles">
-                  <input class="lista-search input" data-list="excedentes" placeholder="Buscar por SKU ou descrição" />
-                  <select class="lista-pagesize input" data-list="excedentes">
+                  <input class="lista-search input" data-list="excedentes" placeholder="Buscar por SKU ou descrição" aria-label="Buscar por SKU ou descrição" />
+                  <select class="lista-pagesize input" data-list="excedentes" aria-label="Itens por página">
                     <option value="20">20</option>
                     <option value="50" selected>50</option>
                     <option value="100">100</option>
@@ -210,11 +210,26 @@
   <dialog id="dlg-excedente">
     <form method="dialog" id="form-exc">
       <h3>Registrar Excedente</h3>
-      <label>SKU <input id="exc-sku" readonly class="input"></label>
-      <label>Descrição <input id="exc-desc" required class="input"></label>
-      <label>Qtd <input id="exc-qtd" type="number" min="1" value="1" required class="input"></label>
-      <label>Preço unitário (R$) <input id="exc-preco" type="number" step="0.01" min="0.01" required class="input"></label>
-      <label>Observação <input id="exc-obs" class="input"></label>
+      <div class="field">
+        <label for="exc-sku">SKU</label>
+        <input id="exc-sku" readonly class="input" />
+      </div>
+      <div class="field">
+        <label for="exc-desc">Descrição</label>
+        <input id="exc-desc" required class="input" />
+      </div>
+      <div class="field">
+        <label for="exc-qtd">Qtd</label>
+        <input id="exc-qtd" type="number" min="1" value="1" required class="input" />
+      </div>
+      <div class="field">
+        <label for="exc-preco">Preço unitário (R$)</label>
+        <input id="exc-preco" type="number" step="0.01" min="0.01" required class="input" />
+      </div>
+      <div class="field">
+        <label for="exc-obs">Observação</label>
+        <input id="exc-obs" class="input" />
+      </div>
       <menu>
         <button value="cancel" class="btn ghost">Cancelar</button>
         <button id="exc-salvar" value="default" class="btn primary">Salvar excedente</button>
