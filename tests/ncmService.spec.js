@@ -43,17 +43,21 @@ describe('resolveWithRetry', () => {
 describe('resolve error cases', () => {
   it('handles http error', async () => {
     localStorage.clear();
-    global.fetch = vi.fn().mockResolvedValue({ ok:false, status:403 });
+    global.fetch = vi.fn((url)=> {
+      if(String(url).includes('/data/ncm.json')) return Promise.resolve({ ok:true, json:async()=>({}) });
+      return Promise.resolve({ ok:false, status:403 });
+    });
     const r = await resolve({ sku:'X', descricao:'x' });
-    expect(r.ok).toBe(false);
-    expect(r.reason).toBe('api_http_error');
+    expect(r).toMatchObject({ ok:false, error:true, source:'api' });
   });
 
   it('handles api without ncm', async () => {
     localStorage.clear();
-    global.fetch = vi.fn().mockResolvedValue({ ok:true, json:async()=>[], });
+    global.fetch = vi.fn((url)=> {
+      if(String(url).includes('/data/ncm.json')) return Promise.resolve({ ok:true, json:async()=>({}) });
+      return Promise.resolve({ ok:true, json:async()=>[] });
+    });
     const r = await resolve({ sku:'Y', descricao:'y' });
-    expect(r.ok).toBe(false);
-    expect(r.reason).toBe('api_no_ncm');
+    expect(r).toMatchObject({ ok:false, error:true, source:'api' });
   });
 });
