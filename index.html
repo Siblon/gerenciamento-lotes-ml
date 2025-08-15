@@ -47,6 +47,11 @@
       <section id="card-ncm" class="card">
         <div class="card-header">
           <h2>NCM</h2>
+          <div id="ncm-counters">
+            <span id="ncm-count-ok">0</span> OK /
+            <span id="ncm-count-fail">0</span> Falhas /
+            <span id="ncm-count-pend">0</span> Restantes
+          </div>
           <div class="spacer"></div>
           <label><input type="checkbox" id="ncm-only-fail" /> Somente falhas</label>
         </div>
@@ -57,6 +62,11 @@
               <thead><tr><th>SKU</th><th>Descrição</th><th>NCM</th><th>Origem</th><th>Status</th></tr></thead>
               <tbody id="ncm-table"></tbody>
             </table>
+          </div>
+          <div class="pager">
+            <button id="ncm-prev" class="btn ghost" type="button">&#171;</button>
+            <span id="ncm-page">0/0</span>
+            <button id="ncm-next" class="btn ghost" type="button">&#187;</button>
           </div>
         </div>
       </section>

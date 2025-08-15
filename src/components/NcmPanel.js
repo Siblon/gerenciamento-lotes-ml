@@ -6,6 +6,16 @@ export function initNcmPanel(){
   const progressCount = document.getElementById('ncm-progress-count');
   const cancelBtn = document.getElementById('ncm-cancel');
   const chkFail = document.getElementById('ncm-only-fail');
+  const cntOk = document.getElementById('ncm-count-ok');
+  const cntFail = document.getElementById('ncm-count-fail');
+  const cntPend = document.getElementById('ncm-count-pend');
+  const btnPrev = document.getElementById('ncm-prev');
+  const btnNext = document.getElementById('ncm-next');
+  const pageInfo = document.getElementById('ncm-page');
+
+  let page = 0;
+  const limit = 50;
+  let data = [];
 
   cancelBtn?.addEventListener('click', ()=> document.dispatchEvent(new Event('ncm-cancel')));
 
@@ -18,16 +28,34 @@ export function initNcmPanel(){
   });
 
   function render(){
-    const rows=[];
+    data = [];
+    let ok = 0, fail = 0;
     for(const metas of Object.values(store.state.metaByRZSku||{})){
       for(const [sku, m] of Object.entries(metas||{})){
         const status = m.ncm_status || '';
         if(chkFail?.checked && status === 'ok') continue;
-        rows.push(`<tr><td>${sku}</td><td>${(m.descricao||'').slice(0,40)}</td><td>${m.ncm||''}</td><td>${m.ncm_source||''}</td><td>${status||''}</td></tr>`);
+        if(status === 'ok') ok++; else if(status === 'falha') fail++;
+        data.push({ sku, desc:(m.descricao||'').slice(0,40), ncm:m.ncm||'', source:m.ncm_source||'', status });
       }
     }
-    if(tbody) tbody.innerHTML = rows.join('');
+    const total = data.length;
+    const pend = Math.max(0, total - ok - fail);
+    if(cntOk) cntOk.textContent = ok;
+    if(cntFail) cntFail.textContent = fail;
+    if(cntPend) cntPend.textContent = pend;
+    const start = page * limit;
+    const slice = data.slice(start, start + limit);
+    if(tbody) tbody.innerHTML = slice.map(r=>`<tr><td>${r.sku}</td><td>${r.desc}</td><td>${r.ncm}</td><td>${r.source}</td><td>${r.status}</td></tr>`).join('');
+    if(pageInfo){
+      const end = Math.min(start + slice.length, total);
+      pageInfo.textContent = total ? `${start+1}-${end}/${total}` : '0/0';
+    }
+    if(btnPrev) btnPrev.disabled = page <= 0;
+    if(btnNext) btnNext.disabled = (page + 1) * limit >= total;
   }
+
+  btnPrev?.addEventListener('click', ()=>{ if(page>0){ page--; render(); } });
+  btnNext?.addEventListener('click', ()=>{ if((page+1)*limit < data.length){ page++; render(); } });
 
   chkFail?.addEventListener('change', render);
   document.addEventListener('ncm-update', render);

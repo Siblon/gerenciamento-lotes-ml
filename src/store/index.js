@@ -69,6 +69,7 @@ export function setItens(items = []){
   const itemsByRZ = {};
   const totalByRZSku = {};
   const metaByRZSku = {};
+  const now = Date.now();
   for(const it of items){
     (itemsByRZ[it.codigoRZ] ||= []).push(it);
     const sku = String(it.codigoML || '').trim().toUpperCase();
@@ -81,7 +82,17 @@ export function setItens(items = []){
       const descricao = String(it.descricao || '').trim();
       const precoMedio = Number(it.valorUnit || 0);
       const ncm = it.ncm || null;
-      metaByRZSku[it.codigoRZ][sku] = { descricao, precoMedio, ncm };
+      const meta = { descricao, precoMedio, ncm };
+      if(ncm){
+        const ts = now;
+        meta.ncm_source = 'row';
+        meta.ncm_ts = ts;
+        meta.ncmMeta = { source:'row', ts, status:'ok' };
+        meta.ncm_status = 'ok';
+        it.ncmMeta = { source:'row', ts, status:'ok' };
+        state.ncmCache[sku] = ncm;
+      }
+      metaByRZSku[it.codigoRZ][sku] = meta;
     }
   }
   state.itemsByRZ = itemsByRZ;
@@ -90,6 +101,7 @@ export function setItens(items = []){
   state.conferidosByRZSku = {};
   state.excedentes = {};
   if(!state.currentRZ) state.currentRZ = Object.keys(itemsByRZ)[0] || null;
+  try{ localStorage.setItem('ncmCache:v1', JSON.stringify(state.ncmCache)); }catch{}
   return { itemsByRZ, totalByRZSku, metaByRZSku };
 }
 
@@ -304,16 +316,30 @@ export function setItemNcm(id, ncm, source){
   meta.ncm = ncm;
   meta.ncm_source = source;
   meta.ncm_ts = ts;
-  meta.ncmMeta = { source, ts };
+  meta.ncmMeta = { source, ts, status:'ok' };
   meta.ncm_status = 'ok';
+  const item = (state.itemsByRZ[rz] || []).find(it => String(it.codigoML || '').toUpperCase() === sku);
+  if(item){
+    item.ncm = ncm;
+    item.ncmMeta = { source, ts, status:'ok' };
+  }
   state.ncmCache[sku] = ncm;
   try{ localStorage.setItem('ncmCache:v1', JSON.stringify(state.ncmCache)); }catch{}
+  if(typeof document !== 'undefined') document.dispatchEvent(new Event('ncm-update'));
 }
 
 export function setItemNcmStatus(id, status){
   const { rz, sku } = parseId(id);
   const meta = state.metaByRZSku[rz]?.[sku];
-  if(meta) meta.ncm_status = status;
+  if(meta){
+    meta.ncm_status = status;
+    (meta.ncmMeta ||= {}).status = status;
+  }
+  const item = (state.itemsByRZ[rz] || []).find(it => String(it.codigoML || '').toUpperCase() === sku);
+  if(item){
+    (item.ncmMeta ||= {}).status = status;
+  }
+  if(typeof document !== 'undefined') document.dispatchEvent(new Event('ncm-update'));
 }
 
 export function tagItem(id, tag){

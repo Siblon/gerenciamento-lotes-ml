@@ -16,6 +16,16 @@ describe('cache and resolve', () => {
     const r2 = await resolve({ sku:'A' });
     expect(r2).toMatchObject({ ok:true, ncm:'12345678', source:'cache' });
   });
+
+  it('resolves using local map', async () => {
+    localStorage.clear();
+    global.fetch = vi.fn((url)=> {
+      if(String(url).includes('/data/ncm.json')) return Promise.resolve({ ok:true, json:async()=>({ 'B': '87654321' }) });
+      return Promise.resolve({ ok:false, status:404 });
+    });
+    const r = await resolve({ sku:'B', descricao:'desc B' });
+    expect(r).toMatchObject({ ok:true, ncm:'87654321', source:'map' });
+  });
 });
 
 describe('createQueue', () => {
@@ -59,5 +69,21 @@ describe('resolve error cases', () => {
     });
     const r = await resolve({ sku:'Y', descricao:'y' });
     expect(r).toMatchObject({ ok:false, error:true, source:'api' });
+  });
+
+  it('handles api timeout', async () => {
+    localStorage.clear();
+    vi.useFakeTimers();
+    global.fetch = vi.fn((url, opts)=> {
+      if(String(url).includes('/data/ncm.json')) return Promise.resolve({ ok:true, json:async()=>({}) });
+      return new Promise((_, reject)=>{
+        opts.signal.addEventListener('abort', ()=>reject(new Error('aborted')));
+      });
+    });
+    const p = resolve({ sku:'Z', descricao:'zzz' });
+    await vi.runAllTimersAsync();
+    const r = await p;
+    expect(r).toMatchObject({ ok:false, error:true, source:'api' });
+    vi.useRealTimers();
   });
 });
