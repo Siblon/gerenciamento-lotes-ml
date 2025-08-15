@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <title>Sistema de Conferência</title>
   
-  <script type="module" crossorigin src="/assets/index-3a33d18e.js"></script>
-  <link rel="stylesheet" href="/assets/index-7ce5fe42.css">
+  <script type="module" crossorigin src="/assets/index-38c29900.js"></script>
+  <link rel="stylesheet" href="/assets/index-ee3e98ad.css">
 </head>
 <body>
   <main class="container">
@@ -42,6 +42,22 @@
           <div class="field">
             <label for="select-rz" class="label">RZ</label>
             <select id="select-rz" class="input"></select>
+          </div>
+        </div>
+      </section>
+      <section id="card-ncm" class="card">
+        <div class="card-header">
+          <h2>NCM</h2>
+          <div class="spacer"></div>
+          <label><input type="checkbox" id="ncm-only-fail" /> Somente falhas</label>
+        </div>
+        <div class="card-body">
+          <div id="ncm-progress" hidden>Resolvendo NCM… <span id="ncm-progress-count">0/0</span> <button id="ncm-cancel" class="btn ghost">Cancelar</button></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>SKU</th><th>Descrição</th><th>NCM</th><th>Origem</th><th>Status</th></tr></thead>
+              <tbody id="ncm-table"></tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -184,15 +200,16 @@
               <div class="card-body">
                 <div class="table-wrap">
                   <table id="tbl-conferidos">
-                    <thead>
-                      <tr>
-                        <th class="sticky">SKU</th>
-                        <th>Descrição</th>
-                        <th class="num">Qtd</th>
-                        <th class="num">Preço Médio (R$)</th>
-                        <th class="num">Valor Total (R$)</th>
-                      </tr>
-                    </thead>
+                      <thead>
+                        <tr>
+                          <th class="sticky">SKU</th>
+                          <th>Descrição</th>
+                          <th class="num">Qtd</th>
+                          <th class="num">Preço Médio (R$)</th>
+                          <th class="num">Valor Total (R$)</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
                     <tbody></tbody>
                   </table>
                 </div>
@@ -222,6 +239,7 @@
                         <th class="num">Qtd</th>
                         <th class="num">Preço Médio (R$)</th>
                         <th class="num">Valor Total (R$)</th>
+                        <th>Status</th>
                       </tr>
                     </thead>
                     <tbody></tbody>
@@ -247,18 +265,19 @@
                   </select>
                 </div>
                 <div class="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th class="sticky">SKU</th>
-                        <th>Descrição</th>
-                        <th class="num">Qtd</th>
-                        <th class="num">Preço Médio (R$)</th>
-                        <th class="num">Valor Total (R$)</th>
-                      </tr>
-                    </thead>
-                    <tbody id="excedentesTable"></tbody>
-                  </table>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th class="sticky">SKU</th>
+                          <th>Descrição</th>
+                          <th class="num">Qtd</th>
+                          <th class="num">Preço Médio (R$)</th>
+                          <th class="num">Valor Total (R$)</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody id="excedentesTable"></tbody>
+                    </table>
                 </div>
                 <div class="pagination" id="excedentesPagination"></div>
               </div>
@@ -269,8 +288,8 @@
     </div>
   </main>
 
-  <div id="boot-status">
-    <strong>Boot:</strong> aguardando…
+    <div id="boot-status" aria-live="polite">
+      <strong>Boot:</strong> aguardando…
     <button id="btn-debug" type="button" class="btn ghost">Debug</button>
   </div>
 
