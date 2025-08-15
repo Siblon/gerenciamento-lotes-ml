@@ -4,31 +4,27 @@
   <meta charset="UTF-8" />
   <title>Sistema de Conferência</title>
   
-  <script type="module" crossorigin src="/assets/index-e8552380.js"></script>
-  <link rel="stylesheet" href="/assets/index-8d4bee9e.css">
+  <script type="module" crossorigin src="/assets/index-bbc05e2c.js"></script>
+  <link rel="stylesheet" href="/assets/index-2a6389b9.css">
 </head>
 <body>
   <main class="container">
     <header class="toolbar">
       <h1>
         Conferência de Lotes <span id="hdr-conferidos">0 de 0 conferidos</span>
-        <span id="chip-palete" class="chip-info" style="margin-left:8px;" hidden title="Média dos preços ML dos itens do palete">
-          Preço médio do palete: <span id="val-palete">R$ 0,00</span>
-        </span>
-        <span id="chip-palete-target" class="chip-info" style="margin-left:6px;" hidden title="Preço médio com desconto alvo">
-          Preço‑alvo do palete: <span id="val-palete-target">R$ 0,00</span>
-        </span>
-        <span id="chip-lucro" class="chip-info" style="margin-left:6px;" hidden title="Receita menos custos previstos">
-          Lucro previsto: <span id="val-lucro">R$ 0,00</span>
-        </span>
-        <span id="chip-frete-mode" class="chip-info" style="margin-left:6px;" hidden title="Forma de rateio do frete nos cálculos">
-          Rateio do frete: <span id="val-frete-mode">por unidade</span>
-        </span>
       </h1>
       <div class="actions">
         <button id="helpBtn" title="Ajuda/Atalhos" aria-label="Ajuda" class="btn ghost">?</button>
       </div>
     </header>
+
+    <section id="indicators" class="indicators hidden">
+      <div class="indicators-toolbar">
+        <button id="toggle-indicators">Mostrar indicadores</button>
+        <button id="config-indicators" title="Configurar indicadores">⚙️</button>
+      </div>
+      <div class="indicators-grid"></div>
+    </section>
 
     <div class="layout-grid">
       <section id="card-importacao" class="card">
@@ -94,6 +90,35 @@
               <div class="kv"><span class="muted">Valor total (R$)</span><span id="pi-total">0,00</span></div>
               <div class="kv"><span class="muted">RZ</span><span id="pi-rz">—</span></div>
               <div class="kv"><span class="muted">NCM</span><span id="pi-ncm">—</span></div>
+            </div>
+          </section>
+
+          <section id="finance-controls" class="card">
+            <div class="card-header">
+              <h3>Financeiro</h3>
+            </div>
+            <div class="card-body">
+              <div class="field">
+                <label for="fin-percent" class="label">Pagamos % do preço ML</label>
+                <input type="range" id="fin-percent" min="0" max="50" step="1" class="input" />
+                <span id="fin-percent-val">20%</span>
+              </div>
+              <div class="field">
+                <label for="fin-desconto" class="label">Desconto venda vs ML</label>
+                <input type="range" id="fin-desconto" min="0" max="50" step="1" class="input" />
+                <span id="fin-desconto-val">20%</span>
+              </div>
+              <div class="field">
+                <label for="fin-frete" class="label">Frete total</label>
+                <input type="number" id="fin-frete" class="input" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="fin-rateio" class="label">Rateio do frete</label>
+                <select id="fin-rateio" class="input">
+                  <option value="valor">por valor</option>
+                  <option value="quantidade">por quantidade</option>
+                </select>
+              </div>
             </div>
           </section>
 
@@ -300,6 +325,17 @@
       <menu style="display:flex;gap:8px;justify-content:flex-end">
         <button value="cancel" class="btn ghost">Cancelar</button>
         <button value="default" class="btn primary">Salvar</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-indicators">
+    <form method="dialog">
+      <h3>Selecionar indicadores</h3>
+      <div id="metrics-options"></div>
+      <menu style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+        <button value="cancel" class="btn ghost">Cancelar</button>
+        <button id="apply-indicators" value="default" class="btn primary">Aplicar</button>
       </menu>
     </form>
   </dialog>
