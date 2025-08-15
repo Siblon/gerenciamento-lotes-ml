@@ -1,6 +1,8 @@
 export function toast(msg, type = 'info') {
   const el = document.createElement('div');
   el.className = `toast ${type}`;
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
   el.textContent = msg;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 2200);
