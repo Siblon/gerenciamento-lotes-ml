@@ -9,6 +9,7 @@
     "test:verbose": "cross-env VERBOSE=1 vitest run --reporter=verbose"
   },
   "dependencies": {
+    "@zxing/library": "^0.21.3",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
