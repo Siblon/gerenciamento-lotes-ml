@@ -1,6 +1,7 @@
 // src/components/ActionsPanel.js
 import { exportarConferencia } from '../utils/excel.js';
 import store, { findInRZ, findConferido, findEmOutrosRZ, moveItemEntreRZ, addExcedente } from '../store/index.js';
+import { loadFinanceConfig, saveFinanceConfig } from '../utils/finance.js';
 
 function toast(msg, type='info') {
   const el = document.createElement('div');
@@ -40,6 +41,31 @@ export function initActionsPanel(render){
   const btnCons = document.querySelector('#btn-consultar') || Array.from(document.querySelectorAll('button')).find(b=>/consultar/i.test(b.textContent||''));
   const btnReg  = document.querySelector('#btn-registrar') || Array.from(document.querySelectorAll('button')).find(b=>/registrar/i.test(b.textContent||''));
   const btnFinal = document.querySelector('#finalizarBtn');
+  const rngPercent = document.getElementById('fin-percent');
+  const rngDesconto = document.getElementById('fin-desconto');
+  const inpFrete = document.getElementById('fin-frete');
+  const selRateio = document.getElementById('fin-rateio');
+
+  const cfg = loadFinanceConfig();
+  if (rngPercent) { rngPercent.value = String((cfg.percent_pago_sobre_ml||0)*100); document.getElementById('fin-percent-val').textContent = `${rngPercent.value}%`; }
+  if (rngDesconto) { rngDesconto.value = String((cfg.desconto_venda_vs_ml||0)*100); document.getElementById('fin-desconto-val').textContent = `${rngDesconto.value}%`; }
+  if (inpFrete) inpFrete.value = String(cfg.frete_total || 0);
+  if (selRateio) selRateio.value = cfg.rateio_frete || 'valor';
+
+  function saveFinance() {
+    const current = loadFinanceConfig();
+    current.percent_pago_sobre_ml = Number(rngPercent?.value || 0) / 100;
+    current.desconto_venda_vs_ml = Number(rngDesconto?.value || 0) / 100;
+    current.frete_total = parseFloat(inpFrete?.value || '0');
+    current.rateio_frete = selRateio?.value || 'valor';
+    saveFinanceConfig(current);
+    window.refreshIndicators?.();
+  }
+
+  rngPercent?.addEventListener('input', ()=>{ document.getElementById('fin-percent-val').textContent = `${rngPercent.value}%`; saveFinance(); });
+  rngDesconto?.addEventListener('input', ()=>{ document.getElementById('fin-desconto-val').textContent = `${rngDesconto.value}%`; saveFinance(); });
+  inpFrete?.addEventListener('change', saveFinance);
+  selRateio?.addEventListener('change', saveFinance);
 
   function consultar(fonte='manual') {
     const sku = (inputSku?.value || '').trim().toUpperCase();
@@ -101,15 +127,11 @@ export function initActionsPanel(render){
       } else if (typeof store.conferir === 'function') {
         store.conferir(sku, { qty, price, note, avaria: isAvaria });
         toast(`Registrado ${qty} un. de ${sku}`, 'info');
-        if (isAvaria) {
-          const it = window.computeFinancials?.().byItem.find(i=>i.sku===sku);
-          if (it && it.unitsVend <= 0) alert('Sem unidades vendáveis após avaria');
-        }
       } else {
         console.warn('Ação de registro não disponível no store.');
       }
       render();
-      window.refreshFinancialChips?.();
+      window.refreshIndicators?.();
     } catch(e) {
       console.error(e); toast('Falha ao registrar', 'error');
     }
@@ -172,7 +194,7 @@ export function initActionsPanel(render){
     dlg.close();
     toast('Excedente salvo', 'info');
     render();
-    window.refreshFinancialChips?.();
+    window.refreshIndicators?.();
   });
 
   document.addEventListener('keydown',(e)=>{

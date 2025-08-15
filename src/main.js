@@ -1,6 +1,7 @@
 // src/main.js
 import { initApp } from './components/app.js';
 import store from './store/index.js';
+import { loadFinanceConfig, loadMetricsPrefs, saveMetricsPrefs, computeItemFinance, computeAggregates } from './utils/finance.js';
 
 window.__DEBUG_SCAN__ = true;
 
@@ -38,87 +39,100 @@ function getAllItemsCurrentRZ(){
   return items;
 }
 
-function computeFinancials(){
-  const s = loadSettings();
-  const items = getAllItemsCurrentRZ();
+function computeFinance(){
+  const cfg = loadFinanceConfig();
+  const raw = getAllItemsCurrentRZ();
+  const items = raw.map(it => ({ sku: it.sku, descricao: it.descricao, preco_ml_unit: Number(it.precoMedioML||0), qtd: Number(it.qtd||0) }));
+  const totalQtd = items.reduce((s,it)=>s+it.qtd,0);
+  const totalValor = items.reduce((s,it)=>s+it.preco_ml_unit*it.qtd,0);
+  const ctx = { totalQtd, totalValor, frete_total: cfg.frete_total, rateio_frete: cfg.rateio_frete };
+  const byItem = items.map(it => ({
+    sku: it.sku,
+    descricao: it.descricao,
+    qtd: it.qtd,
+    preco_ml_unit: it.preco_ml_unit,
+    ...computeItemFinance(it, cfg, ctx)
+  }));
+  const aggregates = computeAggregates(items, cfg);
+  return { byItem, aggregates, config: cfg };
+}
+window.computeFinance = computeFinance;
 
-  const discount = (s.discountPct ?? 25) / 100;
-  const auction  = (s.auctionFeePct ?? 8) / 100;
-  const freight  = Number(s.freightTotal ?? 0);
-  const freightMode = s.freightMode || 'por_unidade';
+function refreshIndicators(){
+  try{
+    const prefs = loadMetricsPrefs();
+    const sec = document.getElementById('indicators');
+    if (sec) sec.classList.toggle('hidden', !prefs.showIndicators);
+    const grid = sec?.querySelector('.indicators-grid');
+    if (!prefs.showIndicators || !grid) return;
+    grid.innerHTML = '';
+    const { aggregates, config } = computeFinance();
+    const mapping = [
+      { key:'preco_medio_ml_palete', label:'Preço médio ML (palete)', value:aggregates.preco_medio_ml_palete, foot:null },
+      { key:'custo_medio_pago_palete', label:'Custo pago médio (palete)', value:aggregates.custo_medio_pago_palete, foot:`pagamos ${Math.round(config.percent_pago_sobre_ml*100)}% do preço ML` },
+      { key:'preco_venda_medio_palete', label:'Preço de venda médio (palete)', value:aggregates.preco_venda_medio_palete, foot:`baseado em desconto ${Math.round(config.desconto_venda_vs_ml*100)}% vs ML` },
+      { key:'lucro_total_palete', label:'Lucro total (palete)', value:aggregates.lucro_total_palete, foot:null },
+      { key:'rateio_frete', label:'Rateio do frete', value: config.rateio_frete === 'valor' ? 'por valor' : 'por quantidade', foot:null }
+    ];
+    mapping.forEach(m=>{
+      if(!prefs.visible[m.key]) return;
+      const card = document.createElement('article');
+      card.className = 'metric-card';
+      const lbl = document.createElement('div'); lbl.className='metric-label'; lbl.textContent=m.label; card.appendChild(lbl);
+      const val = document.createElement('div'); val.className='metric-value'; val.textContent = m.key==='rateio_frete'? m.value : brl(m.value); card.appendChild(val);
+      if(m.foot){ const fn=document.createElement('div'); fn.className='metric-footnote'; fn.textContent=m.foot; card.appendChild(fn); }
+      grid.appendChild(card);
+    });
+  }catch(e){ console.warn('refreshIndicators', e); }
+}
+window.refreshIndicators = refreshIndicators;
 
-  const totalUnits = items.reduce((sum,it)=> sum + Number(it.qtd||0), 0);
-  const totalValor = items.reduce((sum,it)=> sum + Number(it.precoMedioML||0) * Number(it.qtd||0), 0);
+function initIndicators(){
+  const toggleBtn = document.getElementById('toggle-indicators');
+  const configBtn = document.getElementById('config-indicators');
+  const dialog = document.getElementById('dlg-indicators');
+  const options = document.getElementById('metrics-options');
+  const applyBtn = document.getElementById('apply-indicators');
 
-  let sumRevenue = 0, sumCost = 0, sumUnitsVendaveis = 0, sumMLValor = 0, sumMLUnits = 0;
+  function updateToggle(){ const p = loadMetricsPrefs(); if(toggleBtn) toggleBtn.textContent = p.showIndicators ? 'Ocultar indicadores' : 'Mostrar indicadores'; }
 
-  const byItem = items.map((it)=>{
-    const q = Number(it.qtd||0);
-    const ml = Number(it.precoMedioML||0);
-    const conferidos = Number(it.conferidos||0);
-    const avariados  = Number(it.avariados||0);
-    const excedentes = Number(it.excedentes||0);
+  toggleBtn?.addEventListener('click', ()=>{ const p = loadMetricsPrefs(); p.showIndicators = !p.showIndicators; saveMetricsPrefs(p); updateToggle(); refreshIndicators(); });
 
-    const unitsVend = Math.max(0, conferidos + excedentes - avariados);
-    const target = ml * (1 - discount);
-    const costAuctionUnit = ml * auction;
-
-    let costFreightUnit = 0;
-    if (freight > 0) {
-      if (freightMode === 'por_valor' && totalValor > 0) {
-        const pesoValor = (ml * q) / totalValor;
-        costFreightUnit = (freight * pesoValor) / Math.max(1, q);
-      } else {
-        costFreightUnit = freight / Math.max(1, totalUnits);
-      }
-    }
-
-    const unitCost = costAuctionUnit + costFreightUnit;
-    const revenue  = target * unitsVend;
-    const cost     = unitCost * unitsVend;
-    const profit   = revenue - cost;
-
-    sumUnitsVendaveis += unitsVend;
-    sumRevenue += revenue;
-    sumCost += cost;
-    sumMLValor += ml * q;
-    sumMLUnits += q;
-
-    return { sku: it.sku, descricao: it.descricao, ml, target, unitCost, unitsVend, revenue, cost, profit };
+  configBtn?.addEventListener('click', ()=>{
+    if(!dialog) return;
+    const prefs = loadMetricsPrefs();
+    options.innerHTML = '';
+    const labels = {
+      preco_medio_ml_palete:'Preço médio ML (palete)',
+      custo_medio_pago_palete:'Custo pago médio (palete)',
+      preco_venda_medio_palete:'Preço de venda médio (palete)',
+      lucro_total_palete:'Lucro total (palete)',
+      rateio_frete:'Rateio do frete'
+    };
+    Object.keys(prefs.visible).forEach(k=>{
+      const id='chk-'+k;
+      const div=document.createElement('div');
+      const cb=document.createElement('input'); cb.type='checkbox'; cb.id=id; cb.checked=!!prefs.visible[k];
+      const lb=document.createElement('label'); lb.htmlFor=id; lb.textContent=labels[k];
+      div.appendChild(cb); div.appendChild(lb); options.appendChild(div);
+    });
+    dialog.showModal();
   });
 
-  const paleteMLavg   = sumMLUnits > 0 ? sumMLValor / sumMLUnits : 0;
-  const paleteTarget  = paleteMLavg * (1 - (loadSettings().discountPct ?? 25)/100);
-  const lucroPrevisto = sumRevenue - sumCost;
+  applyBtn?.addEventListener('click', ()=>{
+    const prefs = loadMetricsPrefs();
+    Object.keys(prefs.visible).forEach(k=>{ const cb=document.getElementById('chk-'+k); prefs.visible[k] = !!cb?.checked; });
+    saveMetricsPrefs(prefs);
+    dialog.close();
+    refreshIndicators();
+  });
 
-  return { byItem, totals: { paleteMLavg, paleteTarget, revenue: sumRevenue, cost: sumCost, lucroPrevisto } };
+  updateToggle();
+  refreshIndicators();
 }
-window.computeFinancials = computeFinancials;
 
-function refreshFinancialChips(){
-  try{
-    const f = computeFinancials();
-    const chipML = document.getElementById('chip-palete');
-    const chipTg = document.getElementById('chip-palete-target');
-    const chipLu = document.getElementById('chip-lucro');
-    const chipFm = document.getElementById('chip-frete-mode');
+initIndicators();
 
-    const vML = document.getElementById('val-palete');
-    const vTG = document.getElementById('val-palete-target');
-    const vLU = document.getElementById('val-lucro');
-    const vFM = document.getElementById('val-frete-mode');
-
-    if (chipML && vML) { vML.textContent = brl(f.totals.paleteMLavg); chipML.hidden = false; }
-    if (chipTg && vTG) { vTG.textContent = brl(f.totals.paleteTarget); chipTg.hidden = false; }
-    if (chipLu && vLU) { vLU.textContent = brl(f.totals.lucroPrevisto); chipLu.hidden = false; }
-    if (chipFm && vFM) {
-      const s = loadSettings();
-      vFM.textContent = s.freightMode === 'por_valor' ? 'por valor' : 'por unidade';
-      chipFm.hidden = false;
-    }
-  }catch(e){ console.warn('refreshFinancialChips', e); }
-}
-window.refreshFinancialChips = refreshFinancialChips;
 
 const SETTINGS_KEY = 'confApp.settings';
 
@@ -138,8 +152,8 @@ function applySettings() {
   if (selC && s.pageSize) selC.value = String(s.pageSize);
   if (selP && s.pageSize) selP.value = String(s.pageSize);
 
-  // Atualiza chips financeiros
-  refreshFinancialChips();
+  // Atualiza indicadores financeiros
+  refreshIndicators();
 }
 
 function wireSettingsUI() {
@@ -302,7 +316,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // ---- Registrar com quantidade e observações ----
     applySettings();
     wireSettingsUI();
-    refreshFinancialChips();
+    refreshIndicators();
   });
 
 // para testar no Console
