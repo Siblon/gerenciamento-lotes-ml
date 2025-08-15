@@ -1,8 +1,7 @@
 import * as XLSX from 'xlsx';
-import store, { setItemNcm, setItemNcmStatus } from '../store/index.js';
+import { setRZs, setItens } from '../store/index.js';
 import { parseBRLLoose } from './number.js';
-import { resolveQueued } from '../services/ncmService.js';
-import { toast } from './toast.js';
+import { startNcmQueue } from '../services/ncmQueue.js';
 
 const isDev = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV);
 const DBG = (...a) => { if (isDev) console.log('[XLSX]', ...a); };
@@ -108,48 +107,7 @@ function detectCentsMode(items) {
   return checked >= 3 && centsLike / checked > 0.8;
 }
 
-async function resolveNcmQueue(itemsByRZ){
-  const pending = [];
-  for(const [rz, arr] of Object.entries(itemsByRZ||{})){
-    for(const it of arr){
-      if(!it.ncm){
-        const id = `${rz}:${it.codigoML}`;
-        setItemNcmStatus(id, 'pendente');
-        pending.push({ rz, id, it });
-      }
-    }
-  }
-  const total = pending.length;
-  if(!total) return;
-  let done = 0;
-  let cancelled = false;
-  const hasDoc = typeof document !== 'undefined';
-  const progress = ()=>{ if(hasDoc) document.dispatchEvent(new CustomEvent('ncm-progress',{ detail:{ done, total } })); };
-  const cancelHandler = ()=>{ cancelled = true; };
-  if(hasDoc) document.addEventListener('ncm-cancel', cancelHandler);
-  progress();
-  await Promise.all(pending.map(p=>
-    resolveQueued({ sku:p.it.codigoML, descricao:p.it.descricao })
-      .then(res=>{
-        if(cancelled) return;
-        if(res.ok){
-          p.it.ncm = res.ncm;
-          setItemNcm(p.id, res.ncm, res.source);
-        }else{
-          setItemNcmStatus(p.id, 'falha');
-          if(res.reason==='api_http_error' && ['401','403','429','500'].includes(String(res.detail||''))){
-            toast.warn('Falha ao resolver NCM');
-          }
-        }
-      })
-      .catch(()=>{ if(!cancelled) setItemNcmStatus(p.id,'falha'); })
-      .finally(()=>{ done++; progress(); if(hasDoc) document.dispatchEvent(new Event('ncm-update')); })
-  ));
-  if(hasDoc) document.removeEventListener('ncm-cancel', cancelHandler);
-  progress();
-}
-
-export async function processarPlanilha(input) {
+export async function parsePlanilha(input) {
   let data;
   if (input instanceof ArrayBuffer) data = input;
   else if (input instanceof Uint8Array) data = input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength);
@@ -163,7 +121,6 @@ export async function processarPlanilha(input) {
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
   DBG(`Usando aba '${name}' — linhas:`, rows.length);
 
-  // 1) tenta header
   const hdrIdx = findHeaderRow(rows);
   if (hdrIdx >= 0) {
     const header = rows[hdrIdx];
@@ -179,14 +136,14 @@ export async function processarPlanilha(input) {
       const obj = {
         tipo: get('tipo'),
         enderecoWMS: get('enderecoWMS'),
-        codigoML: get('codigoML'),                       // SKU
+        codigoML: get('codigoML'),
         codigoRZ: normalizeRZ(get('codigoRZ')),
         codigoP7: get('codigoP7'),
         qtd: Number(get('qtd')) || parseNumberBR(get('qtd')),
         descricao: get('descricao'),
         seller: get('seller'),
         vertical: get('vertical'),
-        valorUnit: parseBRLLoose(precoRaw),              // preço
+        valorUnit: parseBRLLoose(precoRaw),
         valorTotalPlan: parseBRLLoose(totalRaw),
         categoria: get('categoria'),
         subcategoria: get('subcategoria'),
@@ -213,62 +170,20 @@ export async function processarPlanilha(input) {
       }
     }
 
-    const itemsByRZ = {};
-    for (const it of items) {
-      (itemsByRZ[it.codigoRZ] ||= []).push(it);
-    }
-    const rzList = Object.keys(itemsByRZ).sort();
-
-    const totalByRZSku = {};
-    const metaByRZSku = {};
-    for (const rz of rzList) {
-      const map = {};
-      for (const it of itemsByRZ[rz]) {
-        const sku = String(it.codigoML || '').trim().toUpperCase();
-        const inc = Number(it.qtd) || 0;
-        if (!sku) continue;
-        map[sku] = (map[sku] || 0) + inc;
-
-        const descricao = String(it.descricao || '').trim();
-        const precoMedio = Number(it.valorUnit || 0);
-        const ncm = it.ncm || null;
-        (metaByRZSku[rz] ||= {});
-        if (!metaByRZSku[rz][sku]) metaByRZSku[rz][sku] = { descricao, precoMedio, ncm };
-      }
-      totalByRZSku[rz] = map;
-    }
-
-    store.state = store.state || {};
-    store.state.itemsByRZ = itemsByRZ;
-    store.state.rzList = rzList;
-    store.state.totalByRZSku = totalByRZSku;
-    store.state.metaByRZSku = metaByRZSku;
-    store.state.conferidosByRZSku = {};
-    store.state.excedentes = {};
-    if (!store.state.currentRZ) store.state.currentRZ = rzList[0] || null;
-
-    await resolveNcmQueue(itemsByRZ);
-
-    DBG('RZs (header):', rzList.length, rzList.slice(0, 30));
-    return { rzList, itemsByRZ, totalByRZSku, metaByRZSku };
+    const rzs = Array.from(new Set(items.map(it => it.codigoRZ))).sort();
+    return { rzs, itens: items };
   }
 
-  // 2) fallback regex se não achar header
-  const rzList = bruteForceRZ(rows);
-  const itemsByRZ = {};
-  for (const rz of rzList) itemsByRZ[rz] = []; // sem linhas mapeadas no fallback
+  const rzs = bruteForceRZ(rows);
+  return { rzs, itens: [] };
+}
 
-  store.state = store.state || {};
-  store.state.itemsByRZ = itemsByRZ;
-  store.state.rzList = rzList;
-  store.state.totalByRZSku = {};
-  store.state.metaByRZSku = {};
-  store.state.conferidosByRZSku = {};
-  store.state.excedentes = {};
-  if (!store.state.currentRZ) store.state.currentRZ = rzList[0] || null;
-
-  DBG('RZs (fallback):', rzList.length, rzList.slice(0, 30));
-  return { rzList, itemsByRZ, totalByRZSku: {}, metaByRZSku: {} };
+export async function processarPlanilha(input) {
+  const { rzs, itens } = await parsePlanilha(input);
+  setRZs(rzs);
+  const { itemsByRZ, totalByRZSku, metaByRZSku } = setItens(itens);
+  startNcmQueue(itens);
+  return { rzList: rzs, itemsByRZ, totalByRZSku, metaByRZSku };
 }
 
 // Exporta os resultados finais em um arquivo .xlsx com quatro abas:
