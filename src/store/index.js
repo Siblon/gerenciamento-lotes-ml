@@ -11,7 +11,7 @@ const state = {
   totalByRZSku: {},       // { [rz]: { [sku]: qtdTotal } }
 
   // metadados por RZ → SKU (vindo do Excel)
-  metaByRZSku: {},        // { [rz]: { [sku]: { descricao, precoMedio } } }
+  metaByRZSku: {},        // { [rz]: { [sku]: { descricao, precoMedio, ncm } } }
 
     // conferidos em runtime (pode acumular quantidade)
     conferidosByRZSku: {},  // { [rz]: { [sku]: { qtd, precoAjustado, observacao, status } } }
@@ -23,7 +23,7 @@ const state = {
   movimentos: [],         // [{ ts, rz, sku, precoAjustado, observacao }]
 
   // excedentes por RZ
-  excedentes: {},         // { [rz]: [ { sku, descricao, qtd, preco, obs, fonte } ] }
+  excedentes: {},         // { [rz]: [ { sku, descricao, qtd, preco, obs, fonte, ncm } ] }
 
   limits: {
     conferidos: 50,
@@ -106,14 +106,26 @@ export function findInRZ(rz, sku){
   const confQtd = state.conferidosByRZSku[rz]?.[sku]?.qtd || 0;
   if (confQtd >= tot[sku]) return null;
   const meta = state.metaByRZSku[rz]?.[sku] || {};
-  return { sku, descricao: meta.descricao || '', qtd: tot[sku] - confQtd, precoMedio: meta.precoMedio };
+  return {
+    sku,
+    descricao: meta.descricao || '',
+    qtd: tot[sku] - confQtd,
+    precoMedio: meta.precoMedio,
+    ncm: meta.ncm ?? null,
+  };
 }
 
 export function findConferido(rz, sku){
   const conf = state.conferidosByRZSku[rz]?.[sku];
   if (!conf) return null;
   const meta = state.metaByRZSku[rz]?.[sku] || {};
-  return { sku, descricao: meta.descricao || '', qtd: conf.qtd || 0, precoMedio: meta.precoMedio };
+  return {
+    sku,
+    descricao: meta.descricao || '',
+    qtd: conf.qtd || 0,
+    precoMedio: meta.precoMedio,
+    ncm: meta.ncm ?? null,
+  };
 }
 
 export function findEmOutrosRZ(sku){
@@ -123,17 +135,19 @@ export function findEmOutrosRZ(sku){
   return null;
 }
 
-export function addExcedente(rz, { sku, descricao, qtd, preco, obs, fonte }){
+export function addExcedente(rz, { sku, descricao, qtd, preco, obs, fonte, ncm }){
   const list = (state.excedentes[rz] ||= []);
   const existente = list.find(it => it.sku === sku);
   const q = Number(qtd) || 0;
   const p = Number(preco) || 0;
+  const metaNcm = ncm ?? state.metaByRZSku[rz]?.[sku]?.ncm ?? null;
   if (existente) {
     existente.qtd += q;
     existente.preco = p || existente.preco;
     existente.obs = obs || existente.obs;
+    existente.ncm = metaNcm ?? existente.ncm ?? null;
   } else {
-    list.push({ sku, descricao: descricao || '', qtd: q, preco: p, obs: obs || '', fonte: fonte || '' });
+    list.push({ sku, descricao: descricao || '', qtd: q, preco: p, obs: obs || '', fonte: fonte || '', ncm: metaNcm });
   }
   state.movimentos.push({ ts: Date.now(), tipo: 'EXCEDENTE', rz, sku, qtd: q, preco: p, obs, fonte });
   updateContadores(rz);
