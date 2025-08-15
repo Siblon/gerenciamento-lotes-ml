@@ -264,8 +264,11 @@ export function setItemNcm(id, ncm, source){
   if(!rz || !sku) return;
   (state.metaByRZSku[rz] ||= {});
   const meta = (state.metaByRZSku[rz][sku] ||= {});
+  const ts = Date.now();
   meta.ncm = ncm;
   meta.ncm_source = source;
+  meta.ncm_ts = ts;
+  meta.ncmMeta = { source, ts };
   meta.ncm_status = 'ok';
   state.ncmCache[sku] = ncm;
   try{ localStorage.setItem('ncmCache:v1', JSON.stringify(state.ncmCache)); }catch{}
@@ -315,6 +318,7 @@ export function selectAllImportedItems(){
         descricao: meta[sku]?.descricao || '',
         preco_ml_unit: Number(meta[sku]?.precoMedio || 0),
         qtd: Number(qtd || 0),
+        ncm: meta[sku]?.ncm || null,
       });
     }
   }
