@@ -29,6 +29,18 @@ const state = {
     conferidos: 50,
     pendentes: 50,
   },
+
+  // cache simples de NCM por SKU
+  ncmCache: (() => {
+    try {
+      return JSON.parse(localStorage.getItem('ncmCache:v1') || '{}');
+    } catch {
+      return {};
+    }
+  })(),
+
+  // tags livres por item (id -> Set)
+  itemTags: {},
 };
 
 function updateContadores(rz){
@@ -188,6 +200,56 @@ export function registrarExcedente({ sku, qty, price, note }) {
   addExcedente(rz, { sku, descricao: '', qtd: qty, preco: price, obs: note, fonte: 'preset' });
 }
 
-const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir, registrarExcedente };
+function parseId(id){
+  const [rz, sku] = String(id || '').split(':');
+  return { rz, sku };
+}
+
+export function setItemNcm(id, ncm, source){
+  const { rz, sku } = parseId(id);
+  if(!rz || !sku) return;
+  (state.metaByRZSku[rz] ||= {});
+  const meta = (state.metaByRZSku[rz][sku] ||= {});
+  meta.ncm = ncm;
+  meta.ncm_source = source;
+  meta.ncm_status = 'ok';
+  state.ncmCache[sku] = ncm;
+  try{ localStorage.setItem('ncmCache:v1', JSON.stringify(state.ncmCache)); }catch{}
+}
+
+export function setItemNcmStatus(id, status){
+  const { rz, sku } = parseId(id);
+  const meta = state.metaByRZSku[rz]?.[sku];
+  if(meta) meta.ncm_status = status;
+}
+
+export function tagItem(id, tag){
+  const set = (state.itemTags[id] ||= new Set());
+  set.add(tag);
+}
+
+export function untagItem(id, tag){
+  const set = state.itemTags[id];
+  if(!set) return;
+  set.delete(tag);
+  if(set.size === 0) delete state.itemTags[id];
+}
+
+export function selectAllItems(){
+  const rz = state.currentRZ;
+  const out = [];
+  const totals = state.totalByRZSku[rz] || {};
+  const meta = state.metaByRZSku[rz] || {};
+  for(const sku of Object.keys(totals)){
+    out.push({ id:`${rz}:${sku}`, sku, ...(meta[sku]||{}) });
+  }
+  const exc = state.excedentes[rz] || [];
+  for(const it of exc){
+    out.push({ id:`${rz}:${it.sku}`, ...it });
+  }
+  return out;
+}
+
+const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir, registrarExcedente, setItemNcm, setItemNcmStatus, tagItem, untagItem, selectAllItems };
 
 export default store;
