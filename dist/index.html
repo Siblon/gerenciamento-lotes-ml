@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <title>Sistema de Conferência</title>
   
-  <script type="module" crossorigin src="/assets/index-bbc05e2c.js"></script>
-  <link rel="stylesheet" href="/assets/index-2a6389b9.css">
+  <script type="module" crossorigin src="/assets/index-705d2a72.js"></script>
+  <link rel="stylesheet" href="/assets/index-7ce5fe42.css">
 </head>
 <body>
   <main class="container">
@@ -32,9 +32,12 @@
           <h2>Importação &amp; Seleção</h2>
         </div>
         <div class="card-body">
-          <div class="field">
-            <label for="input-arquivo" class="label">Planilha</label>
-            <input type="file" id="input-arquivo" accept=".xlsx" class="input" />
+          <div class="file-row">
+            <label class="label" for="file">Planilha</label>
+            <div class="file-input-wrap">
+              <input type="file" id="file" accept=".xlsx" />
+              <span id="file-name" class="ellipsis"></span>
+            </div>
           </div>
           <div class="field">
             <label for="select-rz" class="label">RZ</label>
@@ -48,35 +51,39 @@
           <h2>Ações de Conferência</h2>
         </div>
         <div class="card-body">
-          <div class="row">
-            <div class="field">
-              <label for="codigo-ml" class="label">Código do produto</label>
-              <input type="text" id="codigo-ml" placeholder="Código do produto" class="input" />
+          <div class="actions-grid">
+            <div class="row">
+              <div class="field">
+                <label for="codigo-ml" class="label">Código do produto</label>
+                <input type="text" id="codigo-ml" placeholder="Código do produto" class="input" />
+              </div>
+              <div class="field">
+                <label class="label" for="btn-consultar">&nbsp;</label>
+                <button id="btn-consultar" class="btn btn-primary" type="button">Consultar</button>
+              </div>
+              <div class="field">
+                <label class="label" for="btn-open-scanner">&nbsp;</label>
+                <button id="btn-open-scanner" type="button" class="btn btn-ghost" aria-controls="card-scanner" aria-expanded="false">Ler código</button>
+              </div>
             </div>
-            <div class="field">
-              <label class="label" for="btn-open-scanner">&nbsp;</label>
-              <button id="btn-open-scanner" type="button" class="btn" aria-controls="card-scanner" aria-expanded="false">Ler código</button>
-            </div>
-          </div>
-          <div class="row">
-            <div class="field">
-              <label for="preco-ajustado" class="label">Preço ajustado</label>
-              <input type="number" id="preco-ajustado" placeholder="Preço ajustado" step="0.01" class="input" />
-            </div>
-
-            <div class="field">
-              <label for="obs-preset" class="label">Observação (pré-definida)</label>
-              <select id="obs-preset" class="input" aria-label="Observação padrão">
-                <option value="">— Nenhuma —</option>
-                <option value="excedente">Produto excedente (não listado)</option>
-                <option value="avaria">Avaria grave (descartar)</option>
-                <option value="nao_encontrado">Não encontrado no RZ</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="observacao" class="label">Observação (texto livre)</label>
-              <input type="text" id="observacao" placeholder="Escreva um detalhe (opcional)" class="input" />
+            <div class="row">
+              <div class="field">
+                <label for="preco-ajustado" class="label">Preço ajustado</label>
+                <input type="number" id="preco-ajustado" placeholder="Preço ajustado" step="0.01" class="input" />
+              </div>
+              <div class="field">
+                <label for="obs-preset" class="label">Observação (pré-definida)</label>
+                <select id="obs-preset" class="input" aria-label="Observação padrão">
+                  <option value="">— Nenhuma —</option>
+                  <option value="excedente">Produto excedente (não listado)</option>
+                  <option value="avaria">Avaria grave (descartar)</option>
+                  <option value="nao_encontrado">Não encontrado no RZ</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label" for="btn-registrar">&nbsp;</label>
+                <button id="btn-registrar" class="btn btn-ghost" type="button">Registrar</button>
+              </div>
             </div>
           </div>
 
@@ -92,43 +99,53 @@
               <div class="kv"><span class="muted">NCM</span><span id="pi-ncm">—</span></div>
             </div>
           </section>
+        </div>
+      </section>
 
-          <section id="finance-controls" class="card">
-            <div class="card-header">
-              <h3>Financeiro</h3>
-            </div>
-            <div class="card-body">
-              <div class="field">
-                <label for="fin-percent" class="label">Pagamos % do preço ML</label>
-                <input type="range" id="fin-percent" min="0" max="50" step="1" class="input" />
-                <span id="fin-percent-val">20%</span>
-              </div>
-              <div class="field">
-                <label for="fin-desconto" class="label">Desconto venda vs ML</label>
-                <input type="range" id="fin-desconto" min="0" max="50" step="1" class="input" />
-                <span id="fin-desconto-val">20%</span>
-              </div>
-              <div class="field">
-                <label for="fin-frete" class="label">Frete total</label>
-                <input type="number" id="fin-frete" class="input" step="0.01" />
-              </div>
-              <div class="field">
-                <label for="fin-rateio" class="label">Rateio do frete</label>
-                <select id="fin-rateio" class="input">
-                  <option value="valor">por valor</option>
-                  <option value="quantidade">por quantidade</option>
-                </select>
-              </div>
-            </div>
-          </section>
-
-          <div class="actions">
-            <button id="btn-consultar" class="btn">Consultar</button>
-            <button id="btn-registrar" class="btn primary">Registrar</button>
-            <button id="finalizarBtn" class="btn ghost">Finalizar Conferência</button>
+      <section id="finance-panel" class="card collapsed">
+        <header class="card-header">
+          <h3>Financeiro</h3>
+          <div class="spacer"></div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-finance" />
+            <span>Mostrar</span>
+          </label>
+        </header>
+        <div class="card-body">
+          <div class="field">
+            <label for="fin-percent" class="label">Pagamos % do preço ML</label>
+            <input type="range" id="fin-percent" min="0" max="50" step="1" class="input" />
+            <span id="fin-percent-val">20%</span>
+          </div>
+          <div class="field">
+            <label for="fin-desconto" class="label">Desconto venda vs ML</label>
+            <input type="range" id="fin-desconto" min="0" max="50" step="1" class="input" />
+            <span id="fin-desconto-val">20%</span>
+          </div>
+          <div class="field">
+            <label for="fin-frete" class="label">Frete total</label>
+            <input type="number" id="fin-frete" class="input" step="0.01" />
+          </div>
+          <div class="field">
+            <label for="fin-mode" class="label">Cálculo do frete</label>
+            <select id="fin-mode" class="input">
+              <option value="finalizar">apenas ao finalizar</option>
+              <option value="ao_vivo">ao vivo</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="fin-rateio" class="label">Rateio do frete</label>
+            <select id="fin-rateio" class="input">
+              <option value="valor">por valor</option>
+              <option value="quantidade">por quantidade</option>
+            </select>
           </div>
         </div>
       </section>
+
+      <div class="actions">
+        <button id="finalizarBtn" class="btn btn-ghost">Finalizar Conferência</button>
+      </div>
 
       <section id="card-scanner" class="card collapsed" aria-live="polite">
         <div class="card-header">
