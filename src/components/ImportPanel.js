@@ -1,6 +1,7 @@
 // src/components/ImportPanel.js
-import { processarPlanilha } from '../utils/excel.js';
-import store, { setCurrentRZ } from '../store/index.js';
+import { parsePlanilha } from '../utils/excel.js';
+import store, { setCurrentRZ, setRZs, setItens } from '../store/index.js';
+import { startNcmQueue } from '../services/ncmQueue.js';
 
 export function initImportPanel(render){
   const fileInput = document.getElementById('file');
@@ -16,18 +17,34 @@ export function initImportPanel(render){
     }
     if (!f) return;
     const buf = (f.arrayBuffer ? await f.arrayBuffer() : f);
-    const { rzList } = await processarPlanilha(buf);
+    const { rzs, itens } = await parsePlanilha(buf);
+    setRZs(rzs);
+    setItens(itens);
+    startNcmQueue(itens);
     if (rzSelect){
-      rzSelect.innerHTML = rzList.map(rz=>`<option value="${rz}">${rz}</option>`).join('');
-      if (rzList.length){
-        rzSelect.value = rzList[0];
-        setCurrentRZ(rzList[0]);
+      rzSelect.innerHTML = rzs.map(rz=>`<option value="${rz}">${rz}</option>`).join('');
+      if (rzs.length){
+        rzSelect.value = rzs[0];
+        setCurrentRZ(rzs[0]);
       }
     } else {
-      setCurrentRZ(rzList[0] || null);
+      setCurrentRZ(rzs[0] || null);
     }
     render?.();
   });
 
   rzSelect?.addEventListener('change', e=>{ setCurrentRZ(e.target.value || null); render?.(); });
+
+  const badge = document.getElementById('ncm-badge');
+  const badgeCount = document.getElementById('ncm-badge-count');
+  document.addEventListener('ncm-progress', e=>{
+    const { done, total } = e.detail;
+    if(!badge) return;
+    if(total > 0 && done < total){
+      badge.hidden = false;
+      if(badgeCount) badgeCount.textContent = `${done}/${total}`;
+    }else{
+      badge.hidden = true;
+    }
+  });
 }

@@ -39,6 +39,8 @@ const state = {
     }
   })(),
 
+  ncmState: { running:false, done:0, total:0 },
+
   // tags livres por item (id -> Set)
   itemTags: {},
 };
@@ -55,6 +57,40 @@ function updateContadores(rz){
 export function setCurrentRZ(rz){
   state.currentRZ = state.rzAtual = rz;
   if (rz) updateContadores(rz);
+}
+
+export function setRZs(rzs = []){
+  state.rzList = Array.isArray(rzs) ? rzs : [];
+  if(!state.currentRZ) state.currentRZ = state.rzList[0] || null;
+  if(state.currentRZ) updateContadores(state.currentRZ);
+}
+
+export function setItens(items = []){
+  const itemsByRZ = {};
+  const totalByRZSku = {};
+  const metaByRZSku = {};
+  for(const it of items){
+    (itemsByRZ[it.codigoRZ] ||= []).push(it);
+    const sku = String(it.codigoML || '').trim().toUpperCase();
+    if(!sku) continue;
+    (totalByRZSku[it.codigoRZ] ||= {});
+    const inc = Number(it.qtd) || 0;
+    totalByRZSku[it.codigoRZ][sku] = (totalByRZSku[it.codigoRZ][sku] || 0) + inc;
+    (metaByRZSku[it.codigoRZ] ||= {});
+    if(!metaByRZSku[it.codigoRZ][sku]){
+      const descricao = String(it.descricao || '').trim();
+      const precoMedio = Number(it.valorUnit || 0);
+      const ncm = it.ncm || null;
+      metaByRZSku[it.codigoRZ][sku] = { descricao, precoMedio, ncm };
+    }
+  }
+  state.itemsByRZ = itemsByRZ;
+  state.totalByRZSku = totalByRZSku;
+  state.metaByRZSku = metaByRZSku;
+  state.conferidosByRZSku = {};
+  state.excedentes = {};
+  if(!state.currentRZ) state.currentRZ = Object.keys(itemsByRZ)[0] || null;
+  return { itemsByRZ, totalByRZSku, metaByRZSku };
 }
 
 export function addMovimento(m){ state.movimentos.push(m); }
@@ -325,6 +361,6 @@ export function selectAllImportedItems(){
   return items;
 }
 
-const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir, registrarExcedente, setItemNcm, setItemNcmStatus, tagItem, untagItem, selectAllItems, selectAllImportedItems, setExcedente, setDescarte, selectDescartes };
+const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir, registrarExcedente, setItemNcm, setItemNcmStatus, tagItem, untagItem, selectAllItems, selectAllImportedItems, setExcedente, setDescarte, selectDescartes, setRZs, setItens };
 
 export default store;
