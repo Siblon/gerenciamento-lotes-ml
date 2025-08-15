@@ -1,11 +1,11 @@
 import { loadPrefs, savePrefs } from './prefs.js';
 
-let currentMode = 'auto';
+let currentMode = 'wedge';
 const listeners = new Set();
 
 function init() {
   const prefs = loadPrefs();
-  currentMode = prefs.scannerMode || 'auto';
+  currentMode = prefs.scannerMode || 'wedge';
 }
 
 init();
@@ -14,8 +14,8 @@ export function getMode() {
   return currentMode;
 }
 
-export function switchTo(mode = 'auto') {
-  currentMode = mode === 'manual' ? 'manual' : 'auto';
+export function switchTo(mode = 'wedge') {
+  currentMode = mode === 'camera' ? 'camera' : 'wedge';
   const prefs = loadPrefs();
   prefs.scannerMode = currentMode;
   savePrefs(prefs);
@@ -24,14 +24,10 @@ export function switchTo(mode = 'auto') {
 
 export function afterRegister() {
   const prefs = loadPrefs();
-  if (prefs.lockManualScanner) {
-    // mantém modo manual se fixado
+  if (prefs.lockScannerMode) {
     return;
   }
-  currentMode = 'auto';
-  prefs.scannerMode = 'auto';
-  savePrefs(prefs);
-  listeners.forEach((fn) => fn(currentMode));
+  switchTo('wedge');
 }
 
 export function onChange(fn) {

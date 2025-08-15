@@ -4,29 +4,29 @@ import { loadPrefs, savePrefs } from '../src/utils/prefs.js';
 
 beforeEach(() => {
   localStorage.clear();
-  switchTo('auto');
+  switchTo('wedge');
 });
 
 describe('scannerController', () => {
   it('switches mode and persists', () => {
-    switchTo('manual');
-    expect(getMode()).toBe('manual');
-    expect(loadPrefs().scannerMode).toBe('manual');
+    switchTo('camera');
+    expect(getMode()).toBe('camera');
+    expect(loadPrefs().scannerMode).toBe('camera');
   });
 
   it('returns to auto after register unless locked', () => {
-    switchTo('manual');
+    switchTo('camera');
     let prefs = loadPrefs();
-    prefs.lockManualScanner = false;
+    prefs.lockScannerMode = false;
     savePrefs(prefs);
     afterRegister();
-    expect(getMode()).toBe('auto');
+    expect(getMode()).toBe('wedge');
 
-    switchTo('manual');
+    switchTo('camera');
     prefs = loadPrefs();
-    prefs.lockManualScanner = true;
+    prefs.lockScannerMode = true;
     savePrefs(prefs);
     afterRegister();
-    expect(getMode()).toBe('manual');
+    expect(getMode()).toBe('camera');
   });
 });
