@@ -43,6 +43,22 @@
           </div>
         </div>
       </section>
+      <section id="card-ncm" class="card">
+        <div class="card-header">
+          <h2>NCM</h2>
+          <div class="spacer"></div>
+          <label><input type="checkbox" id="ncm-only-fail" /> Somente falhas</label>
+        </div>
+        <div class="card-body">
+          <div id="ncm-progress" hidden>Resolvendo NCM… <span id="ncm-progress-count">0/0</span> <button id="ncm-cancel" class="btn ghost">Cancelar</button></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>SKU</th><th>Descrição</th><th>NCM</th><th>Origem</th><th>Status</th></tr></thead>
+              <tbody id="ncm-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
       <section id="card-acoes" class="card">
         <div class="card-header">

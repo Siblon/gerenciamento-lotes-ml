@@ -1,6 +1,8 @@
 import * as XLSX from 'xlsx';
-import store from '../store/index.js';
+import store, { setItemNcm, setItemNcmStatus } from '../store/index.js';
 import { parseBRLLoose } from './number.js';
+import { resolveQueued } from '../services/ncmService.js';
+import { toast } from './toast.js';
 
 const isDev = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV);
 const DBG = (...a) => { if (isDev) console.log('[XLSX]', ...a); };
@@ -106,6 +108,47 @@ function detectCentsMode(items) {
   return checked >= 3 && centsLike / checked > 0.8;
 }
 
+async function resolveNcmQueue(itemsByRZ){
+  const pending = [];
+  for(const [rz, arr] of Object.entries(itemsByRZ||{})){
+    for(const it of arr){
+      if(!it.ncm){
+        const id = `${rz}:${it.codigoML}`;
+        setItemNcmStatus(id, 'pendente');
+        pending.push({ rz, id, it });
+      }
+    }
+  }
+  const total = pending.length;
+  if(!total) return;
+  let done = 0;
+  let cancelled = false;
+  const hasDoc = typeof document !== 'undefined';
+  const progress = ()=>{ if(hasDoc) document.dispatchEvent(new CustomEvent('ncm-progress',{ detail:{ done, total } })); };
+  const cancelHandler = ()=>{ cancelled = true; };
+  if(hasDoc) document.addEventListener('ncm-cancel', cancelHandler);
+  progress();
+  await Promise.all(pending.map(p=>
+    resolveQueued({ sku:p.it.codigoML, descricao:p.it.descricao })
+      .then(res=>{
+        if(cancelled) return;
+        if(res.ok){
+          p.it.ncm = res.ncm;
+          setItemNcm(p.id, res.ncm, res.source);
+        }else{
+          setItemNcmStatus(p.id, 'falha');
+          if(res.reason==='api_http_error' && ['401','403','429','500'].includes(String(res.detail||''))){
+            toast.warn('Falha ao resolver NCM');
+          }
+        }
+      })
+      .catch(()=>{ if(!cancelled) setItemNcmStatus(p.id,'falha'); })
+      .finally(()=>{ done++; progress(); if(hasDoc) document.dispatchEvent(new Event('ncm-update')); })
+  ));
+  if(hasDoc) document.removeEventListener('ncm-cancel', cancelHandler);
+  progress();
+}
+
 export async function processarPlanilha(input) {
   let data;
   if (input instanceof ArrayBuffer) data = input;
@@ -204,6 +247,8 @@ export async function processarPlanilha(input) {
     store.state.excedentes = {};
     if (!store.state.currentRZ) store.state.currentRZ = rzList[0] || null;
 
+    await resolveNcmQueue(itemsByRZ);
+
     DBG('RZs (header):', rzList.length, rzList.slice(0, 30));
     return { rzList, itemsByRZ, totalByRZSku, metaByRZSku };
   }
@@ -298,9 +343,9 @@ export function exportarConferencia({ conferidos, pendentes, excedentes, resumoR
     }));
   }
 
-  addSheet('Conferidos', conferidos, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
-  addSheet('Pendentes', pendentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
-  addSheet('Excedentes', excedentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
+  addSheet('Conferidos', conferidos, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)','NCM']);
+  addSheet('Pendentes', pendentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)','NCM']);
+  addSheet('Excedentes', excedentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)','NCM']);
   const fin = (typeof window !== 'undefined' && window.computeFinance) ? window.computeFinance({ includeFrete: true }) : null;
   addSheet('Resumo RZ', resumoRZ.map(r => ({
     'RZ': r.rz,

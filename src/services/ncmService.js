@@ -36,7 +36,8 @@ export function createQueue(limit = 3){
   };
 }
 
-export async function resolveWithRetry(fn, attempts=3, baseDelay=100){
+// Retry helper with exponential backoff (default 2 retries: 500ms then 1s)
+export async function resolveWithRetry(fn, attempts=3, baseDelay=500){
   let lastErr;
   for(let i=0;i<attempts;i++){
     try{ return await fn(); }
