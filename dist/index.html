@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>Sistema de Conferência</title>
   
-  <script type="module" crossorigin src="/assets/index-38c29900.js"></script>
+  <script type="module" crossorigin src="/assets/index-d2fd0f06.js"></script>
   <link rel="stylesheet" href="/assets/index-ee3e98ad.css">
 </head>
 <body>
@@ -42,12 +42,18 @@
           <div class="field">
             <label for="select-rz" class="label">RZ</label>
             <select id="select-rz" class="input"></select>
+            <span id="ncm-badge" class="badge" hidden>Resolvendo NCM… <span id="ncm-badge-count">0/0</span></span>
           </div>
         </div>
       </section>
       <section id="card-ncm" class="card">
         <div class="card-header">
           <h2>NCM</h2>
+          <div id="ncm-counters">
+            <span id="ncm-count-ok">0</span> OK /
+            <span id="ncm-count-fail">0</span> Falhas /
+            <span id="ncm-count-pend">0</span> Restantes
+          </div>
           <div class="spacer"></div>
           <label><input type="checkbox" id="ncm-only-fail" /> Somente falhas</label>
         </div>
@@ -58,6 +64,11 @@
               <thead><tr><th>SKU</th><th>Descrição</th><th>NCM</th><th>Origem</th><th>Status</th></tr></thead>
               <tbody id="ncm-table"></tbody>
             </table>
+          </div>
+          <div class="pager">
+            <button id="ncm-prev" class="btn ghost" type="button">&#171;</button>
+            <span id="ncm-page">0/0</span>
+            <button id="ncm-next" class="btn ghost" type="button">&#187;</button>
           </div>
         </div>
       </section>
