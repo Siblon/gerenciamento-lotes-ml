@@ -205,6 +205,60 @@ function parseId(id){
   return { rz, sku };
 }
 
+function getItem(rz, sku) {
+  const map = (state.conferidosByRZSku[rz] ||= {});
+  const item = (map[sku] ||= { qtd: 0, precoAjustado: null, observacao: null, status: null, avariados: 0 });
+  if (!item.flags) item.flags = {};
+  return item;
+}
+
+export function setExcedente(id, isExcedente, obsOptionalString = '') {
+  const { rz, sku } = parseId(id);
+  if (!rz || !sku) return;
+  const item = getItem(rz, sku);
+  if (isExcedente) {
+    item.flags.excedente = true;
+    item.obs_excedente = obsOptionalString || '';
+  } else {
+    delete item.flags.excedente;
+    delete item.obs_excedente;
+  }
+}
+
+export function setDescarte(id, qtd, obsOptionalString = '') {
+  const { rz, sku } = parseId(id);
+  if (!rz || !sku) return;
+  const item = getItem(rz, sku);
+  const total = Number(item.qtd || 0);
+  const q = Math.max(0, Math.min(Number(qtd) || 0, total));
+  item.qtd_descarte = q;
+  item.obs_descarte = obsOptionalString || '';
+  if (q > 0) {
+    item.flags.descarte = true;
+  } else {
+    delete item.flags.descarte;
+  }
+}
+
+export function selectDescartes() {
+  const out = [];
+  for (const [rz, map] of Object.entries(state.conferidosByRZSku || {})) {
+    for (const [sku, item] of Object.entries(map || {})) {
+      if (item?.flags?.descarte && item.qtd_descarte > 0) {
+        const meta = state.metaByRZSku[rz]?.[sku] || {};
+        out.push({
+          rz,
+          sku,
+          descricao: meta.descricao || '',
+          qtd_descartada: item.qtd_descarte,
+          obs: item.obs_descarte || '',
+        });
+      }
+    }
+  }
+  return out;
+}
+
 export function setItemNcm(id, ncm, source){
   const { rz, sku } = parseId(id);
   if(!rz || !sku) return;
@@ -267,6 +321,6 @@ export function selectAllImportedItems(){
   return items;
 }
 
-const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir, registrarExcedente, setItemNcm, setItemNcmStatus, tagItem, untagItem, selectAllItems, selectAllImportedItems };
+const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir, registrarExcedente, setItemNcm, setItemNcmStatus, tagItem, untagItem, selectAllItems, selectAllImportedItems, setExcedente, setDescarte, selectDescartes };
 
 export default store;
