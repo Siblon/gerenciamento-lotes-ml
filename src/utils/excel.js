@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import store from '../store/index.js';
+import { parseBRLLoose } from './number.js';
 
 const isDev = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) || (typeof window !== 'undefined' && window.__DEBUG_SCAN__ === true);
 const DBG = (...a) => { if (isDev) console.log('[XLSX]', ...a); };
@@ -90,6 +91,21 @@ function bruteForceRZ(rows) {
   return Array.from(set).sort();
 }
 
+function detectCentsMode(items) {
+  let checked = 0;
+  let centsLike = 0;
+  for (const it of items.slice(0, 50)) {
+    const raw = String(it.__preco_raw ?? '').trim();
+    if (!raw) continue;
+    if (/[,\.]/.test(raw)) return false; // se algum tem separador, não é centavos
+    if (/^\d+$/.test(raw)) {
+      checked++;
+      if (Number(raw) >= 100) centsLike++;
+    }
+  }
+  return checked >= 3 && centsLike / checked > 0.8;
+}
+
 export async function processarPlanilha(input) {
   let data;
   if (input instanceof ArrayBuffer) data = input;
@@ -115,6 +131,8 @@ export async function processarPlanilha(input) {
     for (let i = hdrIdx + 1; i < rows.length; i++) {
       const r = rows[i];
       const get = (k) => (map[k] != null ? r[map[k]] : '');
+      const precoRaw = get('valorUnit');
+      const totalRaw = get('valorTotal');
       const obj = {
         tipo: get('tipo'),
         enderecoWMS: get('enderecoWMS'),
@@ -125,14 +143,31 @@ export async function processarPlanilha(input) {
         descricao: get('descricao'),
         seller: get('seller'),
         vertical: get('vertical'),
-        valorUnit: parseNumberBR(get('valorUnit')),      // preço
-        valorTotal: parseNumberBR(get('valorTotal')),
+        valorUnit: parseBRLLoose(precoRaw),              // preço
+        valorTotalPlan: parseBRLLoose(totalRaw),
         categoria: get('categoria'),
         subcategoria: get('subcategoria'),
         ncm: sanitizeNCM(get('ncm')),
+        __preco_raw: precoRaw,
+        __valor_total_raw: totalRaw,
         _rowIndex: i + 1,
       };
       if (obj.codigoRZ) items.push(obj);
+    }
+
+    const centsMode = detectCentsMode(items);
+    if (centsMode) {
+      console.log('[PRICE] planilha em centavos detectada; normalizando');
+      for (const it of items) {
+        if (typeof it.valorUnit === 'number') it.valorUnit /= 100;
+      }
+    }
+    for (const it of items) {
+      it.valorTotal = Number(it.valorUnit || 0) * (Number(it.qtd) || 0);
+      if (it.valorUnit > 1000 && (it.qtd || 0) <= 5) {
+        it.__price_anomaly = true;
+        console.log('[PRICE]', it.codigoRZ, it.codigoML, it.valorUnit, 'x', it.qtd);
+      }
     }
 
     const itemsByRZ = {};
