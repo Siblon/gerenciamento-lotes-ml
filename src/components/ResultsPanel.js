@@ -47,22 +47,26 @@ export function renderResults(){
   const tbConf = document.querySelector('#tbl-conferidos tbody');
   const tbPend = document.querySelector('#tbl-pendentes tbody');
   const tbExc  = document.querySelector('#excedentesTable');
-  if (tbConf) {
-    tbConf.innerHTML = confRows.length
-      ? confRows.map(r=>`<tr data-sku="${r.sku}"${r.status==='avariado'?' class="avariado"':''}><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco.toFixed(2)}</td><td class="num">${r.total.toFixed(2)}</td></tr>`).join('')
-      : `<tr><td colspan="5" style="text-align:center;color:#777">Nenhum item conferido</td></tr>`;
-  }
-  if (tbPend) {
-    tbPend.innerHTML = pendRows.length
-      ? pendRows.map(r=>`<tr data-sku="${r.sku}"><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco.toFixed(2)}</td><td class="num">${r.total.toFixed(2)}</td></tr>`).join('')
-      : `<tr><td colspan="5" style="text-align:center;color:#777">Sem pendências para este RZ</td></tr>`;
-  }
-  if (tbExc) {
-    const excRows = rowsExcedentes(rz);
-    tbExc.innerHTML = excRows.length
-      ? excRows.map(r=>`<tr data-sku="${r.sku}"><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco.toFixed(2)}</td><td class="num">${r.total.toFixed(2)}</td></tr>`).join('')
-      : `<tr><td colspan="5" style="text-align:center;color:#777">Nenhum excedente</td></tr>`;
-  }
+    if (tbConf) {
+      tbConf.innerHTML = confRows.length
+        ? confRows.map(r=>{
+            const badgeCls = r.status === 'avariado' ? 'badge-excedente' : 'badge-conferido';
+            const label = r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1) : 'Conferido';
+            return `<tr data-sku="${r.sku}" class="row-conferido${r.status==='avariado'?' avariado':''}"><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco.toFixed(2)}</td><td class="num">${r.total.toFixed(2)}</td><td><span class="badge ${badgeCls}">${label}</span></td></tr>`;
+          }).join('')
+        : `<tr><td colspan="6" style="text-align:center;color:#777">Nenhum item conferido</td></tr>`;
+    }
+    if (tbPend) {
+      tbPend.innerHTML = pendRows.length
+        ? pendRows.map(r=>`<tr data-sku="${r.sku}" class="row-pendente"><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco.toFixed(2)}</td><td class="num">${r.total.toFixed(2)}</td><td><span class="badge">Pendente</span></td></tr>`).join('')
+        : `<tr><td colspan="6" style="text-align:center;color:#777">Sem pendências para este RZ</td></tr>`;
+    }
+    if (tbExc) {
+      const excRows = rowsExcedentes(rz);
+      tbExc.innerHTML = excRows.length
+        ? excRows.map(r=>`<tr data-sku="${r.sku}" class="row-excedente"><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco.toFixed(2)}</td><td class="num">${r.total.toFixed(2)}</td><td><span class="badge badge-excedente">Excedente</span></td></tr>`).join('')
+        : `<tr><td colspan="6" style="text-align:center;color:#777">Nenhum excedente</td></tr>`;
+    }
   const cont = store.state.contadores[rz] || { conferidos:0, total:0 };
   const hdr = document.getElementById('hdr-conferidos');
   if (hdr) hdr.textContent = `${cont.conferidos} de ${cont.total} conferidos`;

@@ -10,7 +10,10 @@ export function initImportPanel(render){
   fileInput?.addEventListener('change', async (e)=>{
     const f = e.target?.files?.[0];
     const name = f?.name || '';
-    if (fileName) fileName.textContent = name;
+    if (fileName) {
+      fileName.textContent = name;
+      fileName.title = name;
+    }
     if (!f) return;
     const buf = (f.arrayBuffer ? await f.arrayBuffer() : f);
     const { rzList } = await processarPlanilha(buf);

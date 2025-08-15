@@ -102,7 +102,7 @@ tr.avariado {
 /* Nome do arquivo com ellipsis */
 .file-input-wrap { display:flex; gap:8px; align-items:center; max-width:100%; }
 #file-name.ellipsis {
-  max-width:280px; display:inline-block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  flex:1; min-width:0; display:inline-block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 
 /* Inputs e selects */
@@ -113,6 +113,12 @@ input[type="text"], input[type="number"], input[type="search"], .select, input[t
 /* Responsividade */
 @media (max-width: 768px) {
   .actions-grid { grid-template-columns: 1fr; }
-  #file-name.ellipsis { max-width: 180px; }
 }
+
+.row-pendente { background: #fff; }
+.row-conferido { background: #f0fff4; }
+.row-excedente { background: #fff7f7; }
+.badge { border-radius: 10px; padding: 2px 8px; font-size: 12px; }
+.badge-excedente { background:#ffe3e3; color:#b00020; }
+.badge-conferido { background:#dcfce7; color:#036d19; }
 
