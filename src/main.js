@@ -2,6 +2,7 @@
 import { initApp } from './components/app.js';
 import store from './store/index.js';
 import { loadFinanceConfig, loadMetricsPrefs, saveMetricsPrefs, computeItemFinance, computeAggregates } from './utils/finance.js';
+import { loadPrefs, savePrefs } from './utils/prefs.js';
 
 window.__DEBUG_SCAN__ = true;
 
@@ -13,58 +14,41 @@ function updateBoot(msg) {
 
 function brl(n){ return (n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 
-function getAllItemsCurrentRZ(){
-  const rz = window.store?.state?.rzAtual;
-  const totals = window.store?.state?.totalByRZSku?.[rz] || {};
-  const meta = window.store?.state?.metaByRZSku?.[rz] || {};
-  const conf = window.store?.state?.conferidosByRZSku?.[rz] || {};
-  const exc  = window.store?.state?.excedentes?.[rz] || [];
-  const items = Object.keys(totals).map(sku => ({
-    sku,
-    descricao: meta[sku]?.descricao || '',
-    qtd: totals[sku],
-    precoMedioML: meta[sku]?.precoMedio,
-    conferidos: conf[sku]?.qtd || 0,
-    avariados: conf[sku]?.avariados || 0,
-    excedentes: 0,
-  }));
-  const map = Object.fromEntries(items.map(it=>[it.sku,it]));
-  exc.forEach(it=>{
-    if(map[it.sku]){
-      map[it.sku].excedentes = (map[it.sku].excedentes||0) + Number(it.qtd||0);
-    } else {
-      items.push({ sku: it.sku, descricao: it.descricao||'', qtd: 0, precoMedioML: Number(it.preco||0), conferidos: 0, avariados: 0, excedentes: Number(it.qtd||0) });
-    }
-  });
-  return items;
+function applyFinanceVisibility(show){
+  const panel = document.getElementById('finance-panel');
+  panel?.classList.toggle('collapsed', !show);
 }
 
-function computeFinance(){
+function computeFinance(opts = {}){
+  const { includeFrete = false } = opts;
   const cfg = loadFinanceConfig();
-  const raw = getAllItemsCurrentRZ();
-  const items = raw.map(it => ({ sku: it.sku, descricao: it.descricao, preco_ml_unit: Number(it.precoMedioML||0), qtd: Number(it.qtd||0) }));
+  const prefs = loadPrefs();
+  const freteTotal = (prefs.calcFreteMode === 'ao_vivo' || includeFrete) ? cfg.frete_total : 0;
+  const raw = store.selectAllImportedItems ? store.selectAllImportedItems() : [];
+  const items = raw.map(it => ({ sku: it.sku, descricao: it.descricao, preco_ml_unit: Number(it.preco_ml_unit||0), qtd: Number(it.qtd||0) }));
   const totalQtd = items.reduce((s,it)=>s+it.qtd,0);
   const totalValor = items.reduce((s,it)=>s+it.preco_ml_unit*it.qtd,0);
-  const ctx = { totalQtd, totalValor, frete_total: cfg.frete_total, rateio_frete: cfg.rateio_frete };
+  const ctx = { totalQtd, totalValor, frete_total: freteTotal, rateio_frete: cfg.rateio_frete };
   const byItem = items.map(it => ({
     sku: it.sku,
     descricao: it.descricao,
     qtd: it.qtd,
     preco_ml_unit: it.preco_ml_unit,
-    ...computeItemFinance(it, cfg, ctx)
+    ...computeItemFinance(it, { ...cfg, frete_total: freteTotal }, ctx)
   }));
-  const aggregates = computeAggregates(items, cfg);
-  return { byItem, aggregates, config: cfg };
+  const aggregates = computeAggregates(items, { ...cfg, frete_total: freteTotal });
+  return { byItem, aggregates, config: { ...cfg, frete_total: freteTotal } };
 }
 window.computeFinance = computeFinance;
 
 function refreshIndicators(){
   try{
-    const prefs = loadMetricsPrefs();
+    const ui = loadPrefs();
+    const metrics = loadMetricsPrefs();
     const sec = document.getElementById('indicators');
-    if (sec) sec.classList.toggle('hidden', !prefs.showIndicators);
+    if (sec) sec.classList.toggle('hidden', !ui.showIndicators);
     const grid = sec?.querySelector('.indicators-grid');
-    if (!prefs.showIndicators || !grid) return;
+    if (!ui.showIndicators || !grid) return;
     grid.innerHTML = '';
     const { aggregates, config } = computeFinance();
     const mapping = [
@@ -75,7 +59,7 @@ function refreshIndicators(){
       { key:'rateio_frete', label:'Rateio do frete', value: config.rateio_frete === 'valor' ? 'por valor' : 'por quantidade', foot:null }
     ];
     mapping.forEach(m=>{
-      if(!prefs.visible[m.key]) return;
+      if(!metrics.visible[m.key]) return;
       const card = document.createElement('article');
       card.className = 'metric-card';
       const lbl = document.createElement('div'); lbl.className='metric-label'; lbl.textContent=m.label; card.appendChild(lbl);
@@ -94,9 +78,9 @@ function initIndicators(){
   const options = document.getElementById('metrics-options');
   const applyBtn = document.getElementById('apply-indicators');
 
-  function updateToggle(){ const p = loadMetricsPrefs(); if(toggleBtn) toggleBtn.textContent = p.showIndicators ? 'Ocultar indicadores' : 'Mostrar indicadores'; }
+  function updateToggle(){ const p = loadPrefs(); if(toggleBtn) toggleBtn.textContent = p.showIndicators ? 'Ocultar indicadores' : 'Mostrar indicadores'; }
 
-  toggleBtn?.addEventListener('click', ()=>{ const p = loadMetricsPrefs(); p.showIndicators = !p.showIndicators; saveMetricsPrefs(p); updateToggle(); refreshIndicators(); });
+  toggleBtn?.addEventListener('click', ()=>{ const p = loadPrefs(); p.showIndicators = !p.showIndicators; savePrefs(p); updateToggle(); refreshIndicators(); });
 
   configBtn?.addEventListener('click', ()=>{
     if(!dialog) return;
@@ -300,23 +284,36 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-    wireScannerUI();
+  wireScannerUI();
 
-    // ---- Delegação para "Recolher/Expandir" ----
-    document.addEventListener('click', (ev) => {
-      const btn = ev.target.closest('button[data-target]');
-      if (!btn) return;
-      const targetId = btn.getAttribute('data-target');
-      const sec = document.getElementById(targetId);
-      if (!sec) return;
-      sec.classList.toggle('collapsed');
-      btn.textContent = sec.classList.contains('collapsed') ? 'Expandir' : 'Recolher';
+  const prefs = loadPrefs();
+  applyFinanceVisibility(prefs.showFinance);
+  const finTgl = document.getElementById('toggle-finance');
+  if (finTgl) {
+    finTgl.checked = prefs.showFinance;
+    finTgl.addEventListener('change', (e)=>{
+      const p = loadPrefs();
+      p.showFinance = e.target.checked;
+      savePrefs(p);
+      applyFinanceVisibility(p.showFinance);
     });
+  }
 
-    // ---- Registrar com quantidade e observações ----
-    applySettings();
-    wireSettingsUI();
-    refreshIndicators();
+  // ---- Delegação para "Recolher/Expandir" ----
+  document.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('button[data-target]');
+    if (!btn) return;
+    const targetId = btn.getAttribute('data-target');
+    const sec = document.getElementById(targetId);
+    if (!sec) return;
+    sec.classList.toggle('collapsed');
+    btn.textContent = sec.classList.contains('collapsed') ? 'Expandir' : 'Recolher';
+  });
+
+  // ---- Registrar com quantidade e observações ----
+  applySettings();
+  wireSettingsUI();
+  refreshIndicators();
   });
 
 // para testar no Console

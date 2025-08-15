@@ -238,7 +238,7 @@ export function exportResult({
 }, filename = 'resultado.xlsx') {
   const wb = XLSX.utils.book_new();
   const toSheet = arr => XLSX.utils.json_to_sheet(arr);
-  const fin = (typeof window !== 'undefined' && window.computeFinance) ? window.computeFinance() : null;
+  const fin = (typeof window !== 'undefined' && window.computeFinance) ? window.computeFinance({ includeFrete: true }) : null;
   const finMap = fin ? Object.fromEntries(fin.byItem.map(it => [it.sku, it])) : {};
   const enrich = arr => arr.map(it => {
     const f = finMap[it.SKU] || finMap[it.sku];
@@ -284,38 +284,38 @@ export function exportarConferencia({ conferidos, pendentes, excedentes, resumoR
   }
 
   function sheetFinanceiroPorItem(){
-    const f = (typeof window !== 'undefined' && window.computeFinance) ? window.computeFinance() : null;
+    const f = (typeof window !== 'undefined' && window.computeFinance) ? window.computeFinance({ includeFrete: true }) : null;
     if (!f) return [];
     return f.byItem.map(it => ({
       'SKU': it.sku,
       'Descrição': it.descricao,
-      'Preço ML (R$)': it.preco_ml_unit,
-      'Custo pago unit (R$)': it.custo_pago_unit,
-      'Preço venda unit (R$)': it.preco_venda_unit,
-      'Frete unit (R$)': it.frete_unit,
-      'Lucro unit (R$)': it.lucro_unit,
-      'Lucro total (R$)': it.lucro_total,
+      'preco_ml_unit': it.preco_ml_unit,
+      '_custo_pago_unit': it.custo_pago_unit,
+      '_preco_venda_unit': it.preco_venda_unit,
+      '_frete_unit': it.frete_unit,
+      '_lucro_unit': it.lucro_unit,
+      '_lucro_total': it.lucro_total,
     }));
   }
 
   addSheet('Conferidos', conferidos, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
   addSheet('Pendentes', pendentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
   addSheet('Excedentes', excedentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
-  const fin = (typeof window !== 'undefined' && window.computeFinance) ? window.computeFinance() : null;
+  const fin = (typeof window !== 'undefined' && window.computeFinance) ? window.computeFinance({ includeFrete: true }) : null;
   addSheet('Resumo RZ', resumoRZ.map(r => ({
     'RZ': r.rz,
     'Conferidos': r.conferidos,
     'Pendentes': r.pendentes,
     'Excedentes': r.excedentes,
     'Valor Total (R$)': r.valorTotal,
-    'Preço médio ML (R$)': fin?.aggregates.preco_medio_ml_palete,
-    'Custo pago médio (R$)': fin?.aggregates.custo_medio_pago_palete,
-    'Preço de venda médio (R$)': fin?.aggregates.preco_venda_medio_palete,
-    'Lucro total (R$)': fin?.aggregates.lucro_total_palete,
-  })), ['RZ','Conferidos','Pendentes','Excedentes','Valor Total (R$)','Preço médio ML (R$)','Custo pago médio (R$)','Preço de venda médio (R$)','Lucro total (R$)']);
+    'Preço médio ML (palete)': fin?.aggregates.preco_medio_ml_palete,
+    'Custo pago médio (palete)': fin?.aggregates.custo_medio_pago_palete,
+    'Preço de venda médio (palete)': fin?.aggregates.preco_venda_medio_palete,
+    'Lucro total (palete)': fin?.aggregates.lucro_total_palete,
+  })), ['RZ','Conferidos','Pendentes','Excedentes','Valor Total (R$)','Preço médio ML (palete)','Custo pago médio (palete)','Preço de venda médio (palete)','Lucro total (palete)']);
 
   addSheet('Financeiro (por item)', sheetFinanceiroPorItem(), [
-    'SKU','Descrição','Preço ML (R$)','Custo pago unit (R$)','Preço venda unit (R$)','Frete unit (R$)','Lucro unit (R$)','Lucro total (R$)'
+    'SKU','Descrição','preco_ml_unit','_custo_pago_unit','_preco_venda_unit','_frete_unit','_lucro_unit','_lucro_total'
   ]);
 
   XLSX.writeFile(wb, `conferencia_${new Date().toISOString().slice(0,10)}.xlsx`);

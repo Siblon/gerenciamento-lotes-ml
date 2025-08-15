@@ -2,6 +2,7 @@
 import { exportarConferencia } from '../utils/excel.js';
 import store, { findInRZ, findConferido, findEmOutrosRZ, moveItemEntreRZ, addExcedente } from '../store/index.js';
 import { loadFinanceConfig, saveFinanceConfig } from '../utils/finance.js';
+import { loadPrefs, savePrefs } from '../utils/prefs.js';
 
 function toast(msg, type='info') {
   const el = document.createElement('div');
@@ -45,12 +46,18 @@ export function initActionsPanel(render){
   const rngDesconto = document.getElementById('fin-desconto');
   const inpFrete = document.getElementById('fin-frete');
   const selRateio = document.getElementById('fin-rateio');
+  const selMode   = document.getElementById('fin-mode');
+
+  btnCons?.classList.add('btn','btn-primary');
+  btnReg?.classList.add('btn','btn-ghost');
 
   const cfg = loadFinanceConfig();
+  const prefs = loadPrefs();
   if (rngPercent) { rngPercent.value = String((cfg.percent_pago_sobre_ml||0)*100); document.getElementById('fin-percent-val').textContent = `${rngPercent.value}%`; }
   if (rngDesconto) { rngDesconto.value = String((cfg.desconto_venda_vs_ml||0)*100); document.getElementById('fin-desconto-val').textContent = `${rngDesconto.value}%`; }
   if (inpFrete) inpFrete.value = String(cfg.frete_total || 0);
   if (selRateio) selRateio.value = cfg.rateio_frete || 'valor';
+  if (selMode) selMode.value = prefs.calcFreteMode || 'finalizar';
 
   function saveFinance() {
     const current = loadFinanceConfig();
@@ -66,6 +73,7 @@ export function initActionsPanel(render){
   rngDesconto?.addEventListener('input', ()=>{ document.getElementById('fin-desconto-val').textContent = `${rngDesconto.value}%`; saveFinance(); });
   inpFrete?.addEventListener('change', saveFinance);
   selRateio?.addEventListener('change', saveFinance);
+  selMode?.addEventListener('change', ()=>{ const p = loadPrefs(); p.calcFreteMode = selMode.value; savePrefs(p); window.refreshIndicators?.(); });
 
   function consultar(fonte='manual') {
     const sku = (inputSku?.value || '').trim().toUpperCase();
@@ -99,7 +107,6 @@ export function initActionsPanel(render){
   btnReg?.addEventListener('click', () => {
     const sku = (inputSku?.value || '').trim().toUpperCase();
     const price = parseFloat(document.getElementById('preco-ajustado')?.value || '') || undefined;
-    const noteFree = document.getElementById('observacao')?.value || '';
     const obsPreset = document.getElementById('obs-preset')?.value || '';
 
     const pendente = Number(store.findInRZ?.(store.state.rzAtual, sku)?.qtd ?? 1);
@@ -117,7 +124,6 @@ export function initActionsPanel(render){
       obsPreset === 'excedente' ? 'Excedente: não listado' :
       obsPreset === 'avaria' ? 'Avaria grave: descartar' :
       obsPreset === 'nao_encontrado' ? 'Não encontrado no RZ' : null,
-      noteFree || null,
     ].filter(Boolean).join(' | ');
 
     try {
@@ -140,7 +146,7 @@ export function initActionsPanel(render){
   inputSku?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      btnReg?.click();
+      btnCons?.click();
     }
   });
 

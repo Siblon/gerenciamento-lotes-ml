@@ -3,11 +3,14 @@ import { processarPlanilha } from '../utils/excel.js';
 import store, { setCurrentRZ } from '../store/index.js';
 
 export function initImportPanel(render){
-  const fileInput = document.getElementById('input-arquivo');
+  const fileInput = document.getElementById('file');
+  const fileName  = document.getElementById('file-name');
   const rzSelect  = document.getElementById('select-rz');
 
   fileInput?.addEventListener('change', async (e)=>{
     const f = e.target?.files?.[0];
+    const name = f?.name || '';
+    if (fileName) fileName.textContent = name;
     if (!f) return;
     const buf = (f.arrayBuffer ? await f.arrayBuffer() : f);
     const { rzList } = await processarPlanilha(buf);
