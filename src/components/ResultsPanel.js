@@ -70,5 +70,5 @@ export function renderResults(){
   const bp = document.getElementById('count-pendentes'); if (bp) bp.textContent = cont.total - cont.conferidos;
   const be = document.getElementById('excedentesCount'); if (be) be.textContent = cont.excedentes || 0;
   updateToggleLabels();
-  window.refreshFinancialChips?.();
+  window.refreshIndicators?.();
 }

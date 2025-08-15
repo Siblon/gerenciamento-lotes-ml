@@ -238,10 +238,30 @@ export function exportResult({
 }, filename = 'resultado.xlsx') {
   const wb = XLSX.utils.book_new();
   const toSheet = arr => XLSX.utils.json_to_sheet(arr);
-  XLSX.utils.book_append_sheet(wb, toSheet(conferidos), 'conferidos');
-  XLSX.utils.book_append_sheet(wb, toSheet(faltantes), 'faltantes');
-  XLSX.utils.book_append_sheet(wb, toSheet(excedentes), 'excedentes');
+  const fin = (typeof window !== 'undefined' && window.computeFinance) ? window.computeFinance() : null;
+  const finMap = fin ? Object.fromEntries(fin.byItem.map(it => [it.sku, it])) : {};
+  const enrich = arr => arr.map(it => {
+    const f = finMap[it.SKU] || finMap[it.sku];
+    return f ? { ...it,
+      custo_pago_unit: f.custo_pago_unit,
+      preco_venda_unit: f.preco_venda_unit,
+      frete_unit: f.frete_unit,
+      lucro_unit: f.lucro_unit,
+      lucro_total: f.lucro_total,
+    } : it;
+  });
+  XLSX.utils.book_append_sheet(wb, toSheet(enrich(conferidos)), 'conferidos');
+  XLSX.utils.book_append_sheet(wb, toSheet(enrich(faltantes)), 'faltantes');
+  XLSX.utils.book_append_sheet(wb, toSheet(enrich(excedentes)), 'excedentes');
   XLSX.utils.book_append_sheet(wb, toSheet(ajustes), 'ajustesPrecoOuErro');
+  if (fin) {
+    resumo.push({
+      preco_medio_ml_palete: fin.aggregates.preco_medio_ml_palete,
+      custo_medio_pago_palete: fin.aggregates.custo_medio_pago_palete,
+      preco_venda_medio_palete: fin.aggregates.preco_venda_medio_palete,
+      lucro_total_palete: fin.aggregates.lucro_total_palete,
+    });
+  }
   if (resumo.length) {
     XLSX.utils.book_append_sheet(wb, toSheet(resumo), 'resumoFinanceiro');
   }
@@ -264,39 +284,38 @@ export function exportarConferencia({ conferidos, pendentes, excedentes, resumoR
   }
 
   function sheetFinanceiroPorItem(){
-    const f = (typeof window !== 'undefined' && window.computeFinancials) ? window.computeFinancials() : null;
+    const f = (typeof window !== 'undefined' && window.computeFinance) ? window.computeFinance() : null;
     if (!f) return [];
     return f.byItem.map(it => ({
       'SKU': it.sku,
       'Descrição': it.descricao,
-      'Preço ML (R$)': it.ml,
-      'Preço‑alvo (R$)': it.target,
-      'Custo unit. (R$)': it.unitCost,
-      'Unid. vendáveis': it.unitsVend,
-      'Receita (R$)': it.revenue,
-      'Custo (R$)': it.cost,
-      'Lucro (R$)': it.profit
+      'Preço ML (R$)': it.preco_ml_unit,
+      'Custo pago unit (R$)': it.custo_pago_unit,
+      'Preço venda unit (R$)': it.preco_venda_unit,
+      'Frete unit (R$)': it.frete_unit,
+      'Lucro unit (R$)': it.lucro_unit,
+      'Lucro total (R$)': it.lucro_total,
     }));
   }
 
   addSheet('Conferidos', conferidos, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
   addSheet('Pendentes', pendentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
   addSheet('Excedentes', excedentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
-  const fin = (typeof window !== 'undefined' && window.computeFinancials) ? window.computeFinancials() : null;
+  const fin = (typeof window !== 'undefined' && window.computeFinance) ? window.computeFinance() : null;
   addSheet('Resumo RZ', resumoRZ.map(r => ({
     'RZ': r.rz,
     'Conferidos': r.conferidos,
     'Pendentes': r.pendentes,
     'Excedentes': r.excedentes,
     'Valor Total (R$)': r.valorTotal,
-    'Palete ML (R$)': fin?.totals.paleteMLavg,
-    'Palete alvo (R$)': fin?.totals.paleteTarget,
-    'Lucro previsto (R$)': fin?.totals.lucroPrevisto,
-  })), ['RZ','Conferidos','Pendentes','Excedentes','Valor Total (R$)','Palete ML (R$)','Palete alvo (R$)','Lucro previsto (R$)']);
+    'Preço médio ML (R$)': fin?.aggregates.preco_medio_ml_palete,
+    'Custo pago médio (R$)': fin?.aggregates.custo_medio_pago_palete,
+    'Preço de venda médio (R$)': fin?.aggregates.preco_venda_medio_palete,
+    'Lucro total (R$)': fin?.aggregates.lucro_total_palete,
+  })), ['RZ','Conferidos','Pendentes','Excedentes','Valor Total (R$)','Preço médio ML (R$)','Custo pago médio (R$)','Preço de venda médio (R$)','Lucro total (R$)']);
 
   addSheet('Financeiro (por item)', sheetFinanceiroPorItem(), [
-    'SKU','Descrição','Preço ML (R$)','Preço‑alvo (R$)','Custo unit. (R$)',
-    'Unid. vendáveis','Receita (R$)','Custo (R$)','Lucro (R$)'
+    'SKU','Descrição','Preço ML (R$)','Custo pago unit (R$)','Preço venda unit (R$)','Frete unit (R$)','Lucro unit (R$)','Lucro total (R$)'
   ]);
 
   XLSX.writeFile(wb, `conferencia_${new Date().toISOString().slice(0,10)}.xlsx`);
