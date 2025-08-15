@@ -20,11 +20,12 @@ let warnSpy;
 
 beforeEach(async () => {
   warnSpy = vi.spyOn(toast, 'warn').mockImplementation(() => {});
+  globalThis.window = { isSecureContext: true, navigator: { mediaDevices: {} } };
   const mod = await import('../src/utils/scan.js');
   iniciarLeitura = mod.iniciarLeitura;
 });
 
-describe.skip('scanner fallback', () => {
+describe('scanner fallback', () => {
   it('falls back to wedge on camera error', async () => {
     const video = {};
     await expect(iniciarLeitura(video, () => {})).rejects.toThrow();

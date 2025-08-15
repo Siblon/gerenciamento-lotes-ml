@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 import store from '../store/index.js';
 import { parseBRLLoose } from './number.js';
 
-const isDev = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) || (typeof window !== 'undefined' && window.__DEBUG_SCAN__ === true);
+const isDev = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV);
 const DBG = (...a) => { if (isDev) console.log('[XLSX]', ...a); };
 
 const stripAccents = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');

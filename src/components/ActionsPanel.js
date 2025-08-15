@@ -3,14 +3,7 @@ import { exportarConferencia } from '../utils/excel.js';
 import store, { findInRZ, findConferido, findEmOutrosRZ, moveItemEntreRZ, addExcedente } from '../store/index.js';
 import { loadFinanceConfig, saveFinanceConfig } from '../utils/finance.js';
 import { loadPrefs, savePrefs } from '../utils/prefs.js';
-
-function toast(msg, type='info') {
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.textContent = msg;
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 2200);
-}
+import { toast } from '../utils/toast.js';
 
 function mostrarProdutoInfo(item) {
   const $ = (sel) => document.querySelector(sel);
@@ -50,6 +43,8 @@ export function initActionsPanel(render){
 
   btnCons?.classList.add('btn','btn-primary');
   btnReg?.classList.add('btn','btn-ghost');
+
+  inputSku?.focus();
 
   const cfg = loadFinanceConfig();
   const prefs = loadPrefs();
@@ -141,10 +136,14 @@ export function initActionsPanel(render){
     } catch(e) {
       console.error(e); toast('Falha ao registrar', 'error');
     }
+    inputSku?.focus();
   });
 
   inputSku?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      e.preventDefault();
+      btnReg?.click();
+    } else if (e.key === 'Enter') {
       e.preventDefault();
       btnCons?.click();
     }
@@ -205,7 +204,7 @@ export function initActionsPanel(render){
 
   document.addEventListener('keydown',(e)=>{
     if (e.ctrlKey && e.key.toLowerCase()==='k'){ e.preventDefault(); document.querySelector('#codigo-ml')?.focus(); }
-    if (e.ctrlKey && e.key === 'Enter'){ e.preventDefault(); btnReg?.click(); }
+    // Ctrl+Enter handled on inputSku for registro
     if (e.ctrlKey && e.key.toLowerCase()==='s'){
       const dlg = document.getElementById('dlg-excedente');
       if (dlg?.open) { e.preventDefault(); document.getElementById('exc-salvar')?.click(); }
