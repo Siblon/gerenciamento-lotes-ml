@@ -250,6 +250,23 @@ export function selectAllItems(){
   return out;
 }
 
-const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir, registrarExcedente, setItemNcm, setItemNcmStatus, tagItem, untagItem, selectAllItems };
+export function selectAllImportedItems(){
+  const items = [];
+  for(const [rz, totals] of Object.entries(state.totalByRZSku || {})){
+    const meta = state.metaByRZSku[rz] || {};
+    for(const [sku, qtd] of Object.entries(totals)){
+      items.push({
+        rz,
+        sku,
+        descricao: meta[sku]?.descricao || '',
+        preco_ml_unit: Number(meta[sku]?.precoMedio || 0),
+        qtd: Number(qtd || 0),
+      });
+    }
+  }
+  return items;
+}
+
+const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir, registrarExcedente, setItemNcm, setItemNcmStatus, tagItem, untagItem, selectAllItems, selectAllImportedItems };
 
 export default store;
