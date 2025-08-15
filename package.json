@@ -8,9 +8,9 @@
     "test": "vitest run --reporter=dot --silent",
     "test:verbose": "cross-env VERBOSE=1 vitest run --reporter=verbose"
   },
-  "dependencies": {
+ "dependencies": {
     "@zxing/browser": "^0.1.5",
-    "@zxing/library": "^0.20.0",
+    "@zxing/library": "^0.21.3",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
