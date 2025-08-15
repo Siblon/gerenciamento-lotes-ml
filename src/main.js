@@ -4,7 +4,9 @@ import store from './store/index.js';
 import { loadFinanceConfig, loadMetricsPrefs, saveMetricsPrefs, computeItemFinance, computeAggregates } from './utils/finance.js';
 import { loadPrefs, savePrefs } from './utils/prefs.js';
 
-window.__DEBUG_SCAN__ = true;
+if (import.meta.env?.DEV) {
+  window.__DEBUG_SCAN__ = true;
+}
 
 function updateBoot(msg) {
   const el = document.getElementById('boot-status');

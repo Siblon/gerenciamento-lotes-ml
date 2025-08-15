@@ -1,6 +1,7 @@
 // src/components/ScannerPanel.js
 import { iniciarLeitura, pararLeitura, listarCameras } from '../utils/scan.js';
 import { createCard } from './Card.js';
+import { isDesktop } from '../utils/platform.js';
 
 function setBoot(msg){
   const st = document.getElementById('boot-status');
@@ -12,6 +13,18 @@ export function initScannerPanel({ onCode }){
   const scannerCard = createCard('#card-scanner');
   const btnScan = document.getElementById('btn-scan-toggle');
   const videoEl = document.getElementById('preview');
+
+  if (isDesktop()) {
+    btnOpenScanner?.setAttribute('hidden', '');
+    btnScan?.setAttribute('hidden', '');
+    videoEl?.setAttribute('hidden', '');
+    const body = scannerCard.el.querySelector('.card-body');
+    if (body) {
+      body.innerHTML = '<p>Bipe ativo (USB)</p>';
+    }
+    setBoot('Bipe ativo (USB)');
+    return;
+  }
 
   videoEl?.setAttribute('hidden', '');
 
