@@ -1,18 +1,14 @@
 import { RUNTIME } from '../config/runtime.js';
 
 const CACHE_KEY = 'ncmCache:v1';
-const memCache = new Map();
-(function load(){
-  try{
-    const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
-    for(const [k,v] of Object.entries(raw)) memCache.set(k,v);
-  }catch{}
-})();
-function saveCache(){
-  try{ localStorage.setItem(CACHE_KEY, JSON.stringify(Object.fromEntries(memCache))); }catch{}
+const mem = new Map();
+let ncmMapCache;
+
+function log(term, source, hit){
+  if(import.meta.env?.DEV){
+    console.debug('[NCM]', { term, source, hit });
+  }
 }
-export function cacheGet(k){ return memCache.get(k)||null; }
-export function cacheSet(k,v){ memCache.set(k,v); saveCache(); }
 
 export function normalizeNCM(n){
   const d = String(n ?? '').replace(/\D/g, '');
@@ -29,74 +25,104 @@ export function createQueue(limit = 3){
     Promise.resolve().then(fn).then(resolve, reject).finally(()=>{ active--; next(); });
   };
   return function enqueue(fn){
-    return new Promise((resolve,reject)=>{
-      queue.push({fn, resolve, reject});
-      next();
-    });
+    return new Promise((resolve,reject)=>{ queue.push({fn, resolve, reject}); next(); });
   };
 }
 
-// Retry helper with exponential backoff (default 2 retries: 500ms then 1s)
 export async function resolveWithRetry(fn, attempts=3, baseDelay=500){
   let lastErr;
   for(let i=0;i<attempts;i++){
     try{ return await fn(); }
-    catch(err){ lastErr = err; if(i < attempts-1){ await new Promise(r=>setTimeout(r, baseDelay * Math.pow(2,i))); }}
+    catch(err){ lastErr = err; if(i < attempts-1){ await new Promise(r=>setTimeout(r, baseDelay*Math.pow(2,i))); }}
   }
   throw lastErr;
 }
 
+function slug(s){
+  return String(s||'').toLowerCase()
+    .normalize('NFD').replace(/[^\w]+/g,'').replace(/\s+/g,'')
+    .replace(/[\u0300-\u036f]/g,'');
+}
+
+function cacheGet(k){
+  if(mem.has(k)) return mem.get(k);
+  try{
+    const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    const v = raw[k];
+    if(v){ mem.set(k,v); return v; }
+  }catch{}
+  return null;
+}
+
+function cacheSet(k,v){
+  mem.set(k,v);
+  try{
+    const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    raw[k] = v;
+    localStorage.setItem(CACHE_KEY, JSON.stringify(raw));
+  }catch{}
+}
+
 async function fetchLocalMap(){
-  try{
-    const r = await fetch(RUNTIME.NCM_LOCAL_MAP_URL, {cache:'no-store'});
-    if(!r.ok) return [];
-    return await r.json();
-  }catch{return[];}
+  if(!ncmMapCache){
+    ncmMapCache = fetch(RUNTIME.NCM_LOCAL_MAP_URL)
+      .then(r=>r.ok?r.json():{})
+      .catch(()=>({}));
+  }
+  return ncmMapCache;
 }
 
-async function fetchFromAPIByDesc(desc){
-  if(!RUNTIME.NCM_API_BASE) throw new Error('no_api');
-  const url = `${RUNTIME.NCM_API_BASE}/ncm?descricao=${encodeURIComponent(desc)}`;
-  const headers = {};
-  if(RUNTIME.NCM_API_TOKEN) headers.Authorization = `Bearer ${RUNTIME.NCM_API_TOKEN}`;
+async function fetchFromAPI(term){
+  const isCode = /^\d{8}$/.test(term);
+  const q = isCode ? `codigo=${encodeURIComponent(term)}` : `descricao=${encodeURIComponent(term)}`;
   const controller = new AbortController();
-  const t = setTimeout(()=>controller.abort(), 8000);
+  const t = setTimeout(()=>controller.abort(), 4000);
   try{
-    const r = await fetch(url,{headers, signal:controller.signal});
-    if(!r.ok){ const err = new Error('http_error'); err.status = r.status; throw err; }
+    const r = await fetch(`/api/ncm?${q}`, { signal: controller.signal });
+    if(!r.ok) throw new Error('http');
     const data = await r.json();
-    const first = Array.isArray(data)?data[0]:null;
-    const code = first?.codigoNcm || first?.codigo || null;
-    return normalizeNCM(code);
-  }catch(err){
-    if(err.name === 'AbortError'){ err.reason = 'timeout'; }
-    throw err;
-  }finally{ clearTimeout(t); }
+    const list = Array.isArray(data) ? data : [data];
+    const key = slug(term);
+    let best = null, score = -1;
+    for(const it of list){
+      const code = normalizeNCM(it.codigoNcm || it.codigo);
+      const desc = slug(it.descricao || '');
+      const s = (code && code.length===8 ? 1 : 0) + (key && desc.includes(key) ? 1 : 0);
+      if(s > score){ score = s; best = code; }
+    }
+    return best;
+  } finally {
+    clearTimeout(t);
+  }
 }
 
-export async function resolve(args){
-  const { sku, ncmPlanilha, descricao } = args;
+export async function resolve({ sku, ncmPlanilha, descricao }){
+  const term = sku;
   const direct = normalizeNCM(ncmPlanilha);
-  if(direct){ cacheSet(sku,direct); return { ok:true, ncm:direct, source:'row' }; }
-  const cached = cacheGet(sku);
-  if(cached) return { ok:true, ncm:cached, source:'cache' };
+  if(direct){ cacheSet(term,direct); log(term,'row',true); return { ok:true, ncm:direct, source:'row' }; }
+
+  const cached = cacheGet(term);
+  if(cached){ log(term,'cache',true); return { ok:true, ncm:cached, source:'cache' }; }
+
   const map = await fetchLocalMap();
-  const found = map.find(x => String(x.sku).toLowerCase() === String(sku).toLowerCase());
-  const local = normalizeNCM(found?.ncm);
-  if(local){ cacheSet(sku,local); return { ok:true, ncm:local, source:'map' }; }
+  const slugDesc = slug(descricao);
+  const mapped = map[term] || map[slugDesc];
+  const local = normalizeNCM(mapped);
+  if(local){ cacheSet(term, local); log(term,'map',true); return { ok:true, ncm:local, source:'map' }; }
+
   try{
-    const api = await resolveWithRetry(()=>fetchFromAPIByDesc(descricao||sku));
-    if(api){ cacheSet(sku,api); return { ok:true, ncm:api, source:'api' }; }
-    return { ok:false, reason:'api_no_ncm' };
-  }catch(err){
-    if(err.status) return { ok:false, reason:'api_http_error', detail:String(err.status) };
-    if(err.reason==='timeout') return { ok:false, reason:'api_timeout' };
-    if(err.message==='no_api') return { ok:false, reason:'no_api' };
-    return { ok:false, reason:'api_exception', detail: String(err.message||err) };
+    const api = await fetchFromAPI(descricao || term);
+    if(api){ cacheSet(term, api); log(term,'api',true); return { ok:true, ncm:api, source:'api' }; }
+    log(term,'api',false);
+    return { ok:false, ncm:null, source:'api', error:true };
+  }catch{
+    log(term,'api',false);
+    return { ok:false, ncm:null, source:'api', error:true };
   }
 }
 
 const enqueue = createQueue(3);
+
 export function resolveQueued(args){
   return enqueue(()=>resolve(args));
 }
@@ -106,5 +132,6 @@ export async function resolveNCM(args){
   return r.ok ? r.ncm : null;
 }
 
-export default { normalizeNCM, resolve, resolveQueued, resolveNCM };
+export { cacheGet, cacheSet, slug };
 
+export default { normalizeNCM, resolve, resolveQueued, resolveNCM };
