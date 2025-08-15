@@ -1,5 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as XLSX from 'xlsx';
+vi.mock('../src/services/ncmQueue.js', () => ({ startNcmQueue: vi.fn() }));
+import { startNcmQueue } from '../src/services/ncmQueue.js';
 import { processarPlanilha } from '../src/utils/excel.js';
 import store from '../src/store/index.js';
 
@@ -10,6 +12,13 @@ function createXlsxBuffer(data){
   // write as buffer
   return XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
 }
+
+beforeEach(() => {
+  startNcmQueue.mockReset();
+  store.state.rzList = [];
+  store.state.itemsByRZ = {};
+  store.state.metaByRZSku = {};
+});
 
 describe('processarPlanilha', () => {
     it('agrupa itens por RZ', async () => {
@@ -75,5 +84,19 @@ describe('processarPlanilha', () => {
       const { itemsByRZ } = await processarPlanilha(buf);
       const item = itemsByRZ['RZ-1'][0];
       expect(item.__price_anomaly).toBe(true);
+    });
+
+    it('define RZs antes de iniciar fila NCM', async () => {
+      startNcmQueue.mockImplementation(() => {
+        expect(store.state.rzList.length).toBeGreaterThan(0);
+        return Promise.resolve();
+      });
+      const data = [
+        ['Codigo ML', 'Descricao', 'Qtd', 'Cod RZ'],
+        ['AAA123', 'Produto A', 1, 'RZ-1'],
+      ];
+      const buf = createXlsxBuffer(data);
+      await processarPlanilha(buf);
+      expect(startNcmQueue).toHaveBeenCalled();
     });
   });
