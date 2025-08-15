@@ -38,4 +38,42 @@ describe('processarPlanilha', () => {
       expect(itemsByRZ['RZ-999'][0].ncm).toBe('00112233');
       expect(store.state.metaByRZSku['RZ-999']['AAA123'].ncm).toBe('00112233');
     });
+
+    it('interpreta preços com vírgula e calcula total', async () => {
+      const data = [
+        ['Codigo ML', 'Descricao', 'Qtd', 'Cod RZ', 'Valor Unit', 'Valor Total'],
+        ['AAA123', 'Produto A', 2, 'RZ-1', '2,33', '4,66'],
+      ];
+      const buf = createXlsxBuffer(data);
+      const { itemsByRZ } = await processarPlanilha(buf);
+      const item = itemsByRZ['RZ-1'][0];
+      expect(item.valorUnit).toBeCloseTo(2.33);
+      expect(item.valorTotal).toBeCloseTo(4.66);
+      expect(item.__preco_raw).toBe('2,33');
+    });
+
+    it('detecta planilha em centavos e normaliza', async () => {
+      const data = [
+        ['Codigo ML', 'Descricao', 'Qtd', 'Cod RZ', 'Valor Unit', 'Valor Total'],
+        ['AAA123', 'Produto A', 1, 'RZ-1', 233, 233],
+        ['BBB456', 'Produto B', 2, 'RZ-1', 455, 910],
+        ['CCC789', 'Produto C', 3, 'RZ-1', 199, 597],
+      ];
+      const buf = createXlsxBuffer(data);
+      const { itemsByRZ } = await processarPlanilha(buf);
+      const item = itemsByRZ['RZ-1'][0];
+      expect(item.valorUnit).toBeCloseTo(2.33);
+      expect(item.valorTotal).toBeCloseTo(2.33);
+    });
+
+    it('marca preço anômalo quando muito alto', async () => {
+      const data = [
+        ['Codigo ML', 'Descricao', 'Qtd', 'Cod RZ', 'Valor Unit'],
+        ['AAA123', 'Produto A', 1, 'RZ-1', '1500'],
+      ];
+      const buf = createXlsxBuffer(data);
+      const { itemsByRZ } = await processarPlanilha(buf);
+      const item = itemsByRZ['RZ-1'][0];
+      expect(item.__price_anomaly).toBe(true);
+    });
   });
