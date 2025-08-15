@@ -1,20 +1,29 @@
-export const PREFS_KEY = 'ui:prefs:v1';
+// src/utils/prefs.js
+// Helper de persistência simples para preferências de UI
 
+export const UIPREFS_KEY = 'ui:prefs:v2';
+
+// Valores padrão das preferências da interface
+// Mantém chaves antigas por compatibilidade com código existente
 const DEFAULT_PREFS = {
   showFinance: false,
   showIndicators: false,
   calcFreteMode: 'finalizar',
+  scannerMode: 'auto',
+  lockManualScanner: false,
+  askDiscardOnFinalize: true,
 };
 
-export function loadPrefs(){
-  try{
-    const saved = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
+export function loadPrefs() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(UIPREFS_KEY) || '{}');
     return { ...DEFAULT_PREFS, ...saved };
-  }catch{
+  } catch {
     return { ...DEFAULT_PREFS };
   }
 }
 
-export function savePrefs(p){
-  localStorage.setItem(PREFS_KEY, JSON.stringify(p||{}));
+export function savePrefs(v) {
+  localStorage.setItem(UIPREFS_KEY, JSON.stringify(v || {}));
 }
+
