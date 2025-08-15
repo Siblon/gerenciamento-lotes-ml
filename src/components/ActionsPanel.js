@@ -18,6 +18,7 @@ function mostrarProdutoInfo(item) {
   $('#pi-preco').textContent = Number(item.precoMedio || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
   $('#pi-total').textContent = Number((item.qtd || 0) * (item.precoMedio || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
   $('#pi-rz').textContent = store.state.rzAtual || '';
+  document.getElementById('pi-ncm').textContent = item?.ncm || '—';
   document.getElementById('produto-info').hidden = false;
 }
 
