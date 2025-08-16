@@ -4,6 +4,9 @@ import store, { findInRZ, findConferido, findEmOutrosRZ, moveItemEntreRZ, addExc
 import { loadFinanceConfig, saveFinanceConfig } from '../utils/finance.js';
 import { loadPrefs, savePrefs } from '../utils/prefs.js';
 import { toast } from '../utils/toast.js';
+import { installWedgeScanner } from '../utils/wedge.js';
+import { getMode, onChange } from '../utils/scannerController.js';
+import { openExcedenteModal } from './ExcedenteModal.js';
 
 function mostrarProdutoInfo(item) {
   const $ = (sel) => document.querySelector(sel);
@@ -36,6 +39,7 @@ export function initActionsPanel(render){
   const btnReg  = document.querySelector('#btn-registrar') || Array.from(document.querySelectorAll('button')).find(b=>/registrar/i.test(b.textContent||''));
   const btnFinal = document.querySelector('#finalizarBtn');
   const obsSelect = document.getElementById('obs-preset');
+  const precoInput = document.getElementById('preco-ajustado');
   const rngPercent = document.getElementById('fin-percent');
   const rngDesconto = document.getElementById('fin-desconto');
   const inpFrete = document.getElementById('fin-frete');
@@ -45,9 +49,38 @@ export function initActionsPanel(render){
   btnCons?.classList.add('btn','btn-primary');
   btnReg?.classList.add('btn','btn-primary');
 
+  let excedenteObs = '';
+  let awaitingSecondEnter = false;
+
   if (obsSelect) {
     obsSelect.innerHTML = '<option value="">— Nenhuma —</option><option value="excedente">Produto excedente (não listado)</option>';
   }
+
+  function updatePricePlaceholder(){
+    if (!precoInput) return;
+    if (obsSelect?.value === 'excedente') precoInput.placeholder = 'Preço (opcional para excedente)';
+    else precoInput.placeholder = 'Preço';
+  }
+
+  updatePricePlaceholder();
+
+  obsSelect?.addEventListener('change', async ()=>{
+    updatePricePlaceholder();
+    if (obsSelect.value === 'excedente') {
+      const val = await openExcedenteModal({ defaultValue: '' });
+      if (val === null) {
+        obsSelect.value = '';
+        excedenteObs = '';
+        updatePricePlaceholder();
+        inputSku?.focus();
+        return;
+      }
+      excedenteObs = val || '';
+      inputSku?.focus();
+    } else {
+      excedenteObs = '';
+    }
+  });
 
   inputSku?.focus();
 
@@ -96,7 +129,6 @@ export function initActionsPanel(render){
       return false;
     }
     mostrarProdutoInfo(item);
-    const precoInput = document.querySelector('#preco-ajustado');
     if (precoInput && !precoInput.value) precoInput.value = item.precoMedio ?? '';
     active?.focus?.();
     return true;
@@ -106,7 +138,8 @@ export function initActionsPanel(render){
 
   btnReg?.addEventListener('click', () => {
     const sku = (inputSku?.value || '').trim().toUpperCase();
-    const price = parseFloat(document.getElementById('preco-ajustado')?.value || '') || undefined;
+    const priceStr = precoInput?.value || '';
+    const price = priceStr.trim() === '' ? undefined : Number(priceStr);
     const obsPreset = obsSelect?.value || '';
 
     const pendente = Number(store.findInRZ?.(store.state.rzAtual, sku)?.qtd ?? 1);
@@ -118,20 +151,14 @@ export function initActionsPanel(render){
     }
 
     const toExcedentes = obsPreset === 'excedente';
-    const isAvaria = obsPreset === 'avaria';
-
-    const note = [
-      obsPreset === 'excedente' ? 'Excedente: não listado' :
-      obsPreset === 'avaria' ? 'Avaria grave: descartar' :
-      obsPreset === 'nao_encontrado' ? 'Não encontrado no RZ' : null,
-    ].filter(Boolean).join(' | ');
+    const note = toExcedentes ? excedenteObs : '';
 
     try {
       if (toExcedentes && typeof store.registrarExcedente === 'function') {
         store.registrarExcedente({ sku, qty, price, note });
         toast(`Excedente registrado (${qty} un.)`, 'info');
       } else if (typeof store.conferir === 'function') {
-        store.conferir(sku, { qty, price, note, avaria: isAvaria });
+        store.conferir(sku, { qty, price, note });
         toast(`Registrado ${qty} un. de ${sku}`, 'info');
       } else {
         console.warn('Ação de registro não disponível no store.');
@@ -142,9 +169,11 @@ export function initActionsPanel(render){
       console.error(e); toast('Falha ao registrar', 'error');
     }
     if (obsSelect) obsSelect.value = '';
-    const precoInput = document.getElementById('preco-ajustado');
     if (precoInput) precoInput.value = '';
+    excedenteObs = '';
     inputSku?.focus();
+    if (getMode() === 'wedge') inputSku?.select();
+    awaitingSecondEnter = false;
   });
 
   inputSku?.addEventListener('keydown', (e) => {
@@ -153,7 +182,12 @@ export function initActionsPanel(render){
       btnReg?.click();
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      btnCons?.click();
+      if (awaitingSecondEnter) {
+        awaitingSecondEnter = false;
+        btnReg?.click();
+      } else {
+        btnCons?.click();
+      }
     }
   });
 
@@ -190,15 +224,18 @@ export function initActionsPanel(render){
           NCM: m.ncm || ''
         };
       });
-      const excedentes = (store.state.excedentes[rz] || []).map(it => ({
-        SKU: it.sku,
-        Descrição: it.descricao || '',
-        Qtd: it.qtd,
-        'Preço Médio (R$)': Number(it.preco || 0),
-        'Valor Total (R$)': Number(it.qtd || 0) * Number(it.preco || 0),
-        NCM: it.ncm || '',
-        Observação: it.obs || ''
-      }));
+      const excedentes = (store.state.excedentes[rz] || []).map(it => {
+        const p = it.preco === undefined || it.preco === null ? null : Number(it.preco);
+        return {
+          SKU: it.sku,
+          Descrição: it.descricao || '',
+          Qtd: it.qtd,
+          'Preço Médio (R$)': p ?? '',
+          'Valor Total (R$)': p != null ? Number(it.qtd || 0) * p : '',
+          NCM: it.ncm || '',
+          Observação: it.obs || ''
+        };
+      });
 
       const sumQtd = arr => arr.reduce((s,it)=>s + Number(it.Qtd||0),0);
       const sumVal = arr => arr.reduce((s,it)=>s + Number(it['Valor Total (R$)']||0),0);
@@ -223,9 +260,10 @@ export function initActionsPanel(render){
     const sku = document.getElementById('exc-sku').value.trim().toUpperCase();
     const desc = document.getElementById('exc-desc').value.trim();
     const qtd  = Number(document.getElementById('exc-qtd').value) || 1;
-    const preco= Number(document.getElementById('exc-preco').value) || 0;
+    const precoStr = document.getElementById('exc-preco').value;
+    const preco = precoStr.trim() === '' ? undefined : Number(precoStr);
     const obs  = document.getElementById('exc-obs').value.trim();
-    if (!sku || !desc || !preco) return;
+    if (!sku || !desc) return;
     addExcedente(store.state.rzAtual, { sku, descricao: desc, qtd, preco, obs, fonte: dlg?.dataset.fonte||'manual' });
     dlg.close();
     toast('Excedente salvo', 'info');
@@ -242,6 +280,27 @@ export function initActionsPanel(render){
     }
     if (e.key==='Escape') document.getElementById('dlg-excedente')?.close();
   });
+
+  let detachWedge = null;
+  function setupWedge(){
+    detachWedge?.();
+    if (getMode() !== 'wedge') return;
+    detachWedge = installWedgeScanner({
+      allowInput: inputSku,
+      onScan: (code, term) => {
+        if (!code) return;
+        inputSku.value = code;
+        inputSku.focus();
+        inputSku.select();
+        if (term === 'Enter') {
+          btnCons?.click();
+          awaitingSecondEnter = !!loadPrefs().autoRegisterOnSecondEnter;
+        }
+      }
+    });
+  }
+  setupWedge();
+  onChange(mode => { if (mode === 'wedge') setupWedge(); else detachWedge?.(); });
 
   return {
     consultar,

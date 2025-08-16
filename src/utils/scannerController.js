@@ -15,6 +15,10 @@ export function getMode() {
   return currentMode;
 }
 
+export function isWedgeMode() {
+  return currentMode === 'wedge';
+}
+
 export function switchTo(mode = 'wedge') {
   if (mode === 'camera' && isDesktop()) mode = 'wedge';
   currentMode = mode === 'camera' ? 'camera' : 'wedge';
