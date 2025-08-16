@@ -1,6 +1,7 @@
 import store from '../store/index.js';
 
 export function initNcmPanel(){
+  const panel = document.getElementById('card-ncm');
   const tbody = document.getElementById('ncm-table');
   const progress = document.getElementById('ncm-progress');
   const progressCount = document.getElementById('ncm-progress-count');
@@ -12,12 +13,24 @@ export function initNcmPanel(){
   const btnPrev = document.getElementById('ncm-prev');
   const btnNext = document.getElementById('ncm-next');
   const pageInfo = document.getElementById('ncm-page');
+  const collapseBtn = document.getElementById('ncm-collapse');
+  const emptyDiv = document.getElementById('ncm-empty');
+  const showAllBtn = document.getElementById('ncm-show-all');
+  const tableWrap = panel?.querySelector('.table-wrap');
+  const pager = panel?.querySelector('.pager');
 
   let page = 0;
-  const limit = 50;
+  const limit = 20;
   let data = [];
+  let renderTimeout;
 
   cancelBtn?.addEventListener('click', ()=> document.dispatchEvent(new Event('ncm-cancel')));
+  collapseBtn?.addEventListener('click', ()=>{
+    panel?.classList.toggle('collapsed');
+    localStorage.setItem('ncm:collapsed', panel?.classList.contains('collapsed'));
+  });
+  const prefCollapsed = localStorage.getItem('ncm:collapsed');
+  if(prefCollapsed === 'false') panel?.classList.remove('collapsed');
 
   document.addEventListener('ncm-progress', e=>{
     const {done,total} = e.detail || {};
@@ -40,12 +53,29 @@ export function initNcmPanel(){
     }
     const total = data.length;
     const pend = Math.max(0, total - ok - fail);
-    if(cntOk) cntOk.textContent = ok;
-    if(cntFail) cntFail.textContent = fail;
-    if(cntPend) cntPend.textContent = pend;
+    if(cntOk) cntOk.textContent = `${ok} OK`;
+    if(cntFail) cntFail.textContent = `${fail} Falhas`;
+    if(cntPend) cntPend.textContent = `${pend} Restantes`;
+    if(fail === 0 && chkFail?.checked){
+      if(emptyDiv) emptyDiv.hidden = false;
+      if(tableWrap) tableWrap.hidden = true;
+      if(pager) pager.hidden = true;
+      if(tbody) tbody.innerHTML = '';
+      if(pageInfo) pageInfo.textContent = '0/0';
+      return;
+    } else {
+      if(emptyDiv) emptyDiv.hidden = true;
+      if(tableWrap) tableWrap.hidden = false;
+      if(pager) pager.hidden = false;
+    }
     const start = page * limit;
     const slice = data.slice(start, start + limit);
-    if(tbody) tbody.innerHTML = slice.map(r=>`<tr><td>${r.sku}</td><td>${r.desc}</td><td>${r.ncm}</td><td>${r.source}</td><td>${r.status}</td></tr>`).join('');
+    if(tbody) tbody.innerHTML = slice.map(r=>{
+      const rowCls = r.status === 'ok' ? 'row-ok' : r.status === 'falha' ? 'row-falha' : '';
+      const badgeCls = r.status === 'ok' ? 'badge-ok' : r.status === 'falha' ? 'badge-falha' : '';
+      const status = r.status ? `<span class="badge ${badgeCls}">${r.status}</span>` : '';
+      return `<tr class="${rowCls}"><td>${r.sku}</td><td>${r.desc}</td><td>${r.ncm}</td><td>${r.source}</td><td>${status}</td></tr>`;
+    }).join('');
     if(pageInfo){
       const end = Math.min(start + slice.length, total);
       pageInfo.textContent = total ? `${start+1}-${end}/${total}` : '0/0';
@@ -56,8 +86,10 @@ export function initNcmPanel(){
 
   btnPrev?.addEventListener('click', ()=>{ if(page>0){ page--; render(); } });
   btnNext?.addEventListener('click', ()=>{ if((page+1)*limit < data.length){ page++; render(); } });
+  showAllBtn?.addEventListener('click', ()=>{ chkFail.checked = false; render(); });
 
-  chkFail?.addEventListener('change', render);
+  const scheduleRender = ()=>{ clearTimeout(renderTimeout); renderTimeout = setTimeout(render,150); };
+  chkFail?.addEventListener('change', scheduleRender);
   document.addEventListener('ncm-update', render);
   render();
 }

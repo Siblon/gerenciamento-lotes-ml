@@ -1,22 +1,17 @@
 @import './css/style.css';
 
-/* Layout grid: 2 columns on desktop, 1 on mobile */
-.layout-grid {
+/* Page layout: main content + narrow NCM panel */
+.page {
   display: grid;
-  gap: var(--space-4);
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
   max-width: 1200px;
   margin: var(--space-5) auto;
 }
-@media (min-width: 1024px) {
-  .layout-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+@media (max-width: 1100px) {
+  .page { grid-template-columns: 1fr; }
 }
-@media (max-width: 1023px) {
-  .layout-grid {
-    grid-template-columns: 1fr;
-  }
-}
+.main-col { display:flex; flex-direction:column; gap:20px; }
 
 /* Scanner fechado: esconde tudo dentro do card */
 #card-scanner.collapsed .card-body { display: none; }
@@ -85,6 +80,9 @@ tr.avariado {
 .card { background:#fff; border:1px solid rgba(0,0,0,.08); border-radius:14px; padding:16px; box-shadow:0 2px 10px rgba(0,0,0,.06); }
 .card-header { display:flex; align-items:center; gap:12px; }
 .card .spacer { flex:1; }
+#card-ncm .table-wrap { max-height:70vh; overflow:auto; }
+#card-ncm th { position:sticky; top:0; background:#fff; }
+.chips { display:flex; gap:8px; }
 
 /* Botões */
 .btn { border-radius:10px; padding:10px 14px; border:1px solid transparent; cursor:pointer; }
@@ -98,12 +96,11 @@ tr.avariado {
 
 /* Financeiro colapsável */
 #finance-panel.collapsed .card-body { display:none; }
+#card-ncm.collapsed .card-body { display:none; }
 
 /* Nome do arquivo com ellipsis */
 .file-input-wrap { display:flex; gap:8px; align-items:center; max-width:100%; }
-#file-name.ellipsis {
-  flex:1; min-width:0; display:inline-block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
+.file-name { max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 /* Inputs e selects */
 input[type="text"], input[type="number"], input[type="search"], .select, input[type="file"] {
@@ -118,7 +115,11 @@ input[type="text"], input[type="number"], input[type="search"], .select, input[t
 .row-pendente { background: #fff; }
 .row-conferido { background: #f0fff4; }
 .row-excedente { background: #fff7f7; }
+.row-ok { background: #f6ffed; }
+.row-falha { background: #fff1f0; }
 .badge { border-radius: 10px; padding: 2px 8px; font-size: 12px; }
 .badge-excedente { background:#ffe3e3; color:#b00020; }
 .badge-conferido { background:#dcfce7; color:#036d19; }
+.badge-ok { background:#dcfce7; color:#065f46; }
+.badge-falha { background:#fee2e2; color:#991b1b; }
 
