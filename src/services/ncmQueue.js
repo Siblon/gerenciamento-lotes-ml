@@ -1,6 +1,11 @@
 import { resolve, resolveWithRetry } from './ncmService.js';
 import store, { setItemNcm, setItemNcmStatus } from '../store/index.js';
 
+let cancelled = false;
+if (typeof document !== 'undefined') {
+  document.addEventListener('ncm-cancel', () => { cancelled = true; });
+}
+
 function timeout(promise, ms){
   return Promise.race([
     promise,
@@ -9,6 +14,7 @@ function timeout(promise, ms){
 }
 
 export async function startNcmQueue(items = []){
+  cancelled = false;
   const pending = items
     .filter(it => !it.ncm)
     .map(it => ({ id: `${it.codigoRZ}:${it.codigoML}`, it }));
@@ -27,7 +33,7 @@ export async function startNcmQueue(items = []){
   let pausePromise = null;
 
   async function worker(){
-    while(queue.length){
+    while(queue.length && !cancelled){
       if(pausePromise) await pausePromise;
       const { id, it } = queue.shift();
       try{

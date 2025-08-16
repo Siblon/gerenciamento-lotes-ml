@@ -1,4 +1,6 @@
 import store from '../store/index.js';
+import { loadPrefs, savePrefs } from '../utils/prefs.js';
+import { startNcmQueue } from '../services/ncmQueue.js';
 
 export function initNcmPanel(){
   const panel = document.getElementById('card-ncm');
@@ -19,6 +21,24 @@ export function initNcmPanel(){
   const tableWrap = panel?.querySelector('.table-wrap');
   const pager = panel?.querySelector('.pager');
 
+  const disabledDiv = document.createElement('div');
+  disabledDiv.id = 'ncm-disabled';
+  disabledDiv.innerHTML = '<div class="card-body"><p>NCM desativado</p><button id="ncm-enable" class="btn btn-primary" type="button">Ativar NCM</button></div>';
+  panel?.prepend(disabledDiv);
+  const contentParts = Array.from(panel.children).filter(el => el !== disabledDiv);
+  function applyEnabled(en){
+    disabledDiv.hidden = en;
+    contentParts.forEach(el => { el.hidden = !en; });
+  }
+  let ncmEnabled = loadPrefs().ncmEnabled;
+  applyEnabled(ncmEnabled);
+  document.addEventListener('ncm-pref-changed', ev => { ncmEnabled = !!ev.detail?.enabled; applyEnabled(ncmEnabled); });
+  disabledDiv.querySelector('#ncm-enable')?.addEventListener('click', () => {
+    const p = loadPrefs(); p.ncmEnabled = true; savePrefs(p);
+    document.dispatchEvent(new CustomEvent('ncm-pref-changed',{detail:{enabled:true}}));
+    startNcmQueue(store.selectAllImportedItems?.()||[]);
+  });
+
   let page = 0;
   const limit = 20;
   let data = [];
@@ -33,6 +53,7 @@ export function initNcmPanel(){
   if(prefCollapsed === 'false') panel?.classList.remove('collapsed');
 
   document.addEventListener('ncm-progress', e=>{
+    if(!ncmEnabled) return;
     const {done,total} = e.detail || {};
     if(progress){
       progress.hidden = done >= total;

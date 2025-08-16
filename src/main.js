@@ -1,5 +1,6 @@
 // src/main.js
 import { initApp } from './components/app.js';
+import { initDashboard } from './components/Dashboard.js';
 import store from './store/index.js';
 import { loadFinanceConfig, loadMetricsPrefs, saveMetricsPrefs, computeItemFinance, computeAggregates } from './utils/finance.js';
 import { loadPrefs, savePrefs } from './utils/prefs.js';
@@ -245,6 +246,15 @@ function wireScannerUI() {
 window.addEventListener('DOMContentLoaded', () => {
   console.log('[BOOT] DOM pronto → initApp()');
   updateBoot('DOM pronto, iniciando app…');
+  const grid = document.querySelector('.page');
+  grid?.classList.add('grid');
+  const mainCol = grid?.querySelector('.main-col');
+  if (mainCol) {
+    const dash = document.createElement('section');
+    dash.id = 'dashboard';
+    mainCol.prepend(dash);
+  }
+  initDashboard();
   try {
     initApp();
     updateBoot('App iniciado ✅');
