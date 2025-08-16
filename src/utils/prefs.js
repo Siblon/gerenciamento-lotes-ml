@@ -11,6 +11,7 @@ const DEFAULT_PREFS = {
   calcFreteMode: 'finalizar',
   scannerMode: 'wedge',      // 'wedge' | 'camera'
   lockScannerMode: true,
+  autoRegisterOnSecondEnter: false,
   predefineExcedente: false,
   askDiscardOnFinalize: true,
   ncmEnabled: true,

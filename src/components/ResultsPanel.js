@@ -28,8 +28,14 @@ function rowsPendentes(rz){
 function rowsExcedentes(rz){
   const list = store.state.excedentes[rz] || [];
   return list.map(it=>{
-    const preco = Number(it.preco||0);
-    return { sku: it.sku, descricao: it.descricao||'', qtd: it.qtd||0, preco, total: (it.qtd||0)*preco };
+    const preco = it.preco === undefined || it.preco === null ? null : Number(it.preco);
+    return {
+      sku: it.sku,
+      descricao: it.descricao||'',
+      qtd: it.qtd||0,
+      preco,
+      total: preco != null ? (it.qtd||0)*preco : null
+    };
   }).sort((a,b)=> b.qtd - a.qtd);
 }
 
@@ -64,7 +70,7 @@ export function renderResults(){
     if (tbExc) {
       const excRows = rowsExcedentes(rz);
       tbExc.innerHTML = excRows.length
-        ? excRows.map(r=>`<tr data-sku="${r.sku}" class="row-excedente"><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco.toFixed(2)}</td><td class="num">${r.total.toFixed(2)}</td><td><span class="badge badge-excedente">Excedente</span></td></tr>`).join('')
+        ? excRows.map(r=>`<tr data-sku="${r.sku}" class="row-excedente"><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco!=null?r.preco.toFixed(2):''}</td><td class="num">${r.total!=null?r.total.toFixed(2):''}</td><td><span class="badge badge-excedente">Excedente</span></td></tr>`).join('')
         : `<tr><td colspan="6" style="text-align:center;color:#777">Nenhum excedente</td></tr>`;
     }
   const cont = store.state.contadores[rz] || { conferidos:0, total:0 };

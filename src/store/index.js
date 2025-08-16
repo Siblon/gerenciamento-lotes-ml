@@ -199,11 +199,11 @@ export function addExcedente(rz, { sku, descricao, qtd, preco, obs, fonte, ncm }
   const list = (state.excedentes[rz] ||= []);
   const existente = list.find(it => it.sku === sku);
   const q = Number(qtd) || 0;
-  const p = Number(preco) || 0;
+  const p = (preco === undefined || preco === null || preco === '') ? undefined : Number(preco);
   const metaNcm = ncm ?? state.metaByRZSku[rz]?.[sku]?.ncm ?? null;
   if (existente) {
     existente.qtd += q;
-    existente.preco = p || existente.preco;
+    if (p !== undefined) existente.preco = p;
     existente.obs = obs || existente.obs;
     existente.ncm = metaNcm ?? existente.ncm ?? null;
   } else {
