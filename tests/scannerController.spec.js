@@ -13,9 +13,17 @@ beforeEach(() => {
   localStorage.clear();
   platform.isDesktop.mockReturnValue(false);
   switchTo('wedge');
+  global.document = { getElementById: () => null, querySelector: () => null };
 });
 
 describe('scannerController', () => {
+  it('defaults to wedge mode on desktop', async () => {
+    platform.isDesktop.mockReturnValue(true);
+    vi.resetModules();
+    const sc = await import('../src/utils/scannerController.js');
+    expect(sc.getMode()).toBe('wedge');
+  });
+
   it('switches mode and persists on mobile', () => {
     platform.isDesktop.mockReturnValue(false);
     switchTo('camera');
@@ -44,5 +52,12 @@ describe('scannerController', () => {
     savePrefs(prefs);
     afterRegister();
     expect(getMode()).toBe('camera');
+  });
+
+  it('afterRegister focuses code input', () => {
+    const el = { focus: vi.fn(), select: vi.fn() };
+    global.document = { getElementById: () => el, querySelector: () => el };
+    afterRegister();
+    expect(el.focus).toHaveBeenCalled();
   });
 });
