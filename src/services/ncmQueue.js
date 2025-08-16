@@ -23,24 +23,44 @@ export async function startNcmQueue(items = []){
   const queue = pending.slice();
   const workers = [];
   const limit = 3;
+  let errStreak = 0;
+  let pausePromise = null;
+
   async function worker(){
     while(queue.length){
+      if(pausePromise) await pausePromise;
       const { id, it } = queue.shift();
       try{
         setItemNcmStatus(id,'pendente');
-        const r = await resolveWithRetry(() => timeout(resolve({ sku: it.codigoML, ncmPlanilha: it.ncm, descricao: it.descricao }), 4000), 3, 500);
-        if(r.ok && r.ncm){
+        const r = await resolveWithRetry(() => timeout(resolve({ sku: it.codigoML, descricao: it.descricao }), 4000), 3, 500);
+        if(r.status === 'ok' && r.ncm){
           it.ncm = r.ncm;
           setItemNcm(id, r.ncm, r.source);
+          errStreak = 0;
         }else{
           setItemNcmStatus(id,'falha');
+          errStreak++;
         }
       }catch{
         setItemNcmStatus(id,'falha');
+        errStreak++;
       }finally{
         done++;
         store.state.ncmState = { running: true, done, total };
         if(hasDoc) document.dispatchEvent(new CustomEvent('ncm-progress',{ detail:{ done, total } }));
+      }
+      if(errStreak > 10 && !pausePromise){
+        console.warn('API instável; tentando novamente em 30s');
+        store.state.ncmState = { running: true, done, total, paused:true };
+        if(hasDoc) document.dispatchEvent(new CustomEvent('ncm-progress',{ detail:{ done, total, paused:true } }));
+        pausePromise = new Promise(res=>setTimeout(()=>{
+          pausePromise = null;
+          store.state.ncmState = { running: true, done, total, paused:false };
+          if(hasDoc) document.dispatchEvent(new CustomEvent('ncm-progress',{ detail:{ done, total, paused:false } }));
+          errStreak = 0;
+          res();
+        },30000));
+        await pausePromise;
       }
     }
   }

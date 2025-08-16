@@ -18,8 +18,8 @@ describe('ncmQueue', () => {
     resolveMock.mockImplementation(async () => {
       active++;
       max = Math.max(max, active);
-      await new Promise(res => setTimeout(() => { active--; res({ ok:true, ncm:'1', source:'api' }); }, 10));
-      return { ok:true, ncm:'1', source:'api' };
+      await new Promise(res => setTimeout(() => { active--; res({ status:'ok', ncm:'1', source:'api' }); }, 10));
+      return { status:'ok', ncm:'1', source:'api' };
     });
     const items = Array.from({ length: 6 }, (_, i) => ({ codigoRZ:'RZ', codigoML:`S${i}`, descricao:'', ncm:null }));
     await startNcmQueue(items);
@@ -30,7 +30,7 @@ describe('ncmQueue', () => {
     resolveMock
       .mockRejectedValueOnce(new Error('fail1'))
       .mockRejectedValueOnce(new Error('fail2'))
-      .mockResolvedValue({ ok:true, ncm:'12345678', source:'api' });
+      .mockResolvedValue({ status:'ok', ncm:'12345678', source:'api' });
     resolveWithRetryMock.mockImplementation(async fn => {
       try { return await fn(); } catch { try { return await fn(); } catch { return await fn(); } }
     });
@@ -41,7 +41,7 @@ describe('ncmQueue', () => {
   });
 
   it('does not block synchronous code', async () => {
-    resolveMock.mockImplementation(() => new Promise(res => setTimeout(() => res({ ok:true, ncm:'1', source:'api' }), 10)));
+    resolveMock.mockImplementation(() => new Promise(res => setTimeout(() => res({ status:'ok', ncm:'1', source:'api' }), 10)));
     const items = [{ codigoRZ:'RZ', codigoML:'A', descricao:'', ncm:null }];
     let flag = false;
     const p = startNcmQueue(items);
