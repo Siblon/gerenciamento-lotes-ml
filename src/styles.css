@@ -1,13 +1,13 @@
 @import './css/style.css';
 
 /* Page layout: main content + narrow NCM panel */
-.page {
-  display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 20px;
-  max-width: 1200px;
-  margin: var(--space-5) auto;
-}
+  .page {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 20px;
+    max-width: 1200px;
+    margin: 20px auto;
+  }
 @media (max-width: 1100px) {
   .page { grid-template-columns: 1fr; }
 }
@@ -20,15 +20,15 @@
 #card-scanner:not(.is-on) #preview { display: none; }
 
 /* Scanner preview */
-#preview {
-  display: block;
-  width: 100%;
-  max-height: 320px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: #000;
-  object-fit: cover;
-}
+  #preview {
+    display: block;
+    width: 100%;
+    max-height: 320px;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--radius);
+    background: #000;
+    object-fit: cover;
+  }
 @media (min-width: 1024px) {
   #preview {
     max-height: 420px;
@@ -36,14 +36,14 @@
 }
 
 /* Status flutuante (remover estilo inline do HTML) */
-#boot-status{
-  position:fixed; right:10px; bottom:10px; z-index:9999;
-  padding:6px 10px; border:1px solid var(--border); border-radius:8px;
-  background:var(--card); box-shadow:var(--shadow); font:12px/1.2 var(--font);
-}
-#boot-status button {
-  margin-left: var(--space-2);
-}
+  #boot-status{
+    position:fixed; right:10px; bottom:10px; z-index:9999;
+    padding:6px 10px; border:1px solid #e5e7eb; border-radius:8px;
+    background:var(--card); box-shadow:var(--shadow); font:12px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Arial;
+  }
+  #boot-status button {
+    margin-left: 8px;
+  }
 
 .chip-info {
   display:inline-flex; align-items:center; gap:8px;
@@ -76,50 +76,33 @@ tr.avariado {
 .metric-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
 .metric-footnote { font-size: 11px; color: #889; margin-top: 6px; }
 
-/* Cards e layout */
-.card { background:#fff; border:1px solid rgba(0,0,0,.08); border-radius:14px; padding:16px; box-shadow:0 2px 10px rgba(0,0,0,.06); }
+  /* Cards e layout */
+  .card { background:var(--card); border:1px solid #e5e7eb; border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); }
 .card-header { display:flex; align-items:center; gap:12px; }
 .card .spacer { flex:1; }
 #card-ncm .table-wrap { max-height:70vh; overflow:auto; }
 #card-ncm th { position:sticky; top:0; background:#fff; }
 .chips { display:flex; gap:8px; }
 
-/* Botões */
-.btn { border-radius:10px; padding:10px 14px; border:1px solid transparent; cursor:pointer; }
-.btn-primary { background:#1967d2; color:#fff; }
-.btn-primary:focus { outline:3px solid rgba(25,103,210,.3); }
-.btn-ghost { background:transparent; border-color:rgba(0,0,0,.12); }
-
-/* Ações: ordem e respiro */
-.actions-grid { display:grid; gap:12px; grid-template-columns: 1fr auto auto; align-items:end; }
+  /* Ações: ordem e respiro */
+  .actions-grid { display:grid; gap:12px; grid-template-columns: 1fr auto auto; align-items:end; }
 .actions-grid .row { display:contents; }
 
 /* Financeiro colapsável */
 #finance-panel.collapsed .card-body { display:none; }
 #card-ncm.collapsed .card-body { display:none; }
 
-/* Nome do arquivo com ellipsis */
-.file-input-wrap { display:flex; gap:8px; align-items:center; max-width:100%; }
-.file-name { max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* Nome do arquivo com ellipsis */
+  .file-input-wrap { display:flex; gap:8px; align-items:center; max-width:100%; }
 
-/* Inputs e selects */
-input[type="text"], input[type="number"], input[type="search"], .select, input[type="file"] {
-  border:1px solid rgba(0,0,0,.14); border-radius:10px; padding:10px 12px; width:100%;
-}
+  /* Responsividade */
+  @media (max-width: 768px) {
+    .actions-grid { grid-template-columns: 1fr; }
+  }
 
-/* Responsividade */
-@media (max-width: 768px) {
-  .actions-grid { grid-template-columns: 1fr; }
-}
-
-.row-pendente { background: #fff; }
-.row-conferido { background: #f0fff4; }
-.row-excedente { background: #fff7f7; }
-.row-ok { background: #f6ffed; }
-.row-falha { background: #fff1f0; }
-.badge { border-radius: 10px; padding: 2px 8px; font-size: 12px; }
-.badge-excedente { background:#ffe3e3; color:#b00020; }
-.badge-conferido { background:#dcfce7; color:#036d19; }
-.badge-ok { background:#dcfce7; color:#065f46; }
-.badge-falha { background:#fee2e2; color:#991b1b; }
+  .row-pendente { background: #fff; }
+  .row-conferido { background: #f6ffed; }
+  .row-excedente { background: #fff1f0; }
+  .row-ok { background: #f6ffed; }
+  .row-falha { background: #fff1f0; }
 

@@ -11,7 +11,7 @@ if (import.meta.env?.DEV) {
 function updateBoot(msg) {
   const el = document.getElementById('boot-status');
   if (el) el.firstChild.nodeValue = ''; // limpa texto anterior
-  if (el) el.innerHTML = `<strong>Boot:</strong> ${msg} <button id="btn-debug" type="button" class="btn ghost">Debug</button>`;
+  if (el) el.innerHTML = `<strong>Boot:</strong> ${msg} <button id="btn-debug" type="button" class="btn btn-ghost">Debug</button>`;
 }
 
 function brl(n){ return (n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
