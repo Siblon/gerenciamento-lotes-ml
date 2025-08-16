@@ -42,7 +42,7 @@ export function initActionsPanel(render){
   const selMode   = document.getElementById('fin-mode');
 
   btnCons?.classList.add('btn','btn-primary');
-  btnReg?.classList.add('btn','btn-ghost');
+  btnReg?.classList.add('btn','btn-primary');
 
   inputSku?.focus();
 

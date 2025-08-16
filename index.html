@@ -12,7 +12,7 @@
         Conferência de Lotes <span id="hdr-conferidos">0 de 0 conferidos</span>
       </h1>
       <div class="actions">
-        <button id="helpBtn" title="Ajuda/Atalhos" aria-label="Ajuda" class="btn ghost">?</button>
+        <button id="helpBtn" title="Ajuda/Atalhos" aria-label="Ajuda" class="btn btn-ghost">?</button>
       </div>
     </header>
 
@@ -34,8 +34,8 @@
           <div class="file-row">
             <label class="label" for="file">Planilha</label>
             <div class="file-input-wrap">
-                <input type="file" id="file" accept=".xlsx" />
-                <span id="file-name" class="file-name"></span>
+                  <input type="file" id="file" accept=".xlsx" />
+                  <span id="file-name" class="file-name ellipsis"></span>
             </div>
           </div>
           <div class="field">
@@ -60,31 +60,31 @@
                 <label class="label" for="btn-consultar">&nbsp;</label>
                 <button id="btn-consultar" class="btn btn-primary" type="button">Consultar</button>
               </div>
-              <div class="field">
-                <label class="label" for="btn-open-scanner">&nbsp;</label>
-                <button id="btn-open-scanner" type="button" class="btn btn-ghost" aria-controls="card-scanner" aria-expanded="false">Ler código</button>
+                <div class="field">
+                  <label class="label" for="btn-open-scanner">&nbsp;</label>
+                  <button id="btn-open-scanner" type="button" class="btn btn-ghost" aria-controls="card-scanner" aria-expanded="false">Ler código</button>
+                </div>
               </div>
-            </div>
-            <div class="row">
-              <div class="field">
-                <label for="preco-ajustado" class="label">Preço ajustado</label>
-                <input type="number" id="preco-ajustado" placeholder="Preço ajustado" step="0.01" class="input" />
-              </div>
-              <div class="field">
-                <label for="obs-preset" class="label">Observação (pré-definida)</label>
-                <select id="obs-preset" class="input" aria-label="Observação padrão">
-                  <option value="">— Nenhuma —</option>
-                  <option value="excedente">Produto excedente (não listado)</option>
-                  <option value="avaria">Avaria grave (descartar)</option>
-                  <option value="nao_encontrado">Não encontrado no RZ</option>
-                </select>
-              </div>
-              <div class="field">
-                <label class="label" for="btn-registrar">&nbsp;</label>
+              <div class="row">
+                <div class="field">
+                  <label for="obs-preset" class="label">Observação (pré-definida)</label>
+                  <select id="obs-preset" class="input" aria-label="Observação padrão">
+                    <option value="">— Nenhuma —</option>
+                    <option value="excedente">Produto excedente (não listado)</option>
+                    <option value="avaria">Avaria grave (descartar)</option>
+                    <option value="nao_encontrado">Não encontrado no RZ</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="preco-ajustado" class="label">Preço ajustado</label>
+                  <input type="number" id="preco-ajustado" placeholder="Preço ajustado" step="0.01" class="input" />
+                </div>
+                <div class="field">
+                  <label class="label" for="btn-registrar">&nbsp;</label>
                   <button id="btn-registrar" class="btn btn-primary" type="button">Registrar</button>
+                </div>
               </div>
             </div>
-          </div>
 
           <section id="produto-info" class="card" hidden>
             <div class="card-header">
@@ -177,7 +177,7 @@
                     <option>100</option>
                     <option>200</option>
                   </select>
-                  <button id="btn-recolher-conferidos" data-target="sec-conferidos" class="btn ghost">Recolher</button>
+                  <button id="btn-recolher-conferidos" data-target="sec-conferidos" class="btn btn-ghost">Recolher</button>
                 </div>
               </div>
               <div class="card-body">
@@ -209,7 +209,7 @@
                     <option>100</option>
                     <option>200</option>
                   </select>
-                  <button id="btn-recolher-pendentes" data-target="sec-pendentes" class="btn ghost">Recolher</button>
+                  <button id="btn-recolher-pendentes" data-target="sec-pendentes" class="btn btn-ghost">Recolher</button>
                 </div>
               </div>
               <div class="card-body">
@@ -235,7 +235,7 @@
               <div class="card-header">
                 <h2>Excedentes <span id="excedentesCount">0</span></h2>
                 <div class="actions">
-                  <button id="btn-recolher-excedentes" data-target="sec-excedentes" class="btn ghost">Recolher</button>
+                  <button id="btn-recolher-excedentes" data-target="sec-excedentes" class="btn btn-ghost">Recolher</button>
                 </div>
               </div>
               <div class="card-body">
@@ -279,13 +279,13 @@
           </div>
           <div class="spacer"></div>
           <label><input type="checkbox" id="ncm-only-fail" checked /> Somente falhas</label>
-          <button id="ncm-collapse" class="btn ghost" type="button" title="Recolher/expandir">↕</button>
+          <button id="ncm-collapse" class="btn btn-ghost" type="button" title="Recolher/expandir">↕</button>
         </div>
         <div class="card-body">
-          <div id="ncm-progress" hidden>Resolvendo NCM… <span id="ncm-progress-count">0/0</span> <button id="ncm-cancel" class="btn ghost">Cancelar</button></div>
+          <div id="ncm-progress" hidden>Resolvendo NCM… <span id="ncm-progress-count">0/0</span> <button id="ncm-cancel" class="btn btn-ghost">Cancelar</button></div>
           <div id="ncm-empty" hidden>
             <p>Tudo certo! Nenhuma falha.</p>
-            <button id="ncm-show-all" class="btn ghost" type="button">Mostrar todos</button>
+            <button id="ncm-show-all" class="btn btn-ghost" type="button">Mostrar todos</button>
           </div>
           <div class="table-wrap">
             <table>
@@ -294,9 +294,9 @@
             </table>
           </div>
           <div class="pager">
-            <button id="ncm-prev" class="btn ghost" type="button">&#171;</button>
+            <button id="ncm-prev" class="btn btn-ghost" type="button">&#171;</button>
             <span id="ncm-page">0/0</span>
-            <button id="ncm-next" class="btn ghost" type="button">&#187;</button>
+            <button id="ncm-next" class="btn btn-ghost" type="button">&#187;</button>
           </div>
         </div>
       </section>
@@ -305,7 +305,7 @@
 
     <div id="boot-status" aria-live="polite">
       <strong>Boot:</strong> aguardando…
-    <button id="btn-debug" type="button" class="btn ghost">Debug</button>
+    <button id="btn-debug" type="button" class="btn btn-ghost">Debug</button>
   </div>
 
   <dialog id="dlg-excedente">
@@ -332,13 +332,13 @@
         <input id="exc-obs" class="input" />
       </div>
       <menu>
-        <button value="cancel" class="btn ghost">Cancelar</button>
-        <button id="exc-salvar" value="default" class="btn primary">Salvar excedente</button>
+        <button value="cancel" class="btn btn-ghost">Cancelar</button>
+        <button id="exc-salvar" value="default" class="btn btn-primary">Salvar excedente</button>
       </menu>
     </form>
   </dialog>
 
-  <button id="btn-settings" class="btn ghost" aria-label="Configurações" title="Configurações" style="position:fixed;right:12px;top:12px">⚙️</button>
+  <button id="btn-settings" class="btn btn-ghost" aria-label="Configurações" title="Configurações" style="position:fixed;right:12px;top:12px">⚙️</button>
   <dialog id="dlg-settings">
     <form method="dialog" class="card" style="min-width:320px">
       <h3>Configurações</h3>
@@ -374,8 +374,8 @@
         </select>
       </div>
       <menu style="display:flex;gap:8px;justify-content:flex-end">
-        <button value="cancel" class="btn ghost">Cancelar</button>
-        <button value="default" class="btn primary">Salvar</button>
+        <button value="cancel" class="btn btn-ghost">Cancelar</button>
+        <button value="default" class="btn btn-primary">Salvar</button>
       </menu>
     </form>
   </dialog>
@@ -385,8 +385,8 @@
       <h3>Selecionar indicadores</h3>
       <div id="metrics-options"></div>
       <menu style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
-        <button value="cancel" class="btn ghost">Cancelar</button>
-        <button id="apply-indicators" value="default" class="btn primary">Aplicar</button>
+        <button value="cancel" class="btn btn-ghost">Cancelar</button>
+        <button id="apply-indicators" value="default" class="btn btn-primary">Aplicar</button>
       </menu>
     </form>
   </dialog>
