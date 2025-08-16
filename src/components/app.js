@@ -7,7 +7,7 @@ import { renderResults } from './ResultsPanel.js';
 import { initNcmPanel } from './NcmPanel.js';
 
 export function initApp(){
-  const render = () => renderResults();
+  const render = () => { renderResults(); window.updateDashboard?.(); };
 
   const actions = initActionsPanel(render);
   initImportPanel(render);

@@ -13,6 +13,7 @@ const DEFAULT_PREFS = {
   lockScannerMode: true,
   predefineExcedente: false,
   askDiscardOnFinalize: true,
+  ncmEnabled: true,
 };
 
 export function loadPrefs() {

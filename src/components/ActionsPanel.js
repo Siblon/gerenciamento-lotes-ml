@@ -35,6 +35,7 @@ export function initActionsPanel(render){
   const btnCons = document.querySelector('#btn-consultar') || Array.from(document.querySelectorAll('button')).find(b=>/consultar/i.test(b.textContent||''));
   const btnReg  = document.querySelector('#btn-registrar') || Array.from(document.querySelectorAll('button')).find(b=>/registrar/i.test(b.textContent||''));
   const btnFinal = document.querySelector('#finalizarBtn');
+  const obsSelect = document.getElementById('obs-preset');
   const rngPercent = document.getElementById('fin-percent');
   const rngDesconto = document.getElementById('fin-desconto');
   const inpFrete = document.getElementById('fin-frete');
@@ -43,6 +44,10 @@ export function initActionsPanel(render){
 
   btnCons?.classList.add('btn','btn-primary');
   btnReg?.classList.add('btn','btn-primary');
+
+  if (obsSelect) {
+    obsSelect.innerHTML = '<option value="">— Nenhuma —</option><option value="excedente">Produto excedente (não listado)</option>';
+  }
 
   inputSku?.focus();
 
@@ -102,7 +107,7 @@ export function initActionsPanel(render){
   btnReg?.addEventListener('click', () => {
     const sku = (inputSku?.value || '').trim().toUpperCase();
     const price = parseFloat(document.getElementById('preco-ajustado')?.value || '') || undefined;
-    const obsPreset = document.getElementById('obs-preset')?.value || '';
+    const obsPreset = obsSelect?.value || '';
 
     const pendente = Number(store.findInRZ?.(store.state.rzAtual, sku)?.qtd ?? 1);
     let qty = 1;
@@ -136,6 +141,9 @@ export function initActionsPanel(render){
     } catch(e) {
       console.error(e); toast('Falha ao registrar', 'error');
     }
+    if (obsSelect) obsSelect.value = '';
+    const precoInput = document.getElementById('preco-ajustado');
+    if (precoInput) precoInput.value = '';
     inputSku?.focus();
   });
 
