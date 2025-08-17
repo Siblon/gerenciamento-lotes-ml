@@ -1,11 +1,10 @@
 // src/components/ActionsPanel.js
 import { exportarConferencia } from '../utils/excel.js';
-import store, { findInRZ, findConferido, findEmOutrosRZ, moveItemEntreRZ, addExcedente } from '../store/index.js';
+import store, { findConferido, findEmOutrosRZ, moveItemEntreRZ, addExcedente } from '../store/index.js';
 import { loadFinanceConfig, saveFinanceConfig } from '../utils/finance.js';
 import { loadPrefs, savePrefs } from '../utils/prefs.js';
 import { toast } from '../utils/toast.js';
-import { installWedgeScanner } from '../utils/wedge.js';
-import { getMode, onChange, afterRegister as scAfterRegister } from '../utils/scannerController.js';
+import { attachWedgeCapture, afterRegister as scAfterRegister } from '../utils/scannerController.js';
 import { openExcedenteModal } from './ExcedenteModal.js';
 
 function mostrarProdutoInfo(item) {
@@ -88,6 +87,12 @@ export function initActionsPanel(render){
 
   inputSku?.focus();
 
+  attachWedgeCapture(inputSku, (text) => {
+    const code = normalizeSku(text);
+    if (inputSku) inputSku.value = code;
+    consultar('scanner');
+  });
+
   const cfg = loadFinanceConfig();
   const prefs = loadPrefs();
   if (rngPercent) { rngPercent.value = String((cfg.percent_pago_sobre_ml||0)*100); document.getElementById('fin-percent-val').textContent = `${rngPercent.value}%`; }
@@ -120,7 +125,7 @@ export function initActionsPanel(render){
     btnCons?.classList.add('loading');
     btnCons?.setAttribute?.('disabled','disabled');
     try {
-      const item = findInRZ?.(rz, sku) || findConferido?.(rz, sku);
+      const item = store.findInRZ?.(rz, sku) || findConferido?.(rz, sku);
       if (!item) {
         const outro = findEmOutrosRZ?.(sku);
         if (outro){
@@ -131,8 +136,7 @@ export function initActionsPanel(render){
             return true;
           }
         }
-        toast('Produto não encontrado', 'warn');
-        abrirModalExcedente(sku, fonte);
+        toast.warn('Produto não encontrado; você pode registrar sem preço.');
         document.getElementById('produto-info').hidden = true;
         return false;
       }
@@ -152,13 +156,15 @@ export function initActionsPanel(render){
     const sku = normalizeSku(inputSku?.value || '');
     const priceStr = precoInput?.value || '';
     const obsPreset = obsSelect?.value || '';
-    if (obsPreset !== 'excedente' && priceStr.trim() === '') {
+    const item = store.findInRZ?.(store.state.rzAtual, sku);
+    const toExcedentes = obsPreset === 'excedente' || !item;
+    if (!toExcedentes && priceStr.trim() === '') {
       toast('Preço obrigatório', 'warn');
       return;
     }
     const price = priceStr.trim() === '' ? undefined : Number(priceStr);
 
-    const pendente = Number(store.findInRZ?.(store.state.rzAtual, sku)?.qtd ?? 1);
+    const pendente = Number(item?.qtd ?? 1);
     let qty = 1;
     if (pendente > 1) {
       const entrada = window.prompt(`Quantidade a registrar (restantes: ${pendente})`, '1');
@@ -166,7 +172,6 @@ export function initActionsPanel(render){
       qty = Number.isFinite(n) ? Math.max(1, Math.min(pendente, n)) : 1;
     }
 
-    const toExcedentes = obsPreset === 'excedente';
     const note = toExcedentes ? excedenteObs : '';
 
     try {
@@ -290,27 +295,6 @@ export function initActionsPanel(render){
     }
     if (e.key==='Escape') document.getElementById('dlg-excedente')?.close();
   });
-
-  let detachWedge = null;
-  function setupWedge(){
-    detachWedge?.();
-    if (getMode() !== 'wedge') return;
-    detachWedge = installWedgeScanner({
-      allowInput: inputSku,
-      onScan: (code, term) => {
-        const norm = normalizeSku(code);
-        if (!norm || norm.length < 3) return;
-        inputSku.value = norm;
-        inputSku.focus();
-        inputSku.select();
-        if (term === 'Enter') {
-          btnCons?.click();
-        }
-      }
-    });
-  }
-  setupWedge();
-  onChange(mode => { if (mode === 'wedge') setupWedge(); else detachWedge?.(); });
 
   return {
     consultar,
