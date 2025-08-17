@@ -296,3 +296,29 @@ export function initActionsPanel(render){
     setSku: (sku)=>{ if (codigoInput) codigoInput.value = sku; }
   };
 }
+
+export default function ActionsPanel(){
+  const sec = document.createElement('section');
+  sec.className = 'card';
+  sec.innerHTML = `
+    <h2 class="section-title">Ações de Conferência</h2>
+    <div class="actions-grid">
+      <div class="field"><input id="input-codigo-produto" placeholder="Código do produto" /></div>
+      <div class="field"><button id="btn-consultar" class="btn btn-primary" type="button">Consultar</button></div>
+      <div class="field"><button id="btn-open-scanner" class="btn btn-ghost" type="button">Ler código</button></div>
+      <div class="field"><select id="obs-preset"></select></div>
+      <div class="field"><input id="preco-ajustado" type="number" step="0.01" placeholder="Preço" /></div>
+      <div class="field"><button id="btn-registrar" class="btn btn-primary" type="button">Registrar</button></div>
+    </div>
+    <section id="produto-info" hidden>
+      <span id="pi-sku"></span>
+      <span id="pi-desc"></span>
+      <span id="pi-qtd"></span>
+      <span id="pi-preco"></span>
+      <span id="pi-total"></span>
+      <span id="pi-rz"></span>
+      <span id="pi-ncm"></span>
+    </section>`;
+  setTimeout(()=>initActionsPanel(()=>{}),0);
+  return sec;
+}

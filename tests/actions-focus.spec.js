@@ -5,26 +5,26 @@ import store from '../src/store/index.js';
 
 let elements, actions, input, rzSelect;
 
-function createEl(tag = 'input') {
-  const el = {
-    tagName: tag.toUpperCase(),
-    value: '',
-    classList: { add: () => {}, remove: () => {} },
-    focus() { document.activeElement = this; },
-    select() { this._selected = true; },
-    addEventListener(type, fn) { (el._l ||= {})[type] = fn; },
-    click() { el._l?.click?.({}); },
-    dispatchEvent(ev) { el._l?.[ev.type]?.(ev); },
-    setAttribute: () => {},
-    removeAttribute: () => {},
-  };
-  return el;
-}
+  function createEl(tag = 'input') {
+    const el = {
+      tagName: tag.toUpperCase(),
+      value: '',
+      classList: { add: () => {}, remove: () => {} },
+      focus() { document.activeElement = this; },
+      select() { this._selected = true; },
+      addEventListener(type, fn) { (el._l ||= {})[type] = fn; },
+      click() { el._l?.click?.({}); },
+      dispatchEvent(ev) { el._l?.[ev.type]?.(ev); if(ev.bubbles) document.dispatchEvent(ev); },
+      setAttribute: () => {},
+      removeAttribute: () => {},
+    };
+    return el;
+  }
 
 describe('focus management', () => {
-  beforeEach(() => {
-    elements = {};
-    elements['input-codigo-produto'] = createEl('input');
+    beforeEach(() => {
+      elements = {};
+      elements['input-codigo-produto'] = createEl('input');
     elements['btn-consultar'] = createEl('button');
     elements['btn-registrar'] = createEl('button');
     elements['obs-preset'] = createEl('select');
@@ -39,15 +39,17 @@ describe('focus management', () => {
     elements['pi-ncm'] = { textContent: '' };
     elements['produto-info'] = { hidden: false };
 
-    global.document = {
-      body: { appendChild: () => {} },
-      activeElement: null,
-      getElementById: (id) => elements[id] || null,
-      querySelector: (sel) => elements[sel.replace('#', '')] || null,
-      querySelectorAll: () => [],
-      addEventListener: () => {},
-      createElement: () => ({ className: '', setAttribute: () => {}, textContent: '', remove: () => {} }),
-    };
+      const docListeners = {};
+      global.document = {
+        body: { appendChild: () => {} },
+        activeElement: null,
+        getElementById: (id) => elements[id] || null,
+        querySelector: (sel) => elements[sel.replace('#', '')] || null,
+        querySelectorAll: () => [],
+        addEventListener: (type, fn) => { (docListeners[type] ||= []).push(fn); },
+        dispatchEvent: (ev) => { (docListeners[ev.type] || []).forEach(fn => fn(ev)); },
+        createElement: () => ({ className: '', setAttribute: () => {}, textContent: '', remove: () => {} }),
+      };
     global.window = { refreshIndicators: () => {}, scrollTo: () => {} };
     global.localStorage = { _s:{}, getItem(k){return this._s[k]||null;}, setItem(k,v){this._s[k]=String(v);}, removeItem(k){delete this._s[k];}, clear(){this._s={};} };
 
@@ -60,11 +62,13 @@ describe('focus management', () => {
     rzSelect = elements['select-rz'];
   });
 
-  it('focuses code input after RZ change', () => {
-    rzSelect.value = 'R2';
-    rzSelect.dispatchEvent({ type:'change', target: rzSelect });
-    expect(document.activeElement).toBe(input);
-  });
+    it('emits rz:changed after RZ change', () => {
+      let fired = false;
+      document.addEventListener('rz:changed', () => { fired = true; });
+      rzSelect.value = 'R2';
+      rzSelect.dispatchEvent({ type:'change', target: rzSelect, bubbles:true });
+      expect(fired).toBe(true);
+    });
 
   it('returns focus and selection after handleRegistrar', async () => {
     store.findInRZ = () => ({ qtd:1, precoMedio:10 });

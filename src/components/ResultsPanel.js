@@ -12,8 +12,24 @@ function rowsConferidos(rz){
     const status = store.state.conferidosByRZSku[rz]?.[sku]?.status;
     return { sku, descricao: m.descricao||'', qtd, preco, total: qtd*preco, status };
   }).sort((a,b)=> b.qtd - a.qtd);
+  }
+export default function ResultsPanel(){
+  const sec = document.createElement('section');
+  sec.className = 'card';
+  sec.innerHTML = `
+    <h2 class="section-title">Resultados</h2>
+    <div class="table-wrap">
+      <table id="tbl-conferidos" class="table"><thead><tr><th>SKU</th><th>Descrição</th><th>Qtd</th><th>Preço</th><th>Total</th><th>Status</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="table-wrap">
+      <table id="tbl-pendentes" class="table"><thead><tr><th>SKU</th><th>Descrição</th><th>Qtd</th><th>Preço</th><th>Total</th><th>Status</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="table-wrap">
+      <table class="table"><thead><tr><th>SKU</th><th>Descrição</th><th>Qtd</th><th>Preço</th><th>Total</th><th>Status</th></tr></thead><tbody id="excedentesTable"></tbody></table>
+    </div>`;
+  setTimeout(()=>renderResults(),0);
+  return sec;
 }
-
 function rowsPendentes(rz){
   const tot = getTotals(rz);
   const conf = getConferidos(rz);
@@ -54,24 +70,25 @@ export function renderResults(){
   const tbPend = document.querySelector('#tbl-pendentes tbody');
   const tbExc  = document.querySelector('#excedentesTable');
     if (tbConf) {
-      tbConf.innerHTML = confRows.length
-        ? confRows.map(r=>{
-            const badgeCls = r.status === 'avariado' ? 'badge-excedente' : 'badge-conferido';
-            const label = r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1) : 'Conferido';
-            return `<tr data-sku="${r.sku}" class="row-conferido${r.status==='avariado'?' avariado':''}"><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco.toFixed(2)}</td><td class="num">${r.total.toFixed(2)}</td><td><span class="badge ${badgeCls}">${label}</span></td></tr>`;
-          }).join('')
-        : `<tr><td colspan="6" style="text-align:center;color:#777">Nenhum item conferido</td></tr>`;
+        tbConf.innerHTML = confRows.length
+          ? confRows.map(r=>{
+              const badgeCls = r.status === 'avariado' ? 'badge-excedente' : 'badge-conferido';
+              const label = r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1) : 'Conferido';
+              const rowCls = r.status === 'avariado' ? 'row-exc' : 'row-ok';
+              return `<tr data-sku="${r.sku}" class="${rowCls}"><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco.toFixed(2)}</td><td class="num">${r.total.toFixed(2)}</td><td><span class="badge ${badgeCls}">${label}</span></td></tr>`;
+            }).join('')
+          : `<tr><td colspan="6" style="text-align:center;color:#777">Nenhum item conferido</td></tr>`;
     }
     if (tbPend) {
-      tbPend.innerHTML = pendRows.length
-        ? pendRows.map(r=>`<tr data-sku="${r.sku}" class="row-pendente"><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco.toFixed(2)}</td><td class="num">${r.total.toFixed(2)}</td><td><span class="badge">Pendente</span></td></tr>`).join('')
-        : `<tr><td colspan="6" style="text-align:center;color:#777">Sem pendências para este RZ</td></tr>`;
+        tbPend.innerHTML = pendRows.length
+          ? pendRows.map(r=>`<tr data-sku="${r.sku}" class="row-pendente"><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco.toFixed(2)}</td><td class="num">${r.total.toFixed(2)}</td><td><span class="badge">Pendente</span></td></tr>`).join('')
+          : `<tr><td colspan="6" style="text-align:center;color:#777">Sem pendências para este RZ</td></tr>`;
     }
     if (tbExc) {
       const excRows = rowsExcedentes(rz);
-      tbExc.innerHTML = excRows.length
-        ? excRows.map(r=>`<tr data-sku="${r.sku}" class="row-excedente"><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco!=null?r.preco.toFixed(2):''}</td><td class="num">${r.total!=null?r.total.toFixed(2):''}</td><td><span class="badge badge-excedente">Excedente</span></td></tr>`).join('')
-        : `<tr><td colspan="6" style="text-align:center;color:#777">Nenhum excedente</td></tr>`;
+        tbExc.innerHTML = excRows.length
+          ? excRows.map(r=>`<tr data-sku="${r.sku}" class="row-exc"><td class="sticky">${r.sku}</td><td>${r.descricao}</td><td class="num">${r.qtd}</td><td class="num">${r.preco!=null?r.preco.toFixed(2):''}</td><td class="num">${r.total!=null?r.total.toFixed(2):''}</td><td><span class="badge badge-excedente">Excedente</span></td></tr>`).join('')
+          : `<tr><td colspan="6" style="text-align:center;color:#777">Nenhum excedente</td></tr>`;
     }
   const cont = store.state.contadores[rz] || { conferidos:0, total:0 };
   const hdr = document.getElementById('hdr-conferidos');
