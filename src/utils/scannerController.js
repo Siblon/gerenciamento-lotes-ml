@@ -30,10 +30,12 @@ export function switchTo(mode = 'wedge') {
 
 export function afterRegister() {
   const prefs = loadPrefs();
-  if (prefs.lockScannerMode) {
-    return;
+  if (!prefs.lockScannerMode) {
+    switchTo('wedge');
   }
-  switchTo('wedge');
+  const el = document.getElementById('codigo-produto') || document.querySelector('input[placeholder="Código do produto"]');
+  el?.focus?.();
+  if (currentMode === 'wedge') el?.select?.();
 }
 
 export function onChange(fn) {
