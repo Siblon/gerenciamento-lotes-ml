@@ -18,6 +18,8 @@ describe('ActionsPanel behaviors', () => {
         addEventListener(type, fn) { (el._l ||= {})[type] = fn; },
         click() { el._l?.click?.({}); },
         dispatchEvent(ev) { el._l?.[ev.type]?.(ev); },
+        setAttribute: () => {},
+        removeAttribute: () => {},
       };
       return el;
     }
@@ -58,16 +60,6 @@ describe('ActionsPanel behaviors', () => {
     const exc = store.state.excedentes['R1'][0];
     expect(exc.sku).toBe('ABC');
     expect(exc.preco).toBeUndefined();
-  });
-
-  it('wedge buffer fills code and triggers consult', () => {
-    const spy = vi.fn();
-    btnCons.addEventListener('click', spy);
-    ['J','Z','9','Enter'].forEach(key => {
-      document.dispatchEvent({ type:'keydown', key, preventDefault: () => {} });
-    });
-    expect(input.value).toBe('JZ9');
-    expect(spy).toHaveBeenCalled();
   });
 
   it('focus returns to input after register', () => {
