@@ -36,7 +36,12 @@ export function initImportPanel(render){
     render?.();
   });
 
-  rzSelect?.addEventListener('change', e=>{ setCurrentRZ(e.target.value || null); render?.(); });
+  rzSelect?.addEventListener('change', e=>{
+    setCurrentRZ(e.target.value || null);
+    render?.();
+    const input = document.querySelector('#input-codigo-produto');
+    if (input) { input.focus(); input.select(); }
+  });
 
   const badge = document.getElementById('ncm-badge');
   const badgeCount = document.getElementById('ncm-badge-count');
