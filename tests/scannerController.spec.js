@@ -69,6 +69,7 @@ describe('attachWedgeCapture', () => {
 
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem('ui:prefs:v3', JSON.stringify({ lockScannerMode: true }));
     now = 0;
     global.performance = { now: () => now };
     input = {

@@ -3,7 +3,7 @@ import { initActionsPanel } from '../src/components/ActionsPanel.js';
 import store from '../src/store/index.js';
 
 let elements;
-let input, btnCons, btnReg, obsSelect, preco;
+let input, btnCons, btnReg, obsSelect, preco, actions;
 
 function createEl(tag = 'input') {
   const el = {
@@ -22,13 +22,20 @@ function createEl(tag = 'input') {
 }
 
 beforeEach(() => {
-  vi.useFakeTimers();
   elements = {};
-  elements['codigo-produto'] = createEl('input');
+  elements['input-codigo-produto'] = createEl('input');
   elements['btn-consultar'] = createEl('button');
   elements['btn-registrar'] = createEl('button');
   elements['obs-preset'] = createEl('select');
   elements['preco-ajustado'] = createEl('input');
+  elements['pi-sku'] = { textContent: '' };
+  elements['pi-desc'] = { textContent: '' };
+  elements['pi-qtd'] = { textContent: '' };
+  elements['pi-preco'] = { textContent: '' };
+  elements['pi-total'] = { textContent: '' };
+  elements['pi-rz'] = { textContent: '' };
+  elements['pi-ncm'] = { textContent: '' };
+  elements['produto-info'] = { hidden: false };
 
   global.document = {
     body: { appendChild: () => {} },
@@ -47,17 +54,15 @@ beforeEach(() => {
   store.state.conferidosByRZSku = {};
   store.state.excedentes = {};
 
-  initActionsPanel(() => {});
-  input = elements['codigo-produto'];
+  actions = initActionsPanel(() => {});
+  input = elements['input-codigo-produto'];
   btnCons = elements['btn-consultar'];
   btnReg = elements['btn-registrar'];
   obsSelect = elements['obs-preset'];
   preco = elements['preco-ajustado'];
 });
 
-afterEach(() => {
-  vi.useRealTimers();
-});
+afterEach(() => {});
 
 describe('actions flow', () => {
   it('focus returns to code after register', () => {
@@ -86,12 +91,11 @@ describe('actions flow', () => {
   });
 
   it('Enter consults and Ctrl+Enter registers', () => {
-    const consSpy = vi.fn();
-    const regSpy = vi.fn();
-    btnCons.addEventListener('click', consSpy);
-    btnReg.addEventListener('click', regSpy);
+    const consSpy = vi.spyOn(store, 'findInRZ');
+    const regSpy = vi.spyOn(store, 'conferir');
+    input.value = 'ABC';
+    preco.value = '5';
     input.dispatchEvent({ type: 'keydown', key: 'Enter', preventDefault: () => {} });
-    vi.runAllTimers();
     input.dispatchEvent({ type: 'keydown', key: 'Enter', ctrlKey: true, preventDefault: () => {} });
     expect(consSpy).toHaveBeenCalled();
     expect(regSpy).toHaveBeenCalled();

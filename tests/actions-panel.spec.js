@@ -23,7 +23,7 @@ describe('ActionsPanel behaviors', () => {
       };
       return el;
     }
-    elements['codigo-produto'] = createEl('input');
+    elements['input-codigo-produto'] = createEl('input');
     elements['btn-consultar'] = createEl('button');
     elements['obs-preset'] = createEl('select');
     elements['preco-ajustado'] = createEl('input');
@@ -47,7 +47,7 @@ describe('ActionsPanel behaviors', () => {
     store.state.rzAtual = 'R1';
     store.state.excedentes = {};
     initActionsPanel(()=>{});
-    input = elements['codigo-produto'];
+    input = elements['input-codigo-produto'];
     btnCons = elements['btn-consultar'];
     btnReg = elements['btn-registrar'];
     obsSelect = elements['obs-preset'];

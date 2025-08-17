@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { initActionsPanel } from '../src/components/ActionsPanel.js';
+import store from '../src/store/index.js';
 
-let input, btnCons, btnReg;
+let input, actions, elements;
 
 describe('enter flow', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-    const elements = {};
+    elements = {};
     function createEl(tag='input') {
       const el = {
         tagName: tag.toUpperCase(),
@@ -22,11 +22,20 @@ describe('enter flow', () => {
       };
       return el;
     }
-    elements['codigo-produto'] = createEl('input');
+    elements['input-codigo-produto'] = createEl('input');
     elements['btn-consultar'] = createEl('button');
     elements['btn-registrar'] = createEl('button');
     elements['obs-preset'] = createEl('select');
     elements['preco-ajustado'] = createEl('input');
+    // stubs for product info elements
+    elements['pi-sku'] = { textContent: '' };
+    elements['pi-desc'] = { textContent: '' };
+    elements['pi-qtd'] = { textContent: '' };
+    elements['pi-preco'] = { textContent: '' };
+    elements['pi-total'] = { textContent: '' };
+    elements['pi-rz'] = { textContent: '' };
+    elements['pi-ncm'] = { textContent: '' };
+    elements['produto-info'] = { hidden: false };
 
     global.document = {
       body: { appendChild: () => {} },
@@ -39,27 +48,23 @@ describe('enter flow', () => {
     };
     global.window = { refreshIndicators: () => {}, scrollTo: () => {} };
     global.localStorage = { _s:{}, getItem(k){return this._s[k]||null;}, setItem(k,v){this._s[k]=String(v);}, removeItem(k){delete this._s[k];}, clear(){this._s={};} };
-    initActionsPanel(() => {});
-    input = elements['codigo-produto'];
-    btnCons = elements['btn-consultar'];
-    btnReg = elements['btn-registrar'];
+    actions = initActionsPanel(() => {});
+    input = elements['input-codigo-produto'];
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
 
   it('Enter on code field triggers Consultar', () => {
-    const spy = vi.fn();
-    btnCons.addEventListener('click', spy);
+    const spy = vi.spyOn(store, 'findInRZ').mockReturnValue(null);
+    input.value = 'AAA';
     input.dispatchEvent({ type:'keydown', key:'Enter', preventDefault: () => {} });
-    vi.runAllTimers();
     expect(spy).toHaveBeenCalled();
   });
 
   it('Ctrl+Enter triggers Registrar', () => {
-    const spy = vi.fn();
-    btnReg.addEventListener('click', spy);
+    store.findInRZ = () => ({ qtd:1, precoMedio:10 });
+    const spy = vi.spyOn(store, 'conferir').mockImplementation(() => {});
+    input.value = 'AAA';
+    elements['preco-ajustado'].value = '1';
     input.dispatchEvent({ type:'keydown', key:'Enter', ctrlKey:true, preventDefault: () => {} });
     expect(spy).toHaveBeenCalled();
   });

@@ -34,7 +34,7 @@ export function afterRegister() {
   if (!prefs.lockScannerMode) {
     switchTo('wedge');
   }
-  const el = document.getElementById('codigo-produto') || document.querySelector('input[placeholder="Código do produto"]');
+  const el = document.getElementById('input-codigo-produto') || document.querySelector('input[placeholder="Código do produto"]');
   el?.focus?.();
   if (currentMode === 'wedge') el?.select?.();
 }

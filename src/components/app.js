@@ -15,7 +15,7 @@ export function initApp(){
   initScannerPanel({
     onCode: (code) => {
       actions.setSku(code);
-      actions.consultar('scanner');
+      actions.handleConsultar('scanner');
     }
   });
 

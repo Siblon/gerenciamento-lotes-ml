@@ -4,7 +4,6 @@ import store, { findConferido, findEmOutrosRZ, moveItemEntreRZ, addExcedente } f
 import { loadFinanceConfig, saveFinanceConfig } from '../utils/finance.js';
 import { loadPrefs, savePrefs } from '../utils/prefs.js';
 import { toast } from '../utils/toast.js';
-import { attachWedgeCapture, afterRegister as scAfterRegister } from '../utils/scannerController.js';
 import { openExcedenteModal } from './ExcedenteModal.js';
 
 function mostrarProdutoInfo(item) {
@@ -33,7 +32,7 @@ function abrirModalExcedente(sku, fonte='manual'){
 }
 
 export function initActionsPanel(render){
-  const inputSku = document.querySelector('#codigo-produto') || document.querySelector('#codigo-ml') || document.querySelector('input[placeholder="Código do produto"]');
+  const codigoInput = document.getElementById('input-codigo-produto');
   const btnCons = document.querySelector('#btn-consultar') || Array.from(document.querySelectorAll('button')).find(b=>/consultar/i.test(b.textContent||''));
   const btnReg  = document.querySelector('#btn-registrar') || Array.from(document.querySelectorAll('button')).find(b=>/registrar/i.test(b.textContent||''));
   const btnFinal = document.querySelector('#finalizarBtn');
@@ -49,7 +48,6 @@ export function initActionsPanel(render){
   btnReg?.classList.add('btn','btn-primary');
 
   let excedenteObs = '';
-  let enterTimer = null;
 
   function normalizeSku(v=''){
     return String(v).replace(/[^\x20-\x7E]/g,'').trim().toUpperCase();
@@ -75,23 +73,17 @@ export function initActionsPanel(render){
         obsSelect.value = '';
         excedenteObs = '';
         updatePricePlaceholder();
-        inputSku?.focus();
+        codigoInput?.focus();
         return;
       }
       excedenteObs = val || '';
-      inputSku?.focus();
+      codigoInput?.focus();
     } else {
       excedenteObs = '';
     }
   });
 
-  inputSku?.focus();
-
-  attachWedgeCapture(inputSku, (text) => {
-    const code = normalizeSku(text);
-    if (inputSku) inputSku.value = code;
-    consultar('scanner');
-  });
+  codigoInput?.focus();
 
   const cfg = loadFinanceConfig();
   const prefs = loadPrefs();
@@ -117,8 +109,8 @@ export function initActionsPanel(render){
   selRateio?.addEventListener('change', saveFinance);
   selMode?.addEventListener('change', ()=>{ const p = loadPrefs(); p.calcFreteMode = selMode.value; savePrefs(p); window.refreshIndicators?.(); });
 
-  function consultar(fonte='manual') {
-    const sku = normalizeSku(inputSku?.value || '');
+  function handleConsultar(fonte='manual') {
+    const sku = normalizeSku(codigoInput?.value || '');
     if (sku.length < 3) { toast('Código vazio', 'warn'); return false; }
     const active = document.activeElement;
     const rz = store.state.rzAtual;
@@ -150,10 +142,10 @@ export function initActionsPanel(render){
     }
   }
 
-  btnCons?.addEventListener('click', ()=>consultar('manual'));
+  btnCons?.addEventListener('click', ()=>handleConsultar('manual'));
 
-  btnReg?.addEventListener('click', () => {
-    const sku = normalizeSku(inputSku?.value || '');
+  async function handleRegistrar() {
+    const sku = normalizeSku(codigoInput?.value || '');
     const priceStr = precoInput?.value || '';
     const obsPreset = obsSelect?.value || '';
     const item = store.findInRZ?.(store.state.rzAtual, sku);
@@ -177,32 +169,34 @@ export function initActionsPanel(render){
     try {
       if (toExcedentes && typeof store.registrarExcedente === 'function') {
         store.registrarExcedente({ sku, qty, price, note });
-        toast.success('Excedente registrado');
       } else if (typeof store.conferir === 'function') {
         store.conferir(sku, { qty, price, note });
-        toast.success(`Registrado ${qty} un. de ${sku}`);
       } else {
         console.warn('Ação de registro não disponível no store.');
       }
       render();
       window.refreshIndicators?.();
+      toast.success('Item registrado');
     } catch(e) {
       console.error(e); toast('Falha ao registrar', 'error');
     }
     if (obsSelect) obsSelect.value = '';
     if (precoInput) precoInput.value = '';
     excedenteObs = '';
-    scAfterRegister();
-  });
 
-  inputSku?.addEventListener('keydown', (e) => {
+    codigoInput?.focus();
+    codigoInput?.select();
+  }
+
+  btnReg?.addEventListener('click', handleRegistrar);
+
+  codigoInput?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.ctrlKey) {
       e.preventDefault();
-      btnReg?.click();
+      handleRegistrar();
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      clearTimeout(enterTimer);
-      enterTimer = setTimeout(() => btnCons?.click(), 120);
+      handleConsultar();
     }
   });
 
@@ -287,8 +281,8 @@ export function initActionsPanel(render){
   });
 
   document.addEventListener('keydown',(e)=>{
-    if (e.ctrlKey && e.key.toLowerCase()==='k'){ e.preventDefault(); document.querySelector('#codigo-ml')?.focus(); }
-    // Ctrl+Enter handled on inputSku for registro
+    if (e.ctrlKey && e.key.toLowerCase()==='k'){ e.preventDefault(); document.querySelector('#input-codigo-produto')?.focus(); }
+    // Ctrl+Enter handled on codigoInput for registro
     if (e.ctrlKey && e.key.toLowerCase()==='s'){
       const dlg = document.getElementById('dlg-excedente');
       if (dlg?.open) { e.preventDefault(); document.getElementById('exc-salvar')?.click(); }
@@ -297,7 +291,8 @@ export function initActionsPanel(render){
   });
 
   return {
-    consultar,
-    setSku: (sku)=>{ if (inputSku) inputSku.value = sku; }
+    handleConsultar,
+    handleRegistrar,
+    setSku: (sku)=>{ if (codigoInput) codigoInput.value = sku; }
   };
 }
