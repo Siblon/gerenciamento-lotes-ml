@@ -67,7 +67,17 @@ async function fetchLocalMap(){
   return mapPromise;
 }
 
-async function fetchAPI(term){
+function fetchAPI(path, opts={}){
+  const base = RUNTIME.NCM_API_BASE || '';
+  const url = `${base.replace(/\/$/, '')}${path}`;
+  const headers = {
+    ...opts.headers,
+    ...(RUNTIME.NCM_API_TOKEN ? { Authorization: `Bearer ${RUNTIME.NCM_API_TOKEN}` } : {})
+  };
+  return fetch(url, { ...opts, headers });
+}
+
+async function fetchNcm(term){
   const isCode = /^\d{8}$/.test(term);
   const q = isCode ? `codigo=${encodeURIComponent(term)}` : `descricao=${encodeURIComponent(term)}`;
   const kw = isCode ? [] : keywords(term);
@@ -76,11 +86,8 @@ async function fetchAPI(term){
     const controller = new AbortController();
     const t = setTimeout(()=>controller.abort(),4000);
     try{
-      const url = `${RUNTIME.NCM_API_BASE.replace(/\/$/,'')}/ncm?${q}`;
-      const headers = RUNTIME.NCM_API_TOKEN
-        ? { Authorization: `Bearer ${RUNTIME.NCM_API_TOKEN}` }
-        : undefined;
-      const resp = await fetch(url, { signal: controller.signal, headers });
+      const url = `/ncm?${q}`;
+      const resp = await fetchAPI(url, { signal: controller.signal });
       if(!resp.ok){
         const err = new Error('http '+resp.status);
         if(resp.status >= 500) err.retry = true;
@@ -148,7 +155,7 @@ async function resolveTermInternal(term, key, { onlyCache=false }={}){
   }
 
   try{
-    const { ncm, raw } = await fetchAPI(term);
+    const { ncm, raw } = await fetchNcm(term);
     const ms = (performance.now?performance.now():Date.now())-start;
     if(ncm){
       const val = { ncm, source:'api', ts:Date.now() };
@@ -189,6 +196,19 @@ export async function resolve(input){
   return { ncm:null, source:'cache', status:'falha' };
 }
 
+export async function search(term){
+  const resp = await fetchAPI(`/search?q=${encodeURIComponent(term)}`);
+  if(!resp.ok) throw new Error('http '+resp.status);
+  const data = await resp.json();
+  const items = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
+  return items.map(it => ({
+    desc: it.desc ?? it.descricao ?? it.description ?? it.query ?? '',
+    query: it.query ?? it.desc ?? it.descricao ?? it.description ?? '',
+    ncm: normalizeNCM(it.ncm ?? it.code ?? it.codigo ?? it.codigoNcm),
+    code: normalizeNCM(it.code ?? it.codigo ?? it.codigoNcm ?? it.ncm)
+  }));
+}
+
 export function createQueue(limit = 3){
   const queue = [];
   let active = 0;
@@ -218,7 +238,7 @@ export function __reset(){
   mapPromise = null;
 }
 
-export { cacheGet, cacheSet, slug, keywords };
+export { cacheGet, cacheSet, slug, keywords, fetchAPI };
 
-export default { normalizeNCM, resolve, resolveWithRetry, createQueue };
+export default { normalizeNCM, resolve, search, resolveWithRetry, createQueue };
 
