@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { normalizeNCM, resolve, __reset, cacheGet, cacheSet } from '../src/services/ncmService.js';
+import { RUNTIME } from '../src/config/runtime.js';
 
 beforeEach(() => {
   __reset();
+  RUNTIME.NCM_API_TOKEN = '';
 });
 
 describe('normalizeNCM', () => {
@@ -70,6 +72,18 @@ describe('ncm resolution flow', () => {
     const r = await p;
     expect(r).toMatchObject({ ncm:null, source:'api', status:'falha' });
     vi.useRealTimers();
+  });
+
+  it('sends Authorization header when token is set', async () => {
+    localStorage.clear();
+    RUNTIME.NCM_API_TOKEN = 'abc123';
+    global.fetch = vi.fn((url, opts) => {
+      if(String(url).includes('/data/ncm.json')) return Promise.resolve({ ok:true, json:async()=>({}) });
+      expect(opts?.headers).toMatchObject({ Authorization: 'Bearer abc123' });
+      return Promise.resolve({ ok:true, json:async()=>({ codigo:'33334444', descricao:'qualquer prod' }) });
+    });
+    const r = await resolve('qualquer prod');
+    expect(r).toMatchObject({ ncm:'33334444', source:'api', status:'ok' });
   });
 
   it('deduplicates concurrent terms', async () => {

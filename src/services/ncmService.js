@@ -76,7 +76,11 @@ async function fetchAPI(term){
     const controller = new AbortController();
     const t = setTimeout(()=>controller.abort(),4000);
     try{
-      const resp = await fetch(`/api/ncm?${q}`, { signal: controller.signal });
+      const url = `${RUNTIME.NCM_API_BASE.replace(/\/$/,'')}/ncm?${q}`;
+      const headers = RUNTIME.NCM_API_TOKEN
+        ? { Authorization: `Bearer ${RUNTIME.NCM_API_TOKEN}` }
+        : undefined;
+      const resp = await fetch(url, { signal: controller.signal, headers });
       if(!resp.ok){
         const err = new Error('http '+resp.status);
         if(resp.status >= 500) err.retry = true;
