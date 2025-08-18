@@ -1,6 +1,6 @@
-import { RUNTIME } from '../config/runtime.js';
+import { RUNTIME, NCM_CACHE_KEY } from '../config/runtime.js';
 
-const CACHE_KEY = 'ncmCache:v1';
+const CACHE_KEY = NCM_CACHE_KEY;
 const mem = new Map();
 const prom = new Map();
 let mapPromise;

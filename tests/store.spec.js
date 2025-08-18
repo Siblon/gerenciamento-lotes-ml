@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import store, { totalPendentesCount, setItemNcm, setItemNcmStatus, selectAllItems } from '../src/store/index.js';
+import { NCM_CACHE_KEY } from '../src/config/runtime.js';
 
 describe('store state structure', () => {
   it('has basic keys', () => {
@@ -38,7 +39,7 @@ describe('NCM helpers', () => {
     setItemNcm(id, '12345678', 'api');
     expect(store.state.metaByRZSku['RZ1'].SKU1).toMatchObject({ ncm: '12345678', ncm_source: 'api', ncm_status: 'ok', ncmMeta: { source:'api', status:'ok' } });
     expect(store.state.itemsByRZ['RZ1'][0]).toMatchObject({ ncm: '12345678', ncmMeta: { source:'api', status:'ok' } });
-    const cache = JSON.parse(localStorage.getItem('ncmCache:v1'));
+      const cache = JSON.parse(localStorage.getItem(NCM_CACHE_KEY));
     expect(cache).toHaveProperty('SKU1', '12345678');
   });
 

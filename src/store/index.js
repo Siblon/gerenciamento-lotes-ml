@@ -1,3 +1,5 @@
+import { NCM_CACHE_KEY } from '../config/runtime.js';
+
 // src/store/index.js
 const state = {
   currentRZ: null,
@@ -33,7 +35,7 @@ const state = {
   // cache simples de NCM por SKU
   ncmCache: (() => {
     try {
-      return JSON.parse(localStorage.getItem('ncmCache:v1') || '{}');
+      return JSON.parse(localStorage.getItem(NCM_CACHE_KEY) || '{}');
     } catch {
       return {};
     }
@@ -101,7 +103,7 @@ export function setItens(items = []){
   state.conferidosByRZSku = {};
   state.excedentes = {};
   if(!state.currentRZ) state.currentRZ = Object.keys(itemsByRZ)[0] || null;
-  try{ localStorage.setItem('ncmCache:v1', JSON.stringify(state.ncmCache)); }catch{}
+  try{ localStorage.setItem(NCM_CACHE_KEY, JSON.stringify(state.ncmCache)); }catch{}
   return { itemsByRZ, totalByRZSku, metaByRZSku };
 }
 
@@ -324,7 +326,7 @@ export function setItemNcm(id, ncm, source){
     item.ncmMeta = { source, ts, status:'ok' };
   }
   state.ncmCache[sku] = ncm;
-  try{ localStorage.setItem('ncmCache:v1', JSON.stringify(state.ncmCache)); }catch{}
+  try{ localStorage.setItem(NCM_CACHE_KEY, JSON.stringify(state.ncmCache)); }catch{}
   if(typeof document !== 'undefined') document.dispatchEvent(new Event('ncm-update'));
 }
 
