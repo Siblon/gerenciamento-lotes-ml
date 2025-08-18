@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gerenciar NCM</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <main class="container" style="padding:16px;max-width:600px">
+    <h1>Gerenciar NCM</h1>
+
+    <section class="card">
+      <div class="card-body">
+        <div class="field">
+          <label for="term" class="label">Termo</label>
+          <input id="term" class="input" placeholder="SKU ou descrição" />
+        </div>
+        <div class="field">
+          <label for="ncm" class="label">NCM</label>
+          <input id="ncm" class="input" placeholder="00000000" />
+        </div>
+        <div class="actions" style="margin-top:8px;display:flex;gap:8px">
+          <button id="btn-search" class="btn btn-primary" type="button">Buscar</button>
+          <button id="btn-save" class="btn" type="button">Salvar</button>
+        </div>
+        <div id="result" class="muted" style="margin-top:8px"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-body" style="display:flex;flex-wrap:wrap;gap:8px">
+        <button id="btn-export" class="btn" type="button">Exportar cache</button>
+        <button id="btn-import" class="btn" type="button">Importar cache</button>
+        <input id="file-import" type="file" accept="application/json" hidden />
+        <button id="btn-clear" class="btn btn-warn" type="button">Limpar cache</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-body">
+        <label for="queue-items" class="label">Itens para fila (JSON)</label>
+        <textarea id="queue-items" class="input" rows="5" placeholder='[{"codigoRZ":"RZ1","codigoML":"SKU","descricao":"Desc"}]'></textarea>
+        <button id="btn-queue" class="btn btn-primary" type="button" style="margin-top:8px">Disparar fila</button>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="/src/ncm.js"></script>
+</body>
+</html>
