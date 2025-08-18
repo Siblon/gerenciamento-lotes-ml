@@ -47,9 +47,9 @@ describe('renderResults row classes', () => {
   });
 
   it('applies status classes to rows', () => {
-    renderResults();
-    expect(tbConf.innerHTML).toContain('row-conferido');
-    expect(tbPend.innerHTML).toContain('row-pendente');
-    expect(tbExc.innerHTML).toContain('row-excedente');
+      renderResults();
+      expect(tbConf.innerHTML).toContain('row-ok');
+      expect(tbPend.innerHTML).toContain('row-pendente');
+      expect(tbExc.innerHTML).toContain('row-exc');
+    });
   });
-});

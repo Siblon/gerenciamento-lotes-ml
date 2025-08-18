@@ -115,4 +115,38 @@ export function initNcmPanel(){
   render();
 }
 
-export default { initNcmPanel };
+export default function NcmPanel(){
+  const sec = document.createElement('section');
+  sec.id = 'card-ncm';
+  sec.className = 'card';
+  sec.innerHTML = `
+    <div class="card-body">
+      <div id="ncm-counters" class="chips">
+        <span id="ncm-count-ok" class="badge badge-ok">0 OK</span>
+        <span id="ncm-count-fail" class="badge badge-falha">0 Falhas</span>
+        <span id="ncm-count-pend" class="badge">0 Restantes</span>
+      </div>
+      <div class="spacer"></div>
+      <label><input type="checkbox" id="ncm-only-fail" checked /> Somente falhas</label>
+      <button id="ncm-collapse" class="btn btn-ghost" type="button">↕</button>
+    </div>
+    <div class="card-body">
+      <div id="ncm-progress" hidden>Resolvendo NCM… <span id="ncm-progress-count">0/0</span> <button id="ncm-cancel" class="btn btn-ghost">Cancelar</button></div>
+      <div id="ncm-empty" hidden>
+        <p>Tudo certo! Nenhuma falha.</p>
+        <button id="ncm-show-all" class="btn btn-ghost" type="button">Mostrar todos</button>
+      </div>
+      <div class="table-wrap">
+        <table class="table"><thead><tr><th>SKU</th><th>Descrição</th><th>NCM</th><th>Origem</th><th>Status</th></tr></thead><tbody id="ncm-table"></tbody></table>
+      </div>
+      <div class="pager">
+        <button id="ncm-prev" class="btn btn-ghost" type="button">«</button>
+        <span id="ncm-page">0/0</span>
+        <button id="ncm-next" class="btn btn-ghost" type="button">»</button>
+      </div>
+    </div>`;
+  setTimeout(()=>initNcmPanel(),0);
+  return sec;
+}
+
+export { initNcmPanel };

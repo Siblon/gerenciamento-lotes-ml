@@ -1,35 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
-  <symbol id="box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M21 16V8a2 2 0 0 0-1-1.73L13 2.27a2 2 0 0 0-2 0L4 6.27A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4.04a2 2 0 0 0 2 0l7-4.04A2 2 0 0 0 21 16Z"/>
-    <path d="M3.27 6.96 12 12.01l8.73-5.05"/>
-    <path d="M12 22.08V12"/>
-  </symbol>
-  <symbol id="scan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
-    <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
-    <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
-    <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
-  </symbol>
-  <symbol id="truck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M10 17h4V5H2v12h3"/>
-    <path d="M15 17h2a3 3 0 0 0 6 0h1v-5l-2-3h-7"/>
-    <circle cx="7" cy="17" r="2"/>
-    <circle cx="17" cy="17" r="2"/>
-  </symbol>
-  <symbol id="coins" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="8" cy="8" r="5"/>
-    <circle cx="16" cy="16" r="5"/>
-  </symbol>
-  <symbol id="alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 9v4"/>
-    <path d="M12 17h.01"/>
-    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.29 3.86a2 2 0 0 0-3.58 0Z"/>
-  </symbol>
-  <symbol id="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M20 6 9 17l-5-5"/>
-  </symbol>
-  <symbol id="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M18 6 6 18"/>
-    <path d="M6 6l12 12"/>
-  </symbol>
+  <symbol id="box" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="currentColor"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" fill="none"/></symbol>
+  <symbol id="alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2"/><line x1="12" y1="16" x2="12" y2="16" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="hourglass" viewBox="0 0 24 24"><path d="M6 2h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V2zm0 19h12v-3a6 6 0 0 0-6-6 6 6 0 0 0-6 6v3z" fill="currentColor"/></symbol>
+  <symbol id="scan" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M17 3h2a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M21 17v2a2 2 0 0 1-2 2h-2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M7 21H5a2 2 0 0 1-2-2v-2" stroke="currentColor" stroke-width="2" fill="none"/></symbol>
+  <symbol id="file-excel" viewBox="0 0 24 24"><path d="M4 2h10l6 6v14H4z" stroke="currentColor" stroke-width="2" fill="none"/><path d="M14 2v6h6" stroke="currentColor" stroke-width="2" fill="none"/><path d="M9 17l2-3 2 3m-4-6l2 3 2-3" stroke="currentColor" stroke-width="2" fill="none"/></symbol>
+  <symbol id="truck" viewBox="0 0 24 24"><path d="M3 3h12v13H3z" stroke="currentColor" stroke-width="2" fill="none"/><path d="M15 8h4l2 3v5h-6z" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="7.5" cy="18.5" r="2" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="17.5" cy="18.5" r="2" stroke="currentColor" stroke-width="2" fill="none"/></symbol>
+  <symbol id="coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><path d="M8 12h8" stroke="currentColor" stroke-width="2"/><path d="M12 8v8" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="settings" viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5z" stroke="currentColor" stroke-width="2" fill="none"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2" fill="none"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2" fill="none"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2"/></symbol>
 </svg>

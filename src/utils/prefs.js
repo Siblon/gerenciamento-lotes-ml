@@ -5,17 +5,18 @@ export const UIPREFS_KEY = 'ui:prefs:v3';
 
 // Valores padrão das preferências da interface
 // Mantém chaves antigas por compatibilidade com código existente
-const DEFAULT_PREFS = {
-  showFinance: false,
-  showIndicators: false,
-  calcFreteMode: 'finalizar',
-  scannerMode: 'wedge',      // 'wedge' | 'camera'
-  lockScannerMode: false,
-  autoRegisterOnSecondEnter: false,
-  predefineExcedente: false,
-  askDiscardOnFinalize: true,
-  ncmEnabled: true,
-};
+  const DEFAULT_PREFS = {
+    showFinance: false,
+    showIndicators: false,
+    calcFreteMode: 'finalizar',
+    scannerMode: 'wedge',      // 'wedge' | 'camera'
+    lockScannerMode: false,
+    autoRegisterOnSecondEnter: false,
+    predefineExcedente: false,
+    askDiscardOnFinalize: true,
+    ncmEnabled: true,
+    lastRoute: '#/conferencia',
+  };
 
 export function loadPrefs() {
   try {
