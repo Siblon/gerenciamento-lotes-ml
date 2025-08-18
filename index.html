@@ -16,7 +16,7 @@
       </div>
     </header>
 
-    <section id="indicators" class="indicators hidden">
+    <section id="indicadores" class="indicators hidden">
       <div class="indicators-toolbar">
         <button id="toggle-indicators">Mostrar indicadores</button>
         <button id="config-indicators" title="Configurar indicadores">⚙️</button>
@@ -149,6 +149,10 @@
           <h2>Scanner</h2>
         </div>
         <div class="card-body">
+          <select id="scan-mode" class="input">
+            <option value="wedge">Leitor</option>
+            <option value="camera">Câmera</option>
+          </select>
           <button id="btn-scan-toggle" type="button" class="btn" aria-pressed="false">Ativar Scanner</button>
           <video id="preview" playsinline muted aria-hidden="true"></video>
         </div>
