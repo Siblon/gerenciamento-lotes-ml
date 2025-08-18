@@ -3,6 +3,7 @@ import { parsePlanilha } from '../utils/excel.js';
 import store, { setCurrentRZ, setRZs, setItens } from '../store/index.js';
 import { startNcmQueue } from '../services/ncmQueue.js';
 import { loadPrefs } from '../utils/prefs.js';
+import { toast } from '../utils/toast.js';
 
 export function initImportPanel(render){
   const fileInput = document.getElementById('file');
@@ -20,10 +21,23 @@ export function initImportPanel(render){
     }
     if (!f) return;
     const buf = (f.arrayBuffer ? await f.arrayBuffer() : f);
-    const { rzs, itens } = await parsePlanilha(buf);
+    let rzs = [];
+    let itens = [];
+    try {
+      ({ rzs, itens } = await parsePlanilha(buf));
+    } catch (err) {
+      console.error(err);
+      toast.error('Não foi possível processar a planilha...');
+      return;
+    }
     setRZs(rzs);
     setItens(itens);
-    if (ncmActive) startNcmQueue(itens);
+    try {
+      if (ncmActive) startNcmQueue(itens);
+    } catch (err) {
+      console.error(err);
+      toast.error('Não foi possível processar a planilha...');
+    }
     if (rzSelect){
       rzSelect.innerHTML = rzs.map(rz=>`<option value="${rz}">${rz}</option>`).join('');
       if (rzs.length){
