@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { normalizeNCM, resolve, __reset } from '../src/services/ncmService.js';
+import { normalizeNCM, resolve, __reset, cacheGet, cacheSet } from '../src/services/ncmService.js';
 
 beforeEach(() => {
   __reset();
@@ -85,6 +85,35 @@ describe('ncm resolution flow', () => {
     expect(r1).toMatchObject({ ncm:'22223333', source:'api', status:'ok' });
     expect(r2).toEqual(r1);
     expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('cache error handling', () => {
+  it('logs and returns null on cacheGet failure', () => {
+    localStorage.clear();
+    const err = new Error('fail get');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(()=>{});
+    const origGet = localStorage.getItem;
+    localStorage.getItem = () => { throw err; };
+    const r = cacheGet('foo');
+    expect(r).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ key:'foo', err }));
+    warn.mockRestore();
+    localStorage.getItem = origGet;
+  });
+
+  it('logs and keeps memory on cacheSet failure', () => {
+    localStorage.clear();
+    const err = new Error('fail set');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(()=>{});
+    const origSet = localStorage.setItem;
+    localStorage.setItem = () => { throw err; };
+    cacheSet('foo', { ncm:'123' });
+    expect(warn).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ key:'foo', err }));
+    warn.mockRestore();
+    localStorage.setItem = origSet;
+    const v = cacheGet('foo');
+    expect(v).toEqual({ ncm:'123' });
   });
 });
 
