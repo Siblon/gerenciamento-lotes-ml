@@ -22,6 +22,11 @@ npm run dev
 npm run test
 ```
 
+## Variáveis de ambiente
+
+- `VITE_NCM_API_BASE`: URL base da API de NCM utilizada nas buscas.
+- `VITE_NCM_API_TOKEN`: token opcional para autenticação Bearer nas requisições de NCM.
+
 ## Deploy no Netlify
 1. Víncule o repositório na Netlify.
 2. Build command: `npm run build`
