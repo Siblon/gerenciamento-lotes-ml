@@ -36,7 +36,9 @@ function cacheGet(k){
     const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
     const v = raw[k];
     if(v){ mem.set(k,v); return v; }
-  }catch{}
+  }catch(err){
+    console.warn('cacheGet error', { key: k, err });
+  }
   return null;
 }
 
@@ -46,7 +48,9 @@ function cacheSet(k,v){
     const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
     raw[k] = v;
     localStorage.setItem(CACHE_KEY, JSON.stringify(raw));
-  }catch{}
+  }catch(err){
+    console.warn('cacheSet error', { key: k, err });
+  }
 }
 
 async function fetchLocalMap(){
