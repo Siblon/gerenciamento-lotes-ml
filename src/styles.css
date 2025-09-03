@@ -73,3 +73,39 @@ th.sticky{left:0;z-index:2}
 
 /* Kill-switch para garantir que o painel NCM não apareça na home */
 #card-ncm,[data-panel="ncm"]{display:none !important}
+
+/* === KPI icons sizing & layout ========================================== */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--sp-4);
+}
+
+.kpi {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--color-bg-alt);
+}
+
+.kpi .ico {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  color: var(--color-fg);
+  stroke: currentColor;
+  fill: none;
+}
+
+/* texto ao lado do ícone pode se ajustar aqui se quiser */
+.kpi .kpi-label { font-size: var(--fs-sm); color: var(--color-muted); }
+.kpi .kpi-value { font-weight: 600; }
+
+/* responsivo: ícone um pouco menor em telas muito estreitas */
+@media (max-width: 480px) {
+  .kpi .ico { width: 24px; height: 24px; flex-basis: 24px; }
+}
+
