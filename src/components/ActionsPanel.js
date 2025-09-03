@@ -21,14 +21,21 @@ function mostrarProdutoInfo(item) {
 function abrirModalExcedente(sku, fonte='manual'){
   const dlg = document.getElementById('dlg-excedente');
   if (!dlg) return;
-  document.getElementById('exc-sku').value = sku;
-  document.getElementById('exc-desc').value = '';
-  document.getElementById('exc-qtd').value = 1;
-  document.getElementById('exc-preco').value = '';
-  document.getElementById('exc-obs').value = '';
+  const inpSku   = document.getElementById('exc-sku');
+  const inpDesc  = document.getElementById('exc-desc');
+  const inpQtd   = document.getElementById('exc-qtd');
+  const inpPreco = document.getElementById('exc-preco');
+  const inpObs   = document.getElementById('exc-obs');
+
+  if (inpSku)   inpSku.value = sku;
+  if (inpDesc)  inpDesc.value = '';
+  if (inpQtd)   inpQtd.value = 1;
+  if (inpPreco) inpPreco.value = '';
+  if (inpObs)   inpObs.value = '';
+
   dlg.dataset.fonte = fonte;
-  dlg.showModal();
-  document.getElementById('exc-preco').focus();
+  dlg.showModal?.();
+  if (inpDesc) setTimeout(() => inpDesc.focus(), 0);
 }
 
 export function initActionsPanel(render){
@@ -128,7 +135,8 @@ export function initActionsPanel(render){
             return true;
           }
         }
-        toast.warn('Produto não encontrado; você pode registrar sem preço.');
+        toast('Este SKU não está no RZ atual. Você pode registrá-lo como Excedente.', 'warn');
+        abrirModalExcedente(sku, fonte);
         document.getElementById('produto-info').hidden = true;
         return false;
       }
