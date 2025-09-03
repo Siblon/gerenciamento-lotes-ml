@@ -1,110 +1,75 @@
-@import './css/theme.css';
-@import './css/dashboard.css';
-@import './css/style.css';
-
-/* Page layout: main content + narrow NCM panel */
-  .page {
-    display: grid;
-    grid-template-columns: 1fr 380px;
-    gap: 20px;
-    max-width: 1200px;
-    margin: 20px auto;
-  }
-@media (max-width: 1100px) {
-  .page { grid-template-columns: 1fr; }
+:root{
+  --color-bg:#F8FAFC; --color-bg-alt:#FFFFFF; --color-fg:#0F172A; --color-muted:#64748B;
+  --brand:#2563EB; --brand-600:#1D4ED8; --success:#22C55E; --warning:#F59E0B; --danger:#EF4444;
+  --border:#E2E8F0; --shadow:0 1px 2px rgba(0,0,0,.06), 0 4px 10px rgba(0,0,0,.04);
+  --fs-xs:12px; --fs-sm:13px; --fs-md:15px; --fs-lg:18px; --fs-xl:24px; --fs-2xl:32px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px;
+  --radius:12px;
 }
-.main-col { display:flex; flex-direction:column; gap:20px; }
-
-/* Scanner fechado: esconde tudo dentro do card */
-#card-scanner.collapsed .card-body { display: none; }
-
-/* Scanner aberto mas desligado: oculta o <video> */
-#card-scanner:not(.is-on) #preview { display: none; }
-
-/* Scanner preview */
-  #preview {
-    display: block;
-    width: 100%;
-    max-height: 320px;
-    border: 1px solid #e5e7eb;
-    border-radius: var(--radius);
-    background: #000;
-    object-fit: cover;
-  }
-@media (min-width: 1024px) {
-  #preview {
-    max-height: 420px;
-  }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--color-bg);color:var(--color-fg);
+  font:400 var(--fs-md)/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
 }
+.container{max-width:1100px;margin:0 auto;padding:var(--sp-6) var(--sp-4)}
+h1{font-size:clamp(24px,2.8vw,36px);margin:0 0 var(--sp-5)}
+h2{font-size:clamp(18px,2vw,22px);margin:0}
+h3{font-size:18px;margin:0}
+.muted{color:var(--color-muted)}
 
-/* Status flutuante (remover estilo inline do HTML) */
-  #boot-status{
-    position:fixed; right:10px; bottom:10px; z-index:9999;
-    padding:6px 10px; border:1px solid #e5e7eb; border-radius:8px;
-    background:var(--card); box-shadow:var(--shadow); font:12px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Arial;
-  }
-  #boot-status button {
-    margin-left: 8px;
-  }
+.toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-5)}
+.actions{display:flex;gap:var(--sp-3);align-items:center}
 
-.chip-info {
-  display:inline-flex; align-items:center; gap:8px;
-  background:rgba(37,99,235,.08); color:var(--primary);
-  padding:6px 10px; border-radius:999px; border:1px solid rgba(37,99,235,.2);
-  font-weight:600;
+.btn{
+  padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:#fff;
+  box-shadow:var(--shadow);cursor:pointer;transition:background .15s,border-color .15s,transform .05s;
 }
+.btn:hover{background:#fff;border-color:#CBD5E1}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.btn-primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn-primary:hover{background:var(--brand-600);border-color:var(--brand-600)}
+.btn-ghost{background:transparent;border-color:transparent;box-shadow:none}
 
-tr.avariado {
-  background: rgba(239,68,68,.15);
+.input, select, input[type="number"], input[type="text"], input[type="range"], input[type="file"]{
+  border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;box-shadow:none;
 }
+.input:focus-visible, select:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 
-.indicators { margin: 16px 0; }
-.indicators.hidden { display: none; }
+.page{display:grid;grid-template-columns:1fr;gap:var(--sp-5)}
+.card{background:var(--color-bg-alt);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.card-header{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-4);border-bottom:1px solid var(--border)}
+.card-body{padding:var(--sp-4);display:grid;gap:var(--sp-4)}
+.collapsed .card-body{display:none}
+.spacer{flex:1}
 
-.indicators-toolbar {
-  display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-bottom: 8px;
-}
+.actions-grid{display:grid;gap:var(--sp-4)}
+.actions-grid .row{display:grid;grid-template-columns:1fr auto auto;gap:var(--sp-4)}
+.field{display:grid;gap:6px}
+.label{font-size:var(--fs-sm);color:var(--color-muted)}
+.file-row{display:grid;gap:6px}
+.file-input-wrap{display:flex;gap:var(--sp-3);align-items:center}
+.file-name{font-size:var(--fs-sm);color:var(--color-muted)}
+.ellipsis{max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.indicators-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;
-}
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px;background:#fff}
+table{width:100%;border-collapse:separate;border-spacing:0;background:#fff}
+thead th{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--border);text-align:left;padding:12px}
+tbody td{padding:10px;border-bottom:1px solid #F1F5F9}
+tbody tr:nth-child(odd){background:#FAFAFA}
+tbody tr:hover{background:#F8FAFF}
+th.sticky{left:0;z-index:2}
+.num{text-align:right}
 
-.metric-card {
-  background: #fff; border: 1px solid rgba(0,0,0,.06);
-  border-radius: 14px; padding: 14px 16px; box-shadow: 0 2px 10px rgba(0,0,0,.06);
+.empty{padding:var(--sp-5);text-align:center;color:var(--color-muted)}
+.empty .title{font-weight:600;margin-bottom:var(--sp-2)}
+
+:focus-visible{scroll-margin:120px}
+@media (min-width: 1024px){
+  .page{grid-template-columns:1fr}
+  .actions-grid .row{grid-template-columns:1fr auto auto}
 }
 
-.metric-label { font-size: 12px; color: #556; letter-spacing:.2px; }
-.metric-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
-.metric-footnote { font-size: 11px; color: #889; margin-top: 6px; }
-
-  /* Cards e layout */
-  .card { background:var(--card); border:1px solid #e5e7eb; border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); }
-.card-header { display:flex; align-items:center; gap:12px; }
-.card .spacer { flex:1; }
-#card-ncm .table-wrap { max-height:70vh; overflow:auto; }
-#card-ncm th { position:sticky; top:0; background:#fff; }
-.chips { display:flex; gap:8px; }
-
-  /* Ações: ordem e respiro */
-  .actions-grid { display:grid; gap:12px; grid-template-columns: 1fr auto auto; align-items:end; }
-.actions-grid .row { display:contents; }
-
-/* Financeiro colapsável */
-#finance-panel.collapsed .card-body { display:none; }
-#card-ncm.collapsed .card-body { display:none; }
-
-  /* Nome do arquivo com ellipsis */
-  .file-input-wrap { display:flex; gap:8px; align-items:center; max-width:100%; }
-
-  /* Responsividade */
-  @media (max-width: 768px) {
-    .actions-grid { grid-template-columns: 1fr; }
-  }
-
-  .row-pendente { background: #fff; }
-  .row-conferido { background: #f6ffed; }
-  .row-excedente { background: #fff1f0; }
-  .row-ok { background: #f6ffed; }
-  .row-falha { background: #fff1f0; }
-
+/* Kill-switch para garantir que o painel NCM não apareça na home */
+#card-ncm,[data-panel="ncm"]{display:none !important}

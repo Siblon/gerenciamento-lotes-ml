@@ -1,4 +1,5 @@
 // src/main.js
+import './styles.css';
 import { initApp } from './components/app.js';
 import { initIndicators } from './components/Indicators.js';
 import { initScannerUI } from './components/ScannerUI.js';
