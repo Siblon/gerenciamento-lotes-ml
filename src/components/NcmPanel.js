@@ -4,6 +4,7 @@ import { startNcmQueue } from '../services/ncmQueue.js';
 
 export function initNcmPanel(){
   const panel = document.getElementById('card-ncm');
+  if (!panel) return;
   const tbody = document.getElementById('ncm-table');
   const progress = document.getElementById('ncm-progress');
   const progressCount = document.getElementById('ncm-progress-count');
