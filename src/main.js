@@ -1,38 +1,51 @@
 import './styles.css';
 import { initImportPanel } from './components/ImportPanel.js';
 import { initLotSelector } from './components/LotSelector.js';
-import { renderPendentes, renderConferidos, renderExcedentes } from './components/Results.js';
-import { getCurrentLotId, countByStatus, getItemsByLotAndStatus } from './store/db.js';
+import { getCurrentLotId, countByStatus, getItemsByLotAndStatus, clearAll } from './store/db.js';
 
-export async function loadDashboard(){
-  const currentLotId = getCurrentLotId();
-  if (!currentLotId){
-    renderPendentes([]); renderConferidos([]); renderExcedentes([]);
-    const hdr = document.getElementById('hdr-conferidos'); if (hdr) hdr.textContent = '0 de 0 conferidos';
-    ['count-conferidos','count-pendentes','excedentesCount'].forEach(id=>{const el=document.getElementById(id); if(el) el.textContent='0';});
-    return;
+async function renderPendentes(lotId) {
+  const tbody = document.querySelector('#tbl-pendentes tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  const rows = await getItemsByLotAndStatus(lotId, 'pending', { limit: 50 });
+  for (const r of rows) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.sku}</td>
+      <td>${r.descricao}</td>
+      <td>${r.qtd}</td>
+      <td>${(r.preco || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+      <td>${((r.preco || 0) * (r.qtd || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+      <td>Pendente</td>
+    `;
+    tbody.appendChild(tr);
   }
-  const counts = await countByStatus(currentLotId);
-  const total = counts.pending + counts.checked + counts.excedente;
-  const hdr = document.getElementById('hdr-conferidos'); if (hdr) hdr.textContent = `${counts.checked} de ${total} conferidos`;
-  const bc = document.getElementById('count-conferidos'); if (bc) bc.textContent = counts.checked;
-  const bp = document.getElementById('count-pendentes'); if (bp) bp.textContent = counts.pending;
-  const be = document.getElementById('excedentesCount'); if (be) be.textContent = counts.excedente;
-
-  const pendLimit = Number(document.getElementById('limit-pendentes')?.value || 50);
-  const confLimit = Number(document.getElementById('limit-conferidos')?.value || 50);
-  const pend = await getItemsByLotAndStatus(currentLotId,'pending',{limit:pendLimit});
-  const conf = await getItemsByLotAndStatus(currentLotId,'checked',{limit:confLimit});
-  const exc = await getItemsByLotAndStatus(currentLotId,'excedente',{limit:50});
-  renderPendentes(pend);
-  renderConferidos(conf);
-  renderExcedentes(exc);
 }
 
-window.refreshAll = loadDashboard;
+export async function refreshAll() {
+  const lotId = getCurrentLotId();
+  if (!lotId) return;
+
+  const counts = await countByStatus(lotId);
+
+  const elTotal = document.getElementById('kpi-total');
+  const elConf  = document.getElementById('kpi-conf');
+  const elPend  = document.getElementById('kpi-pend');
+  const elExc   = document.getElementById('kpi-exc');
+  if (elTotal) elTotal.textContent = counts.total;
+  if (elConf)  elConf.textContent  = counts.checked;
+  if (elPend)  elPend.textContent  = counts.pending;
+  if (elExc)   elExc.textContent   = counts.excedente;
+
+  await renderPendentes(lotId);
+}
+window.refreshAll = refreshAll;
+
+// expose reset for "Zerar dados" button
+window.resetAllData = async () => { await clearAll(); window.location.reload(); };
 
 window.addEventListener('DOMContentLoaded', async () => {
   await initLotSelector();
   initImportPanel();
-  loadDashboard();
+  refreshAll();
 });

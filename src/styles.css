@@ -146,6 +146,13 @@ th.sticky{left:0;z-index:2}
 .kpi-label { font-size: 12px; color: #667085; }
 .kpi-value { font-size: 22px; font-weight: 700; color: #0f172a; }
 
+/* ensure dashboard icons have consistent sizing */
+.kpi svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2;
+}
+
 .ncm-inline-actions {
   border-top: 1px dashed var(--border);
   padding-top: 8px;
