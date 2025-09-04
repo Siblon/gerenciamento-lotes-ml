@@ -75,6 +75,7 @@ h3{font-size:18px;margin:0}
 .badge{padding:4px 10px;border-radius:999px;font-weight:700;font-size:12px;background:#EEF2FF;color:#334155}
 .badge-ok{background:#EAFBF1;color:#14532D}
 .badge-falha{background:#FFF1F2;color:#7F1D1D}
+.version-badge{background:transparent;color:#6B7280;font-weight:400;font-size:12px}
 
 .input, select, input[type="number"], input[type="text"], input[type="range"], input[type="file"]{
   border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:#fff;box-shadow:none;

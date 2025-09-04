@@ -18,6 +18,8 @@
         </label>
         <button id="helpBtn" title="Ajuda/Atalhos" aria-label="Ajuda" class="btn btn-ghost">?</button>
         <button id="btn-download-backup" class="btn btn-ghost">Baixar backup</button>
+        <button id="btn-reset-db" class="btn btn-ghost">Resetar banco</button>
+        <span id="app-version" class="badge version-badge"></span>
       </div>
     </header>
 
@@ -292,7 +294,8 @@
   </main>
 
   <div id="boot-status" aria-live="polite">
-    <strong>Boot:</strong> aguardando…
+    <strong>Boot:</strong> <span class="boot-text">aguardando…</span>
+    <a id="boot-debug" class="debug-link" hidden>Debug</a>
   </div>
 
   <dialog id="dlg-excedente">
