@@ -1,10 +1,9 @@
 // src/services/importer.js
-import { db, setSetting } from '../store/db.js';
-import { setCurrentLote } from '../components/LotSelector.js';
+import { parsePlanilha } from '../utils/excel.js';
+import { addLot, setCurrentLotId, addItemsBulk, ensureDbOpen } from '../store/db.js';
 
 const META_KEY = 'confApp.meta.v1';
 
-// Salva sempre que: o usuário escolhe planilha, escolhe RZ, ou você finaliza import
 export function saveMeta(partial) {
   const cur = loadMeta();
   const next = { ...cur, ...partial, savedAt: new Date().toISOString() };
@@ -17,14 +16,10 @@ export function loadMeta() {
   catch { return {}; }
 }
 
-// Helpers para integrar com seus componentes:
 export function wireLotFileCapture(inputEl) {
   inputEl?.addEventListener('change', () => {
     const file = inputEl.files?.[0];
-    if (file) {
-      saveMeta({ loteName: file.name });
-      setCurrentLote(file.name);
-    }
+    if (file) saveMeta({ loteName: file.name });
   });
 }
 
@@ -35,33 +30,23 @@ export function wireRzCapture(selectEl) {
   });
 }
 
-// Assumindo que já temos "file", e "selectedRz" (string do select de RZ)
-export async function importPlanilhaAsLot({ file, selectedRz, parsedItems }) {
-  const fileName = file?.name || 'lote-sem-nome';
-  const lotName = fileName.replace(/\.[^.]+$/, '');
-
-  // Cria o lote
-  const lotId = await db.lots.add({
-    name: lotName,
-    rz: selectedRz || '',
-    createdAt: new Date().toISOString()
-  });
-
-  // Salva os itens com o lotId
-  // parsedItems deve ser seu array de itens padronizados (sku, descricao, qtd, preco_ml_unit, valor_total, status)
-  await db.items.bulkAdd(
-    parsedItems.map(it => ({
-      lotId,
-      sku: String(it.sku || '').trim(),
-      desc: String(it.descricao || ''),
-      qtd: Number(it.qtd || 0),
-      precoMedio: Number(it.preco_ml_unit || 0),
-      valorTotal: Number(it.valor_total || 0),
-      status: it.status || 'pendente' // conferido / pendente / excedente
-    }))
-  );
-
-  // Define esse lote como "ativo"
-  await setSetting('activeLotId', lotId);
+// Importa a planilha e persiste como um novo lote
+export async function importFile(file, rz) {
+  if (!file) return null;
+  await ensureDbOpen();
+  const buffer = await file.arrayBuffer();
+  const { itens } = await parsePlanilha(buffer);
+  const lotId = await addLot({ name: file.name, rz });
+  setCurrentLotId(lotId);
+  const parsedItems = itens.map(it => ({
+    lotId,
+    sku: String(it.codigoML || '').trim(),
+    descricao: String(it.descricao || ''),
+    qtd: Number(it.qtd || 0),
+    preco: Number(it.valorUnit || 0),
+    status: 'pending'
+  }));
+  await addItemsBulk(lotId, parsedItems);
+  window.refreshAll?.();
   return lotId;
 }
