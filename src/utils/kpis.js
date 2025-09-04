@@ -1,10 +1,10 @@
 import { loadConferidos, loadExcedentes } from '../services/persist.js';
 import store from '../store/index.js';
 
-export function refreshKpis() {
+export async function refreshKpis() {
   try {
-    const conferidos = (loadConferidos() || []).length;
-    const excedentes = (loadExcedentes() || []).length;
+    const conferidos = (await loadConferidos()).length;
+    const excedentes = (await loadExcedentes()).length;
     const total      = (typeof store?.selectAllImportedItems === 'function')
       ? (store.selectAllImportedItems() || []).length : 0;
     const pendentes  = Math.max(total - conferidos - excedentes, 0);
