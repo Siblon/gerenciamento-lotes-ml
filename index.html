@@ -147,6 +147,9 @@
 
         <div class="actions">
           <button id="finalizarBtn" class="btn btn-ghost">Finalizar Conferência</button>
+          <button id="exportBtn" class="btn btn-primary btn-export" type="button" title="Exportar planilhas">
+            Exportar
+          </button>
         </div>
 
         <section id="card-scanner" class="card collapsed" aria-live="polite">
@@ -370,6 +373,7 @@
     </form>
   </dialog>
 
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
