@@ -6,6 +6,8 @@ import { toast } from '../utils/toast.js';
 import { loadSettings, renderCounts, renderExcedentes } from '../utils/ui.js';
 import { importPlanilhaAsLot, wireLotFileCapture, wireRzCapture, loadMeta } from '../services/importer.js';
 import { initLotSelector } from './LotSelector.js';
+import { updateBoot } from '../utils/boot.js';
+import { db, resetDb, setMeta } from '../store/db.js';
 
 export function initImportPanel(render){
   const fileInput = document.getElementById('file');
@@ -18,6 +20,9 @@ export function initImportPanel(render){
   wireLotFileCapture(fileInput);
   wireRzCapture(rzSelect);
 
+  // botão de reset
+  ensureResetButton();
+
   let ncmActive = !!loadSettings().resolveNcm;
 
   fileInput?.addEventListener('change', async (e)=>{
@@ -28,6 +33,9 @@ export function initImportPanel(render){
       fileName.title = name;
     }
     if (!f) return;
+    const loteName = name;
+    await setMeta('loteAtual', loteName);
+    updateBoot(`Lote carregado: <strong>${loteName}</strong> — prossiga com a importação.`);
     const buf = (f.arrayBuffer ? await f.arrayBuffer() : f);
     let rzs = [];
     let itens = [];
@@ -80,8 +88,10 @@ export function initImportPanel(render){
     render?.();
   });
 
-  rzSelect?.addEventListener('change', e=>{
+  rzSelect?.addEventListener('change', async e=>{
     setCurrentRZ(e.target.value || null);
+    await setMeta('rzAtual', e.target.value || '');
+    updateBoot(`RZ atual: <strong>${e.target.value}</strong>`);
     render?.();
     const input = document.querySelector('#input-codigo-produto');
     if (input) { input.focus(); input.select(); }
@@ -103,5 +113,25 @@ export function initImportPanel(render){
   document.addEventListener('ncm-pref-changed', ev => {
     ncmActive = !!ev.detail?.enabled;
     if(!ncmActive) badge.hidden = true;
+  });
+}
+
+function ensureResetButton() {
+  const host = document.querySelector('#card-importacao .card-header, #card-importacao .card-body') || document.body;
+  if (!host || typeof host.querySelector !== 'function' || host.querySelector('#btn-reset-db')) return;
+  const btn = document.createElement('button');
+  btn.id = 'btn-reset-db';
+  btn.className = 'btn btn-ghost';
+  btn.type = 'button';
+  btn.textContent = 'Zerar dados';
+  btn.title = 'Limpar banco e começar novo palete';
+  btn.style.marginLeft = '8px';
+  host.appendChild(btn);
+
+  btn.addEventListener('click', async () => {
+    if (!confirm('Zerar todos os dados (itens, excedentes e preferências)?')) return;
+    await resetDb();
+    updateBoot('Banco limpo. Você pode importar uma nova planilha e selecionar o RZ.');
+    // opcional: também limpe elementos visuais/contadores via eventos do seu store
   });
 }

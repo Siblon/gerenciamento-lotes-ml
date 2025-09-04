@@ -1,14 +1,41 @@
-let bootTimer;
-export function updateBoot(msg, { durationMs = 10_000 } = {}) {
-  const el = document.getElementById('boot-status');
-  if (!el) return;
-  if (el.style) {
-    el.style.opacity = '1';
-    el.style.transition = 'opacity .4s ease';
-  }
-  el.innerHTML = `<strong>Boot:</strong> ${msg}`;
-  if (bootTimer) clearTimeout(bootTimer);
-  bootTimer = setTimeout(() => {
-    if (el.style) el.style.opacity = '0';
-  }, durationMs);
+let hideTimer = null;
+
+function getBootEl() {
+  return document.getElementById('boot-status');
 }
+
+/**
+ * Mostra um toast e esconde automaticamente após `persistMs` (default 10s).
+ * @param {string} msg
+ * @param {{level?: 'info'|'warn'|'error', persistMs?: number}} [opts]
+ */
+export function updateBoot(msg, opts = {}) {
+  const el = getBootEl();
+  if (!el) return;
+  const { level = 'info', persistMs = 10000 } = opts;
+
+  if (el.dataset) el.dataset.level = level;
+  el.innerHTML = msg;
+  el.classList?.remove('hidden');
+
+  // limpa timer anterior
+  if (hideTimer) {
+    clearTimeout(hideTimer);
+    hideTimer = null;
+  }
+
+  // agenda auto-hide
+  hideTimer = setTimeout(() => {
+    el.classList?.add('hidden');
+  }, Math.max(0, persistMs));
+}
+
+/** Esconde imediatamente o toast. */
+export function hideBoot() {
+  const el = getBootEl();
+  if (!el) return;
+  el.classList?.add('hidden');
+  if (hideTimer) clearTimeout(hideTimer);
+  hideTimer = null;
+}
+
