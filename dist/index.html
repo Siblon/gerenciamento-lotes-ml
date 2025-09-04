@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <title>Sistema de Conferência</title>
-  <script type="module" crossorigin src="/assets/main-1ececa3c.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/ncmQueue-0b48ccb8.js">
-  <link rel="stylesheet" href="/assets/index-44f19700.css">
+  <script type="module" crossorigin src="/assets/main-49d87506.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/ncmQueue-c5c037d3.js">
+  <link rel="stylesheet" href="/assets/index-da61e902.css">
 </head>
 <body>
   <main class="container">
@@ -20,6 +20,7 @@
           <span>Resolver NCM</span>
         </label>
         <button id="helpBtn" title="Ajuda/Atalhos" aria-label="Ajuda" class="btn btn-ghost">?</button>
+        <button id="btn-download-backup" class="btn btn-ghost">Baixar backup</button>
       </div>
     </header>
 
@@ -49,6 +50,14 @@
               <label for="select-rz" class="label">RZ</label>
               <select id="select-rz" class="input"></select>
               <span id="ncm-badge" class="badge" hidden>Resolvendo NCM… <span id="ncm-badge-count">0/0</span></span>
+            </div>
+            <div class="field">
+              <label for="select-lot" class="label">Lote</label>
+              <select id="select-lot" class="input" title="Lote ativo"></select>
+            </div>
+            <div class="field">
+              <label class="label" for="btn-exportar">&nbsp;</label>
+              <button id="btn-exportar" class="btn btn-primary">Exportar</button>
             </div>
           </div>
         </section>
@@ -150,9 +159,6 @@
 
         <div class="actions">
           <button id="finalizarBtn" class="btn btn-ghost">Finalizar Conferência</button>
-          <button id="exportBtn" class="btn btn-primary btn-export" type="button" title="Exportar planilhas">
-            Exportar
-          </button>
         </div>
 
         <section id="card-scanner" class="card collapsed" aria-live="polite">
@@ -290,7 +296,6 @@
 
   <div id="boot-status" aria-live="polite">
     <strong>Boot:</strong> aguardando…
-    <button id="btn-debug" type="button" class="btn btn-ghost">Debug</button>
   </div>
 
   <dialog id="dlg-excedente">
