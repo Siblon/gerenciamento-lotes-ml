@@ -1,18 +1,27 @@
 // src/components/LotSelector.js
-import { db, setSetting, getSetting } from '../store/db.js';
+import store from '@/store';
 
-export async function initLotSelector() {
-  const sel = document.getElementById('select-lote'); // adicione <select id="select-lote"></select> no HTML
-  if (!sel) return;
+export function initLotSelector() {
+  const host = document.getElementById('lot-selector-host');
+  if (!host) return;
 
-  const lots = await db.lots.orderBy('createdAt').reverse().toArray();
-  sel.innerHTML = lots.map(l => `<option value="${l.id}">${l.name} — ${l.rz || 'RZ ?'}</option>`).join('');
+  const lotes = store.selectLotes ? store.selectLotes() : [];
+  const current = store.selectLote?.() || lotes[0] || '';
 
-  const active = await getSetting('activeLotId', lots[0]?.id);
-  if (active) sel.value = String(active);
+  if (lotes.length <= 1) {
+    host.innerHTML = `<input type="hidden" id="select-lote" value="${current}">`;
+    return;
+  }
 
-  sel.addEventListener('change', async () => {
-    await setSetting('activeLotId', Number(sel.value));
-    location.reload(); // simples e robusto — recarrega o app já pegando o novo lotId
-  });
+  host.innerHTML = `
+    <select id="select-lote" class="input">
+      ${lotes.map(l => `<option ${l===current?'selected':''}>${l}</option>`).join('')}
+    </select>
+  `;
+}
+
+export function setCurrentLote(filename) {
+  const el = document.getElementById('select-lote');
+  if (el) el.value = filename;
+  if (store.setLote) store.setLote(filename);
 }

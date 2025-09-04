@@ -1,5 +1,6 @@
 // src/services/importer.js
 import { db, setSetting } from '../store/db.js';
+import { setCurrentLote } from '../components/LotSelector.js';
 
 const META_KEY = 'confApp.meta.v1';
 
@@ -20,7 +21,10 @@ export function loadMeta() {
 export function wireLotFileCapture(inputEl) {
   inputEl?.addEventListener('change', () => {
     const file = inputEl.files?.[0];
-    if (file) saveMeta({ loteName: file.name });
+    if (file) {
+      saveMeta({ loteName: file.name });
+      setCurrentLote(file.name);
+    }
   });
 }
 

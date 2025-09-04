@@ -1,5 +1,6 @@
 import './styles.css';
 import { initImportPanel } from './components/ImportPanel.js';
+import { initLotSelector } from './components/LotSelector.js';
 import { mountKpis } from '@/components/Kpis';
 import { updateBoot } from './utils/boot.js';
 import { exportWorkbook } from './services/exportExcel.js';
@@ -10,6 +11,7 @@ import store from './store/index.js';
 window.__resetDb = resetAll;
 
 window.addEventListener('DOMContentLoaded', () => {
+  initLotSelector();
   initImportPanel();
   updateBoot('Boot: aplicativo carregado. Selecione a planilha e o RZ para iniciar.');
 
