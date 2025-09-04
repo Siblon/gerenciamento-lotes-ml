@@ -47,6 +47,14 @@
               <select id="select-rz" class="input"></select>
               <span id="ncm-badge" class="badge" hidden>Resolvendo NCM… <span id="ncm-badge-count">0/0</span></span>
             </div>
+            <div class="field">
+              <label for="select-lot" class="label">Lote</label>
+              <select id="select-lot" class="input" title="Lote ativo"></select>
+            </div>
+            <div class="field">
+              <label class="label" for="btn-exportar">&nbsp;</label>
+              <button id="btn-exportar" class="btn btn-primary">Exportar</button>
+            </div>
           </div>
         </section>
 
@@ -147,9 +155,6 @@
 
         <div class="actions">
           <button id="finalizarBtn" class="btn btn-ghost">Finalizar Conferência</button>
-          <button id="exportBtn" class="btn btn-primary btn-export" type="button" title="Exportar planilhas">
-            Exportar
-          </button>
         </div>
 
         <section id="card-scanner" class="card collapsed" aria-live="polite">

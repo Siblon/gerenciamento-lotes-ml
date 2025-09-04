@@ -1,4 +1,5 @@
 import { NCM_CACHE_KEY } from '../config/runtime.js';
+import { markAsConferido as dbMarkAsConferido, addExcedente as dbAddExcedente } from '../services/loteDb.js';
 
 // src/store/index.js
 const state = {
@@ -243,11 +244,17 @@ export function dispatch(action){
 export function conferir(sku, opts = {}) {
   const rz = state.rzAtual;
   addConferido(rz, sku, { qty: opts.qty, precoAjustado: opts.price, observacao: opts.note, avaria: opts.avaria });
+  dbMarkAsConferido(sku, {
+    qtd: opts.qty,
+    precoMedio: opts.price,
+    valorTotal: Number(opts.price || 0) * Number(opts.qty || 0)
+  }).catch(console.error);
 }
 
 export function registrarExcedente({ sku, qty, price, note }) {
   const rz = state.rzAtual;
   addExcedente(rz, { sku, descricao: '', qtd: qty, preco_unit: price, obs: note, fonte: 'preset' });
+  dbAddExcedente({ sku, descricao: '', qtd: qty, preco: price }).catch(console.error);
 }
 
 function parseId(id){
