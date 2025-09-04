@@ -24,33 +24,33 @@ export function initDashboard() {
   // NÃO toque no resto da página. Apenas preencha o grid de KPIs.
   const kpisHTML = `
     <div class="kpi" id="kpi-total">
-      <svg class="ico" aria-hidden="true" focusable="false"><use href="/icons.svg#box"></use></svg>
+      <svg class="ico" aria-hidden="true" focusable="false"><use href="icons.svg#box"></use></svg>
       <div>
-        <div class="kpi-label">Itens do lote</div>
+        <div class="metric-label">Itens do lote</div>
         <div class="kpi-value"><span id="kpi-total-val">0</span></div>
       </div>
     </div>
 
     <div class="kpi" id="kpi-conf">
-      <svg class="ico" aria-hidden="true" focusable="false"><use href="/icons.svg#check"></use></svg>
+      <svg class="ico" aria-hidden="true" focusable="false"><use href="icons.svg#check"></use></svg>
       <div>
-        <div class="kpi-label">Conferidos</div>
+        <div class="metric-label">Conferidos</div>
         <div class="kpi-value"><span id="kpi-conf-val">0</span></div>
       </div>
     </div>
 
     <div class="kpi" id="kpi-exc">
-      <svg class="ico" aria-hidden="true" focusable="false"><use href="/icons.svg#alert"></use></svg>
+      <svg class="ico" aria-hidden="true" focusable="false"><use href="icons.svg#alert"></use></svg>
       <div>
-        <div class="kpi-label">Excedentes</div>
+        <div class="metric-label">Excedentes</div>
         <div class="kpi-value"><span id="kpi-exc-val">0</span></div>
       </div>
     </div>
 
     <div class="kpi" id="kpi-pend">
-      <svg class="ico" aria-hidden="true" focusable="false"><use href="/icons.svg#scan"></use></svg>
+      <svg class="ico" aria-hidden="true" focusable="false"><use href="icons.svg#scan"></use></svg>
       <div>
-        <div class="kpi-label">Pendentes</div>
+        <div class="metric-label">Pendentes</div>
         <div class="kpi-value"><span id="kpi-pend-val">0</span></div>
       </div>
     </div>
