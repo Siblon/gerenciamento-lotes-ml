@@ -7,9 +7,11 @@ import './components/ExcedenteDialog.js';
 import './utils/kpis.js';
 import { initLotSelector } from './components/LotSelector.js';
 import { exportarLoteAtual } from './services/exportExcel.js';
-import { getSetting, db } from './store/db.js';
+import db, { getSetting } from './store/db.js';
 import store, { setRZs, setItens, setCurrentRZ } from './store/index.js';
 import { renderCounts, renderExcedentes } from './utils/ui.js';
+import { startAutoBackup, downloadSnapshot } from './services/backup.js';
+import { loadMeta } from './services/importer.js';
 
 if (import.meta.env?.DEV) {
   window.__DEBUG_SCAN__ = true;
@@ -59,5 +61,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   initIndicators();
   initScannerUI();
   initLotSelector();
-  document.getElementById('btn-exportar')?.addEventListener('click', exportarLoteAtual);
+  const btnExport = document.getElementById('btn-exportar');
+  btnExport?.addEventListener('click', async () => {
+    const meta = loadMeta();
+    await exportarLoteAtual(meta);
+  });
+  // Inicia backup automático a cada 30s
+  try { startAutoBackup(db, { intervalMs: 30_000 }); } catch {}
+  const btnBk = document.getElementById('btn-download-backup');
+  btnBk?.addEventListener('click', () => downloadSnapshot(db));
 });
