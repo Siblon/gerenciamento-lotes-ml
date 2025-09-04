@@ -109,3 +109,8 @@ th.sticky{left:0;z-index:2}
   .kpi .ico { width: 24px; height: 24px; flex-basis: 24px; }
 }
 
+.ncm-inline-actions {
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+}
+

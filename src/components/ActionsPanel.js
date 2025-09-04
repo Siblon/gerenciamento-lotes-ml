@@ -5,6 +5,103 @@ import { loadFinanceConfig, saveFinanceConfig } from '../utils/finance.js';
 import { loadPrefs, savePrefs } from '../utils/prefs.js';
 import { toast } from '../utils/toast.js';
 import { openExcedenteModal } from './ExcedenteModal.js';
+import { updateBoot } from '../utils/boot.js';
+
+// memória da última consulta
+let lastLookup = {
+  sku: null,
+  okToRegister: false,
+  item: null,
+};
+
+function setLastLookup(sku, ok, item) {
+  lastLookup = { sku, okToRegister: !!ok, item: item || null };
+}
+
+function findItemBySku(sku) {
+  if (!sku) return null;
+  if (typeof store.findInRZ === 'function') {
+    return store.findInRZ(store.state.rzAtual, sku);
+  }
+  if (typeof store.selectAllImportedItems === 'function') {
+    const all = store.selectAllImportedItems() || [];
+    return all.find(x => String(x.sku).trim().toUpperCase() === String(sku).trim().toUpperCase()) || null;
+  }
+  return null;
+}
+
+function getCounts() {
+  const rz = store.state?.rzAtual;
+  const cont = store.state?.contadores?.[rz] || {};
+  return { total: cont.total || 0, conferidos: cont.conferidos || 0 };
+}
+
+function renderCounts() {
+  const { total, conferidos } = getCounts();
+  const kpi = document.getElementById('count-conferidos');
+  if (kpi) kpi.textContent = String(conferidos);
+  const hdr = document.getElementById('hdr-conferidos');
+  if (hdr) hdr.textContent = `${conferidos} de ${total} conferidos`;
+}
+
+function setNcmCheckedForSku(sku, checked) {
+  if (store.ncm?.setOk) {
+    store.ncm.setOk(sku, !!checked);
+    return;
+  }
+  const KEY = 'ncm.checked.map';
+  let map = {};
+  try { map = JSON.parse(localStorage.getItem(KEY)) || {}; } catch {}
+  map[sku] = !!checked;
+  localStorage.setItem(KEY, JSON.stringify(map));
+}
+
+function getNcmCheckedForSku(sku) {
+  if (store.ncm?.isOk) return !!store.ncm.isOk(sku);
+  const KEY = 'ncm.checked.map';
+  try {
+    const map = JSON.parse(localStorage.getItem(KEY)) || {};
+    return !!map[sku];
+  } catch { return false; }
+}
+
+function ensureNcmToggleInCard(sku) {
+  const card = document.getElementById('produto-info');
+  if (!card || typeof card.querySelector !== 'function') return;
+
+  let bar = card.querySelector('.ncm-inline-actions');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'ncm-inline-actions';
+    bar.style.marginTop = '8px';
+    card.querySelector('.card-body')?.appendChild(bar);
+  } else {
+    bar.innerHTML = '';
+  }
+
+  const lbl = document.createElement('label');
+  lbl.style.display = 'inline-flex';
+  lbl.style.alignItems = 'center';
+  lbl.style.gap = '8px';
+
+  const chk = document.createElement('input');
+  chk.type = 'checkbox';
+  chk.checked = getNcmCheckedForSku(sku);
+
+  const span = document.createElement('span');
+  span.textContent = 'NCM conferido';
+
+  chk.addEventListener('change', () => {
+    setNcmCheckedForSku(sku, chk.checked);
+    updateBoot?.(chk.checked ? 'NCM marcado como conferido' : 'NCM desmarcado');
+  });
+
+  lbl.appendChild(chk);
+  lbl.appendChild(span);
+  bar.appendChild(lbl);
+}
+
+export { getNcmCheckedForSku, setNcmCheckedForSku };
 
 function mostrarProdutoInfo(item) {
   const $ = (sel) => document.querySelector(sel);
@@ -16,6 +113,8 @@ function mostrarProdutoInfo(item) {
   $('#pi-rz').textContent = store.state.rzAtual || '';
   document.getElementById('pi-ncm').textContent = item?.ncm || '—';
   document.getElementById('produto-info').hidden = false;
+  ensureNcmToggleInCard(item.sku);
+  document.getElementById('produto-info').scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
 }
 
 function abrirModalExcedente(sku, fonte='manual'){
@@ -91,6 +190,7 @@ export function initActionsPanel(render){
   });
 
   codigoInput?.focus();
+  renderCounts();
 
   const cfg = loadFinanceConfig();
   const prefs = loadPrefs();
@@ -124,8 +224,9 @@ export function initActionsPanel(render){
     btnCons?.classList.add('loading');
     btnCons?.setAttribute?.('disabled','disabled');
     try {
-      const item = store.findInRZ?.(rz, sku) || findConferido?.(rz, sku);
+      const item = findItemBySku(sku) || store.findInRZ?.(rz, sku) || findConferido?.(rz, sku);
       if (!item) {
+        setLastLookup(sku, false, null);
         const outro = findEmOutrosRZ?.(sku);
         if (outro){
           if (confirm(`SKU pertence ao ${outro}. Mover para este RZ?`)){
@@ -142,6 +243,8 @@ export function initActionsPanel(render){
       }
       mostrarProdutoInfo(item);
       if (precoInput && !precoInput.value) precoInput.value = item.precoMedio ?? '';
+      setLastLookup(sku, true, item);
+      updateBoot?.('Consulta OK — pressione Enter novamente para registrar');
       active?.focus?.();
       return true;
     } finally {
@@ -158,6 +261,10 @@ export function initActionsPanel(render){
     const obsPreset = obsSelect?.value || '';
     const item = store.findInRZ?.(store.state.rzAtual, sku);
     const toExcedentes = obsPreset === 'excedente' || !item;
+    if (!toExcedentes && (!lastLookup.okToRegister || lastLookup.sku !== sku)) {
+      if (item) setLastLookup(sku, true, item);
+      else { toast('Consulte um produto antes de registrar.', 'warn'); return; }
+    }
     if (!toExcedentes && priceStr.trim() === '') {
       toast('Preço obrigatório', 'warn');
       return;
@@ -184,7 +291,9 @@ export function initActionsPanel(render){
       }
       render();
       window.refreshIndicators?.();
+      renderCounts();
       toast.success('Item registrado');
+      setLastLookup(null, false, null);
     } catch(e) {
       console.error(e); toast('Falha ao registrar', 'error');
     }
@@ -199,13 +308,11 @@ export function initActionsPanel(render){
   btnReg?.addEventListener('click', handleRegistrar);
 
   codigoInput?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.ctrlKey) {
-      e.preventDefault();
-      handleRegistrar();
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      handleConsultar();
-    }
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (e.ctrlKey) { handleRegistrar(); return; }
+    if (lastLookup.okToRegister) handleRegistrar();
+    else handleConsultar();
   });
 
   btnFinal?.addEventListener('click', () => {
