@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <title>Sistema de Conferência</title>
-  <script type="module" crossorigin src="/assets/main-f1c23697.js"></script>
+  <script type="module" crossorigin src="/assets/main-dfcc59c4.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/ncmQueue-0b48ccb8.js">
-  <link rel="stylesheet" href="/assets/index-909508a5.css">
+  <link rel="stylesheet" href="/assets/index-dfb43d7c.css">
 </head>
 <body>
   <main class="container">
@@ -150,6 +150,9 @@
 
         <div class="actions">
           <button id="finalizarBtn" class="btn btn-ghost">Finalizar Conferência</button>
+          <button id="exportBtn" class="btn btn-primary btn-export" type="button" title="Exportar planilhas">
+            Exportar
+          </button>
         </div>
 
         <section id="card-scanner" class="card collapsed" aria-live="polite">
@@ -373,6 +376,7 @@
     </form>
   </dialog>
 
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   
 </body>
 </html>
