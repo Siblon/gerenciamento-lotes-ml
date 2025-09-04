@@ -25,7 +25,7 @@ const state = {
   movimentos: [],         // [{ ts, rz, sku, precoAjustado, observacao }]
 
   // excedentes por RZ
-  excedentes: {},         // { [rz]: [ { sku, descricao, qtd, preco, obs, fonte, ncm } ] }
+  excedentes: {},         // { [rz]: [ { sku, descricao, qtd, preco_unit, obs, fonte, ncm } ] }
 
   limits: {
     conferidos: 50,
@@ -197,21 +197,21 @@ export function findEmOutrosRZ(sku){
   return null;
 }
 
-export function addExcedente(rz, { sku, descricao, qtd, preco, obs, fonte, ncm }){
+export function addExcedente(rz, { sku, descricao, qtd, preco_unit, obs, fonte, ncm }){
   const list = (state.excedentes[rz] ||= []);
   const existente = list.find(it => it.sku === sku);
   const q = Number(qtd) || 0;
-  const p = (preco === undefined || preco === null || preco === '') ? undefined : Number(preco);
+  const p = (preco_unit === undefined || preco_unit === null || preco_unit === '') ? undefined : Number(preco_unit);
   const metaNcm = ncm ?? state.metaByRZSku[rz]?.[sku]?.ncm ?? null;
   if (existente) {
     existente.qtd += q;
-    if (p !== undefined) existente.preco = p;
+    if (p !== undefined) existente.preco_unit = p;
     existente.obs = obs || existente.obs;
     existente.ncm = metaNcm ?? existente.ncm ?? null;
   } else {
-    list.push({ sku, descricao: descricao || '', qtd: q, preco: p, obs: obs || '', fonte: fonte || '', ncm: metaNcm });
+    list.push({ sku, descricao: descricao || '', qtd: q, preco_unit: p, obs: obs || '', fonte: fonte || '', ncm: metaNcm });
   }
-  state.movimentos.push({ ts: Date.now(), tipo: 'EXCEDENTE', rz, sku, qtd: q, preco: p, obs, fonte });
+  state.movimentos.push({ ts: Date.now(), tipo: 'EXCEDENTE', rz, sku, qtd: q, preco_unit: p, obs, fonte });
   updateContadores(rz);
 }
 
@@ -247,7 +247,7 @@ export function conferir(sku, opts = {}) {
 
 export function registrarExcedente({ sku, qty, price, note }) {
   const rz = state.rzAtual;
-  addExcedente(rz, { sku, descricao: '', qtd: qty, preco: price, obs: note, fonte: 'preset' });
+  addExcedente(rz, { sku, descricao: '', qtd: qty, preco_unit: price, obs: note, fonte: 'preset' });
 }
 
 function parseId(id){

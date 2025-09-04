@@ -2,15 +2,15 @@
 import { parsePlanilha } from '../utils/excel.js';
 import store, { setCurrentRZ, setRZs, setItens } from '../store/index.js';
 import { startNcmQueue } from '../services/ncmQueue.js';
-import { loadPrefs } from '../utils/prefs.js';
 import { toast } from '../utils/toast.js';
+import { loadSettings, renderCounts, renderExcedentes } from '../utils/ui.js';
 
 export function initImportPanel(render){
   const fileInput = document.getElementById('file');
   const fileName  = document.getElementById('file-name');
   const rzSelect  = document.getElementById('select-rz');
 
-  let ncmActive = loadPrefs().ncmEnabled;
+  let ncmActive = !!loadSettings().resolveNcm;
 
   fileInput?.addEventListener('change', async (e)=>{
     const f = e.target?.files?.[0];
@@ -32,6 +32,8 @@ export function initImportPanel(render){
     }
     setRZs(rzs);
     setItens(itens);
+    renderExcedentes();
+    renderCounts();
     try {
       if (ncmActive) startNcmQueue(itens);
     } catch (err) {

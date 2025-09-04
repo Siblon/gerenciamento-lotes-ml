@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, expect, vi } from 'vitest';
 vi.mock('../src/utils/excel.js', () => ({ parsePlanilha: vi.fn() }));
 vi.mock('../src/services/ncmQueue.js', () => ({ startNcmQueue: vi.fn() }));
-vi.mock('../src/utils/prefs.js', () => ({ loadPrefs: () => ({ ncmEnabled: false }) }));
+vi.mock('../src/utils/ui.js', () => ({ loadSettings: () => ({ resolveNcm: false }), renderCounts: vi.fn(), renderExcedentes: vi.fn() }));
 import { initImportPanel } from '../src/components/ImportPanel.js';
 import { parsePlanilha } from '../src/utils/excel.js';
 import store from '../src/store/index.js';

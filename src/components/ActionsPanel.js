@@ -6,6 +6,7 @@ import { loadPrefs, savePrefs } from '../utils/prefs.js';
 import { toast } from '../utils/toast.js';
 import { openExcedenteModal } from './ExcedenteModal.js';
 import { updateBoot } from '../utils/boot.js';
+import { renderCounts } from '../utils/ui.js';
 
 // memória da última consulta
 let lastLookup = {
@@ -28,20 +29,6 @@ function findItemBySku(sku) {
     return all.find(x => String(x.sku).trim().toUpperCase() === String(sku).trim().toUpperCase()) || null;
   }
   return null;
-}
-
-function getCounts() {
-  const rz = store.state?.rzAtual;
-  const cont = store.state?.contadores?.[rz] || {};
-  return { total: cont.total || 0, conferidos: cont.conferidos || 0 };
-}
-
-function renderCounts() {
-  const { total, conferidos } = getCounts();
-  const kpi = document.getElementById('count-conferidos');
-  if (kpi) kpi.textContent = String(conferidos);
-  const hdr = document.getElementById('hdr-conferidos');
-  if (hdr) hdr.textContent = `${conferidos} de ${total} conferidos`;
 }
 
 function setNcmCheckedForSku(sku, checked) {
@@ -349,7 +336,7 @@ export function initActionsPanel(render){
         };
       });
       const excedentes = (store.state.excedentes[rz] || []).map(it => {
-        const p = it.preco === undefined || it.preco === null ? null : Number(it.preco);
+        const p = it.preco_unit === undefined || it.preco_unit === null ? null : Number(it.preco_unit);
         return {
           SKU: it.sku,
           Descrição: it.descricao || '',
@@ -379,28 +366,12 @@ export function initActionsPanel(render){
     }
   });
 
-  document.getElementById('exc-salvar')?.addEventListener('click', ()=>{
-    const dlg = document.getElementById('dlg-excedente');
-    const sku = document.getElementById('exc-sku').value.trim().toUpperCase();
-    const desc = document.getElementById('exc-desc').value.trim();
-    const qtd  = Number(document.getElementById('exc-qtd').value) || 1;
-    const precoStr = document.getElementById('exc-preco').value;
-    const preco = precoStr.trim() === '' ? undefined : Number(precoStr);
-    const obs  = document.getElementById('exc-obs').value.trim();
-    if (!sku || !desc) return;
-    addExcedente(store.state.rzAtual, { sku, descricao: desc, qtd, preco, obs, fonte: dlg?.dataset.fonte||'manual' });
-    dlg.close();
-    toast('Excedente salvo', 'info');
-    render();
-    window.refreshIndicators?.();
-  });
-
   document.addEventListener('keydown',(e)=>{
     if (e.ctrlKey && e.key.toLowerCase()==='k'){ e.preventDefault(); document.querySelector('#input-codigo-produto')?.focus(); }
     // Ctrl+Enter handled on codigoInput for registro
     if (e.ctrlKey && e.key.toLowerCase()==='s'){
       const dlg = document.getElementById('dlg-excedente');
-      if (dlg?.open) { e.preventDefault(); document.getElementById('exc-salvar')?.click(); }
+      if (dlg?.open) { e.preventDefault(); document.getElementById('form-exc')?.requestSubmit(); }
     }
     if (e.key==='Escape') document.getElementById('dlg-excedente')?.close();
   });

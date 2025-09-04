@@ -34,7 +34,7 @@ describe('renderResults row classes', () => {
     store.state.totalByRZSku = { R1: { A:1, B:1 } };
     store.state.conferidosByRZSku = { R1: { A: { qtd:1 } } };
     store.state.metaByRZSku = { R1: { A:{ descricao:'A', precoMedio:0 }, B:{ descricao:'B', precoMedio:0 } } };
-    store.state.excedentes = { R1: [ { sku:'E1', descricao:'Ex', qtd:1, preco:0 } ] };
+    store.state.excedentes = { R1: [ { sku:'E1', descricao:'Ex', qtd:1, preco_unit:0 } ] };
     store.state.contadores = { R1: { conferidos:1, total:2, excedentes:1 } };
   });
 

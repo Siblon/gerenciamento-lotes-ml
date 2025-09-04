@@ -28,7 +28,7 @@ function rowsPendentes(rz){
 function rowsExcedentes(rz){
   const list = store.state.excedentes[rz] || [];
   return list.map(it=>{
-    const preco = it.preco === undefined || it.preco === null ? null : Number(it.preco);
+    const preco = it.preco_unit === undefined || it.preco_unit === null ? null : Number(it.preco_unit);
     return {
       sku: it.sku,
       descricao: it.descricao||'',
