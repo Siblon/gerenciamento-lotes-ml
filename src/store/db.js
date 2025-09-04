@@ -17,3 +17,6 @@ export async function getSetting(key, def = null) {
 export async function setSetting(key, value) {
   return db.settings.put({ key, value });
 }
+
+// Garanta que a instância do Dexie seja exportada
+export default db;

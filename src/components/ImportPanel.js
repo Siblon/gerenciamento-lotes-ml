@@ -4,13 +4,19 @@ import store, { setCurrentRZ, setRZs, setItens } from '../store/index.js';
 import { startNcmQueue } from '../services/ncmQueue.js';
 import { toast } from '../utils/toast.js';
 import { loadSettings, renderCounts, renderExcedentes } from '../utils/ui.js';
-import { importPlanilhaAsLot } from '../services/importer.js';
+import { importPlanilhaAsLot, wireLotFileCapture, wireRzCapture, loadMeta } from '../services/importer.js';
 import { initLotSelector } from './LotSelector.js';
 
 export function initImportPanel(render){
   const fileInput = document.getElementById('file');
   const fileName  = document.getElementById('file-name');
   const rzSelect  = document.getElementById('select-rz');
+  // hidratar UI com meta salvo
+  const meta = loadMeta();
+  if (rzSelect && meta.rz) rzSelect.value = meta.rz;
+
+  wireLotFileCapture(fileInput);
+  wireRzCapture(rzSelect);
 
   let ncmActive = !!loadSettings().resolveNcm;
 
@@ -63,9 +69,10 @@ export function initImportPanel(render){
     }
     if (rzSelect){
       rzSelect.innerHTML = rzs.map(rz=>`<option value="${rz}">${rz}</option>`).join('');
-      if (rzs.length){
-        rzSelect.value = rzs[0];
-        setCurrentRZ(rzs[0]);
+      const initialRz = (meta.rz && rzs.includes(meta.rz)) ? meta.rz : rzs[0];
+      if (initialRz){
+        rzSelect.value = initialRz;
+        setCurrentRZ(initialRz);
       }
     } else {
       setCurrentRZ(rzs[0] || null);

@@ -7,12 +7,14 @@ function toSheet(rows, headers) {
   return ws;
 }
 
-export async function exportarLoteAtual() {
+export async function exportarLoteAtual(metaOverride = {}) {
   const lotId = await getSetting('activeLotId', null);
   if (!lotId) return;
 
   const lot = await db.lots.get(lotId);
   const all = await db.items.where('lotId').equals(lotId).toArray();
+
+  const meta = { rz: lot?.rz, loteName: lot?.name, ...metaOverride };
 
   const conferidos = all.filter(i => i.status === 'conferido');
   const pendentes  = all.filter(i => i.status === 'pendente');
@@ -21,7 +23,7 @@ export async function exportarLoteAtual() {
   const H = ['RZ', 'Lote', 'SKU', 'Descrição', 'Qtd', 'Preço Méd', 'Valor Total', 'Status'];
 
   const mapRow = (i) => [
-    lot?.rz || '', lot?.name || '',
+    meta.rz || '', meta.loteName || '',
     i.sku, i.desc, i.qtd,
     i.precoMedio, i.valorTotal, i.status
   ];
@@ -33,8 +35,8 @@ export async function exportarLoteAtual() {
   const totalPendentes = pendentes.length;
   const totalExcedentes = excedentes.length;
   const resumoRows = [
-    ['RZ', lot?.rz || ''],
-    ['Lote', lot?.name || ''],
+    ['RZ', meta.rz || ''],
+    ['Lote', meta.loteName || ''],
     ['Criado em', lot?.createdAt || ''],
     ['Conferidos', totalConferidos],
     ['Pendentes', totalPendentes],
@@ -47,6 +49,7 @@ export async function exportarLoteAtual() {
   XLSX.utils.book_append_sheet(wb, toSheet(pendentes.map(mapRow),  H), 'Pendentes');
   XLSX.utils.book_append_sheet(wb, toSheet(excedentes.map(mapRow), H), 'Excedentes');
 
-  const name = `conferencia_${(lot?.name || 'lote')}_${new Date().toISOString().slice(0,10)}.xlsx`;
+  const safe = s => String(s || '').replace(/[^\p{L}\p{N}\-_. ]/gu, '').slice(0,64).trim();
+  const name = `conferencia_${safe(meta.rz)}_${safe(meta.loteName)}_${new Date().toISOString().slice(0,10)}.xlsx`;
   XLSX.writeFile(wb, name);
 }
