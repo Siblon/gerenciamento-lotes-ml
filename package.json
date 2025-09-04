@@ -18,5 +18,14 @@
     "vite": "^4.0.0",
     "vitest": "^0.34.0"
   },
-  "type": "module"
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Edge versions",
+    "last 2 Firefox versions",
+    "Safari >= 15.4"
+  ]
 }
