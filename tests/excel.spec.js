@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 vi.mock('../src/services/ncmQueue.js', () => ({ startNcmQueue: vi.fn() }));
 import { startNcmQueue } from '../src/services/ncmQueue.js';
 import { processarPlanilha } from '../src/utils/excel.js';
