@@ -2,7 +2,7 @@ import './styles.css';
 import { initImportPanel } from './components/ImportPanel.js';
 import { mountKpis } from '@/components/Kpis';
 import { updateBoot } from './utils/boot.js';
-import { exportConferidos } from './services/exportExcel.js';
+import { exportWorkbook } from './services/exportExcel.js';
 import { resetAll } from './store/db.js';
 import store from './store/index.js';
 
@@ -15,12 +15,22 @@ window.addEventListener('DOMContentLoaded', () => {
 
   const kpisHost = document.querySelector('#kpis-host');
   mountKpis(kpisHost);
+  const currentMeta = () => {
+    const rz = document.querySelector('#select-rz')?.value || store.selectRz?.() || '';
+    const lote = document.querySelector('#select-lote')?.value || store.selectLote?.() || '';
+    return { rz, lote };
+  };
 
   document.getElementById('finalizarBtn')?.addEventListener('click', () => {
-    exportConferidos(store.selectAllImportedItems());
-  });
-  document.getElementById('btn-exportar')?.addEventListener('click', () => {
-    exportConferidos(store.selectAllImportedItems());
+    const items = store.selectAllItems ? store.selectAllItems() : [];
+    const conferidos = items.filter(i => i.status === 'Conferido');
+    const excedentes = items.filter(i => i.status === 'Excedente');
+    const pendentes = items.filter(i => (i.status ?? 'Pendente') === 'Pendente');
+
+    exportWorkbook({
+      conferidos, pendentes, excedentes,
+      meta: currentMeta()
+    });
   });
 });
 

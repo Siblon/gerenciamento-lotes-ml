@@ -2,7 +2,7 @@
 import { db, setSetting, getSetting } from '../store/db.js';
 
 export async function initLotSelector() {
-  const sel = document.getElementById('select-lot'); // adicione <select id="select-lot"></select> no HTML
+  const sel = document.getElementById('select-lote'); // adicione <select id="select-lote"></select> no HTML
   if (!sel) return;
 
   const lots = await db.lots.orderBy('createdAt').reverse().toArray();

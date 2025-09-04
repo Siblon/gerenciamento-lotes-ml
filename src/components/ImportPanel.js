@@ -1,6 +1,7 @@
 // src/components/ImportPanel.js
 import { parsePlanilha } from '../utils/excel.js';
 import store, { setCurrentRZ, setRZs, setItens } from '../store/index.js';
+import { exportWorkbook } from '@/services/exportExcel';
 import { startNcmQueue } from '../services/ncmQueue.js';
 import { toast } from '../utils/toast.js';
 import { loadSettings, renderCounts, renderExcedentes } from '../utils/ui.js';
@@ -24,6 +25,12 @@ export function initImportPanel(render){
   ensureResetButton();
 
   let ncmActive = !!loadSettings().resolveNcm;
+
+  const currentMeta = () => {
+    const rz = document.querySelector('#select-rz')?.value || store.selectRz?.() || '';
+    const lote = document.querySelector('#select-lote')?.value || store.selectLote?.() || '';
+    return { rz, lote };
+  };
 
   fileInput?.addEventListener('change', async (e)=>{
     const f = e.target?.files?.[0];
@@ -95,6 +102,18 @@ export function initImportPanel(render){
     render?.();
     const input = document.querySelector('#input-codigo-produto');
     if (input) { input.focus(); input.select(); }
+  });
+
+  document.getElementById('btn-export')?.addEventListener('click', () => {
+    const items = store.selectAllItems ? store.selectAllItems() : [];
+    const conferidos = items.filter(i => i.status === 'Conferido');
+    const excedentes = items.filter(i => i.status === 'Excedente');
+    const pendentes = items.filter(i => (i.status ?? 'Pendente') === 'Pendente');
+
+    exportWorkbook({
+      conferidos, pendentes, excedentes,
+      meta: currentMeta()
+    });
   });
 
   const badge = document.getElementById('ncm-badge');
