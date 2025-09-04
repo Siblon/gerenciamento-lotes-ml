@@ -5,29 +5,35 @@ function getBootEl() {
 }
 
 /**
- * Mostra um toast e esconde automaticamente após `persistMs` (default 10s).
+ * Exibe um toast temporário com auto-hide de 10s.
+ * Pausa o temporizador ao passar o mouse e retoma ao sair.
  * @param {string} msg
- * @param {{level?: 'info'|'warn'|'error', persistMs?: number}} [opts]
+ * @param {{level?: 'info'|'warn'|'error'}} [opts]
  */
 export function updateBoot(msg, opts = {}) {
   const el = getBootEl();
   if (!el) return;
-  const { level = 'info', persistMs = 10000 } = opts;
+  const { level = 'info' } = opts;
 
   if (el.dataset) el.dataset.level = level;
-  el.innerHTML = msg;
-  el.classList?.remove('hidden');
+  const textEl = typeof el.querySelector === 'function' ? el.querySelector('.boot-text') : null;
+  if (textEl) textEl.textContent = msg;
 
-  // limpa timer anterior
-  if (hideTimer) {
-    clearTimeout(hideTimer);
-    hideTimer = null;
+  // limpa timer antigo
+  if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+
+  const onEnter = () => { if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; } };
+  const onLeave = () => { if (!hideTimer) hideTimer = setTimeout(() => el.classList.add('hidden'), 10_000); };
+
+  if (typeof el.removeEventListener === 'function') {
+    el.removeEventListener('mouseenter', onEnter);
+    el.removeEventListener('mouseleave', onLeave);
+    el.addEventListener('mouseenter', onEnter);
+    el.addEventListener('mouseleave', onLeave);
   }
 
-  // agenda auto-hide
-  hideTimer = setTimeout(() => {
-    el.classList?.add('hidden');
-  }, Math.max(0, persistMs));
+  el.classList?.remove?.('hidden');
+  hideTimer = setTimeout(() => el.classList?.add?.('hidden'), 10_000);
 }
 
 /** Esconde imediatamente o toast. */

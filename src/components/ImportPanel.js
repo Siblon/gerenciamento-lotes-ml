@@ -4,18 +4,21 @@ import store, { setCurrentRZ, setRZs, setItens } from '../store/index.js';
 import { startNcmQueue } from '../services/ncmQueue.js';
 import { toast } from '../utils/toast.js';
 import { loadSettings, renderCounts, renderExcedentes } from '../utils/ui.js';
-import { importPlanilhaAsLot, wireLotFileCapture, wireRzCapture, loadMeta } from '../services/importer.js';
+import { importPlanilhaAsLot, wireLotFileCapture, wireRzCapture } from '../services/importer.js';
 import { initLotSelector } from './LotSelector.js';
 import { updateBoot } from '../utils/boot.js';
-import { db, resetDb, setMeta } from '../store/db.js';
+import { db, resetDb, setMeta, getMeta } from '../store/db.js';
 
-export function initImportPanel(render){
+export async function initImportPanel(render){
   const fileInput = document.getElementById('file');
   const fileName  = document.getElementById('file-name');
   const rzSelect  = document.getElementById('select-rz');
+  const lotSelect = document.getElementById('select-lot');
   // hidratar UI com meta salvo
-  const meta = loadMeta();
-  if (rzSelect && meta.rz) rzSelect.value = meta.rz;
+  const savedRz = await getMeta('rzAtual', '');
+  if (rzSelect && savedRz) rzSelect.value = savedRz;
+  const savedLote = await getMeta('loteAtual', '');
+  if (lotSelect && savedLote) lotSelect.value = savedLote;
 
   wireLotFileCapture(fileInput);
   wireRzCapture(rzSelect);
@@ -77,7 +80,7 @@ export function initImportPanel(render){
     }
     if (rzSelect){
       rzSelect.innerHTML = rzs.map(rz=>`<option value="${rz}">${rz}</option>`).join('');
-      const initialRz = (meta.rz && rzs.includes(meta.rz)) ? meta.rz : rzs[0];
+      const initialRz = (savedRz && rzs.includes(savedRz)) ? savedRz : rzs[0];
       if (initialRz){
         rzSelect.value = initialRz;
         setCurrentRZ(initialRz);
@@ -89,12 +92,36 @@ export function initImportPanel(render){
   });
 
   rzSelect?.addEventListener('change', async e=>{
-    setCurrentRZ(e.target.value || null);
-    await setMeta('rzAtual', e.target.value || '');
-    updateBoot(`RZ atual: <strong>${e.target.value}</strong>`);
+    const newRz = e.target.value || '';
+    const loteCtx = lotSelect?.value || '';
+    const ok = typeof confirm === 'function' ? confirm('Deseja limpar itens conferidos/excedentes deste contexto?') : true;
+    if (ok) {
+      try {
+        await db.itens.where({ rz: newRz, lote: loteCtx }).delete();
+        await db.excedentes.where({ rz: newRz, lote: loteCtx }).delete();
+      } catch {}
+    }
+    setCurrentRZ(newRz || null);
+    await setMeta('rzAtual', newRz || '');
+    updateBoot(`RZ atual: <strong>${newRz}</strong>`);
     render?.();
     const input = document.querySelector('#input-codigo-produto');
     if (input) { input.focus(); input.select(); }
+  });
+
+  lotSelect?.addEventListener('change', async e => {
+    const newLot = e.target.value || '';
+    const rzCtx = rzSelect?.value || '';
+    const ok = typeof confirm === 'function' ? confirm('Deseja limpar itens conferidos/excedentes deste contexto?') : true;
+    if (ok) {
+      try {
+        await db.itens.where({ rz: rzCtx, lote: newLot }).delete();
+        await db.excedentes.where({ rz: rzCtx, lote: newLot }).delete();
+      } catch {}
+    }
+    await setMeta('loteAtual', newLot || '');
+    updateBoot(`Lote atual: <strong>${newLot}</strong>`);
+    render?.();
   });
 
   const badge = document.getElementById('ncm-badge');
@@ -117,8 +144,9 @@ export function initImportPanel(render){
 }
 
 function ensureResetButton() {
+  if (document.getElementById('btn-reset-db')) return;
   const host = document.querySelector('#card-importacao .card-header, #card-importacao .card-body') || document.body;
-  if (!host || typeof host.querySelector !== 'function' || host.querySelector('#btn-reset-db')) return;
+  if (!host || typeof host.querySelector !== 'function') return;
   const btn = document.createElement('button');
   btn.id = 'btn-reset-db';
   btn.className = 'btn btn-ghost';

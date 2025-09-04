@@ -4,6 +4,11 @@ import path from 'path';
 export default defineConfig({
   base: '/',
   root: '.',
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.VITE_APP_VERSION || ''),
+    __COMMIT_HASH__: JSON.stringify(process.env.VITE_COMMIT || ''),
+    __BRANCH__: JSON.stringify(process.env.VITE_BRANCH || ''),
+  },
   build: {
     // Gera bundle para engines modernas (TLA requer es2022+)
     target: ['es2022', 'chrome98', 'edge98', 'firefox102', 'safari15.4'],
