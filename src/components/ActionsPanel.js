@@ -8,6 +8,7 @@ import { openExcedenteModal } from './ExcedenteModal.js';
 import { updateBoot } from '../utils/boot.js';
 import { renderCounts } from '../utils/ui.js';
 import { saveConferido, saveExcedente } from '../services/persist.js';
+import { db } from '../db/indexed.js';
 
 // memória da última consulta
 let lastLookup = {
@@ -269,20 +270,23 @@ export function initActionsPanel(render){
     }
 
     const note = toExcedentes ? excedenteObs : '';
+    if (obsSelect) obsSelect.value = '';
+    if (precoInput) precoInput.value = '';
+    excedenteObs = '';
 
     try {
       if (toExcedentes && typeof store.registrarExcedente === 'function') {
         store.registrarExcedente({ sku, qty, price, note });
-        saveExcedente({ sku, descricao: '', qtd: qty, preco_unit: price, obs: note });
+        await saveExcedente({ sku, descricao: '', qtd: qty, preco_unit: price, obs: note });
       } else if (typeof store.conferir === 'function') {
         store.conferir(sku, { qty, price, note });
-        saveConferido({ sku, descricao: item?.descricao || '', qtd: qty, preco: price, obs: note });
+        await saveConferido({ sku, descricao: item?.descricao || '', qtd: qty, preco: price, obs: note });
       } else {
         console.warn('Ação de registro não disponível no store.');
       }
       render();
       window.refreshIndicators?.();
-      renderCounts();
+      await renderCounts();
       window.dispatchEvent?.(new CustomEvent('app:changed', { detail: { type: 'conferido:add', sku } }));
       toast.success('Item registrado');
       if (!toExcedentes) updateBoot(`Conferido: ${sku} • ${item?.descricao || ''}`);
@@ -291,9 +295,6 @@ export function initActionsPanel(render){
     } catch(e) {
       console.error(e); toast('Falha ao registrar', 'error');
     }
-    if (obsSelect) obsSelect.value = '';
-    if (precoInput) precoInput.value = '';
-    excedenteObs = '';
 
     codigoInput?.focus();
     codigoInput?.select();
@@ -309,40 +310,41 @@ export function initActionsPanel(render){
     else handleConsultar();
   });
 
-  btnFinal?.addEventListener('click', () => {
+  btnFinal?.addEventListener('click', async () => {
     try {
-      const rz = store.state.rzAtual;
-      const tot = store.state.totalByRZSku[rz] || {};
-      const meta = store.state.metaByRZSku[rz] || {};
-      const confMap = store.state.conferidosByRZSku[rz] || {};
-      const conferidos = Object.keys(confMap).map(sku => {
-        const m = meta[sku] || {};
-        const qtd = tot[sku] || 0;
-        const preco = Number(m.precoMedio || 0);
+      const lotId = window.currentLotId;
+      const itens = await db.itens.where('lotId').equals(lotId).toArray();
+      const conferidosRaw = await db.conferidos.where('lotId').equals(lotId).toArray();
+      const excedentesRaw = await db.excedentes.where('lotId').equals(lotId).toArray();
+
+      const itemMap = {};
+      itens.forEach(it => { itemMap[it.sku] = it; });
+
+      const conferidos = conferidosRaw.map(it => {
+        const meta = itemMap[it.sku] || {};
+        const preco = Number(meta.precoML || 0);
+        const qtd = Number(it.qtd || 0);
         return {
-          SKU: sku,
-          Descrição: m.descricao || '',
+          SKU: it.sku,
+          Descrição: meta.descricao || '',
           Qtd: qtd,
           'Preço Médio (R$)': preco,
           'Valor Total (R$)': qtd * preco,
-          NCM: m.ncm || '',
-          Observação: confMap[sku]?.observacao || ''
+          NCM: meta.ncm || ''
         };
       });
-      const pendentes = Object.keys(tot).filter(sku => !confMap[sku]).map(sku => {
-        const m = meta[sku] || {};
-        const qtd = tot[sku] || 0;
-        const preco = Number(m.precoMedio || 0);
-        return {
-          SKU: sku,
-          Descrição: m.descricao || '',
-          Qtd: qtd,
-          'Preço Médio (R$)': preco,
-          'Valor Total (R$)': qtd * preco,
-          NCM: m.ncm || ''
-        };
-      });
-      const excedentes = (store.state.excedentes[rz] || []).map(it => {
+
+      const conferidosSet = new Set(conferidosRaw.map(it => it.sku));
+      const pendentes = itens.filter(it => !conferidosSet.has(it.sku)).map(it => ({
+        SKU: it.sku,
+        Descrição: it.descricao || '',
+        Qtd: it.qtd,
+        'Preço Médio (R$)': it.precoML || 0,
+        'Valor Total (R$)': (it.qtd || 0) * (it.precoML || 0),
+        NCM: it.ncm || ''
+      }));
+
+      const excedentes = excedentesRaw.map(it => {
         const p = it.preco_unit === undefined || it.preco_unit === null ? null : Number(it.preco_unit);
         return {
           SKU: it.sku,
@@ -358,7 +360,7 @@ export function initActionsPanel(render){
       const sumQtd = arr => arr.reduce((s,it)=>s + Number(it.Qtd||0),0);
       const sumVal = arr => arr.reduce((s,it)=>s + Number(it['Valor Total (R$)']||0),0);
       const resumoRZ = [{
-        rz,
+        rz: '',
         conferidos: sumQtd(conferidos),
         pendentes: sumQtd(pendentes),
         excedentes: sumQtd(excedentes),

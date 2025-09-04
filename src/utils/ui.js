@@ -1,5 +1,6 @@
 import store from '../store/index.js';
 import { loadExcedentes, saveExcedente } from '../services/persist.js';
+import { db, countKpis } from '../db/indexed.js';
 
 const SETTINGS_KEY = 'confApp.settings';
 
@@ -42,12 +43,15 @@ export function wireNcmToggle() {
   chkAlt?.addEventListener('change', () => onChange(chkAlt.checked));
 }
 
-export function getExcedentes() {
+export async function getExcedentes() {
+  if (typeof window?.currentLotId === 'number') {
+    return await db.excedentes.where('lotId').equals(window.currentLotId).toArray();
+  }
   if (typeof store?.selectExcedentes === 'function') return store.selectExcedentes() || [];
   if (typeof store?.state?.rzAtual !== 'undefined') {
     return store.state.excedentes?.[store.state.rzAtual] || [];
   }
-  return loadExcedentes();
+  return await loadExcedentes();
 }
 
 export function addExcedente(ex) {
@@ -55,10 +59,10 @@ export function addExcedente(ex) {
   saveExcedente(ex);
 }
 
-export function renderExcedentes() {
+export async function renderExcedentes() {
   const tbody = document.getElementById('excedentesTable');
   if (!tbody) return;
-  const data = getExcedentes();
+  const data = await getExcedentes();
 
   tbody.innerHTML = '';
   data.forEach(ex => {
@@ -123,10 +127,33 @@ export function getPendentesItems() {
 
 function setText(el, value) { if (el) el.textContent = String(value); }
 
-export function renderCounts() {
+export async function renderCounts() {
+  if (typeof window?.currentLotId === 'number') {
+    try {
+      const { totItens, totConf, totExc, pend } = await countKpis(window.currentLotId);
+      const setText = (el, value) => { if (el) el.textContent = String(value); };
+      const kpiItens = document.querySelector('#card-importacao')?.closest('main')?.querySelector?.('.kpi-itens') || document.getElementById('count-itens');
+      setText(kpiItens, totItens);
+      setText(document.getElementById('kpi-total-val'), totItens);
+      setText(document.getElementById('count-conferidos'), totConf);
+      setText(document.getElementById('kpi-conf-val'), totConf);
+      const kpiExc = document.getElementById('excedentesCount') || document.getElementById('count-excedentes');
+      setText(kpiExc, totExc);
+      setText(document.getElementById('kpi-exc-val'), totExc);
+      const kpiPend = document.getElementById('count-pendentes') || document.getElementById('count-pend');
+      setText(kpiPend, pend);
+      setText(document.getElementById('kpi-pend-val'), pend);
+      const hdr = document.getElementById('hdr-conferidos');
+      if (hdr) hdr.textContent = `${totConf} de ${totItens} conferidos`;
+      return;
+    } catch (e) {
+      console.warn('renderCounts', e);
+    }
+  }
+
   const total = getAllItems().length;
   const conferidos = getConfirmedItems().length;
-  const excedentes = getExcedentes().length;
+  const excedentes = (await getExcedentes()).length;
   const pend = getPendentesItems().length;
 
   const kpiItens = document.querySelector('#card-importacao')?.closest('main')?.querySelector?.('.kpi-itens') || document.getElementById('count-itens');
@@ -146,4 +173,17 @@ export function renderCounts() {
 
   const hdr = document.getElementById('hdr-conferidos');
   if (hdr) hdr.textContent = `${conferidos} de ${total} conferidos`;
+}
+
+export async function refreshLoteSelector() {
+  const sel = document.getElementById('select-lote');
+  if (!sel) return;
+  const lotes = await db.lotes.toArray();
+  sel.innerHTML = lotes.map((l) => `<option value="${l.id}">${l.nome || 'Lote ' + l.id}</option>`).join('');
+  if (window.currentLotId) sel.value = String(window.currentLotId);
+  sel.onchange = async (e) => {
+    window.currentLotId = Number(e.target.value) || null;
+    await renderCounts();
+    await renderExcedentes();
+  };
 }

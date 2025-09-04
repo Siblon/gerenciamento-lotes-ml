@@ -1,6 +1,8 @@
 // src/components/ImportPanel.js
 import { parsePlanilha } from '../utils/excel.js';
 import store, { setCurrentRZ, setRZs, setItens } from '../store/index.js';
+import { createLote, bulkAddItens } from '../db/indexed.js';
+import { refreshLoteSelector } from '../utils/ui.js';
 import { startNcmQueue } from '../services/ncmQueue.js';
 import { toast } from '../utils/toast.js';
 import { loadSettings, renderCounts, renderExcedentes } from '../utils/ui.js';
@@ -32,8 +34,24 @@ export function initImportPanel(render){
     }
     setRZs(rzs);
     setItens(itens);
-    renderExcedentes();
-    renderCounts();
+
+    // registra lote e itens no IndexedDB
+    try {
+      const lotId = await createLote({ nome: name || 'Lote', rz: rzs[0] || '' });
+      await bulkAddItens(lotId, itens.map((it) => ({
+        sku: String(it.codigoML || '').trim().toUpperCase(),
+        descricao: String(it.descricao || ''),
+        precoML: Number(it.valorUnit || 0),
+        qtd: Number(it.qtd || 0),
+      })));
+      window.currentLotId = lotId;
+      await refreshLoteSelector();
+    } catch (err) {
+      console.error(err);
+    }
+
+    await renderExcedentes();
+    await renderCounts();
     window.dispatchEvent?.(new CustomEvent('app:changed', { detail: { type: 'import' } }));
     try {
       if (ncmActive) startNcmQueue(itens);
