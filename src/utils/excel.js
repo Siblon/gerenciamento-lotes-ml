@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx';
+// Novo util de Excel com estilos
+import XLSX from 'xlsx-js-style';
 import { setRZs, setItens } from '../store/index.js';
 import { parseBRLLoose } from './number.js';
 import { startNcmQueue } from '../services/ncmQueue.js';
@@ -279,4 +280,69 @@ export function exportarConferencia({ conferidos, pendentes, excedentes, resumoR
   ]);
 
   XLSX.writeFile(wb, `conferencia_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ==== Utilidades novas para exportação estilizada ====
+
+/**
+ * buildWorkbook cria uma planilha estilizada.
+ * @param {{
+ *   sheetName: string,
+ *   rows: Array<Record<string, any>>,
+ *   rz?: string,
+ *   lote?: string
+ * }} opts
+ */
+export function buildWorkbook({ sheetName, rows, rz, lote }) {
+  const data = [];
+  // Cabeçalho com colunas fixas e metadados do lote
+  const header = ['SKU', 'Descrição', 'Qtd', 'Preço Méd', 'Valor Total', 'Status', 'RZ', 'Lote'];
+  data.push(header);
+  for (const r of rows) {
+    data.push([
+      r.sku ?? '',
+      r.descricao ?? '',
+      r.qtd ?? 0,
+      r.precoMedio ?? '',
+      r.valorTotal ?? '',
+      r.status ?? '',
+      rz ?? '',
+      lote ?? ''
+    ]);
+  }
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  // Estilo do cabeçalho: fundo laranja, texto branco e bold, centralizado
+  const headerStyle = {
+    fill: { patternType: 'solid', fgColor: { rgb: 'FF7A1A' } }, // laranja
+    font: { color: { rgb: 'FFFFFF' }, bold: true },
+    alignment: { vertical: 'center', horizontal: 'center' }
+  };
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const cell = XLSX.utils.encode_cell({ r: 0, c });
+    if (!ws[cell]) continue;
+    ws[cell].s = headerStyle;
+  }
+
+  // Larguras amigáveis
+  ws['!cols'] = [
+    { wch: 14 }, // SKU
+    { wch: 50 }, // Descrição
+    { wch: 6  }, // Qtd
+    { wch: 10 }, // Preço Méd
+    { wch: 12 }, // Valor Total
+    { wch: 12 }, // Status
+    { wch: 12 }, // RZ
+    { wch: 20 }  // Lote
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName || 'Conferidos');
+  return wb;
+}
+
+export function downloadWorkbook(wb, filename) {
+  // filename já deve vir “limpo”
+  XLSX.writeFile(wb, filename, { compression: true });
 }

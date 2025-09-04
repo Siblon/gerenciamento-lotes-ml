@@ -7,7 +7,7 @@ import { loadSettings, renderCounts, renderExcedentes } from '../utils/ui.js';
 import { importPlanilhaAsLot, wireLotFileCapture, wireRzCapture, loadMeta } from '../services/importer.js';
 import { initLotSelector } from './LotSelector.js';
 import { updateBoot } from '../utils/boot.js';
-import { db, resetDb, setMeta } from '../store/db.js';
+import { db, resetAll, setSetting } from '../store/db.js';
 
 export function initImportPanel(render){
   const fileInput = document.getElementById('file');
@@ -33,8 +33,8 @@ export function initImportPanel(render){
       fileName.title = name;
     }
     if (!f) return;
-    const loteName = name;
-    await setMeta('loteAtual', loteName);
+      const loteName = name;
+      await setSetting('loteName', loteName);
     updateBoot(`Lote carregado: <strong>${loteName}</strong> — prossiga com a importação.`);
     const buf = (f.arrayBuffer ? await f.arrayBuffer() : f);
     let rzs = [];
@@ -88,10 +88,10 @@ export function initImportPanel(render){
     render?.();
   });
 
-  rzSelect?.addEventListener('change', async e=>{
-    setCurrentRZ(e.target.value || null);
-    await setMeta('rzAtual', e.target.value || '');
-    updateBoot(`RZ atual: <strong>${e.target.value}</strong>`);
+    rzSelect?.addEventListener('change', async e=>{
+      setCurrentRZ(e.target.value || null);
+      await setSetting('rz', e.target.value || '');
+      updateBoot(`RZ atual: <strong>${e.target.value}</strong>`);
     render?.();
     const input = document.querySelector('#input-codigo-produto');
     if (input) { input.focus(); input.select(); }
@@ -130,7 +130,7 @@ function ensureResetButton() {
 
   btn.addEventListener('click', async () => {
     if (!confirm('Zerar todos os dados (itens, excedentes e preferências)?')) return;
-    await resetDb();
+      await resetAll();
     updateBoot('Banco limpo. Você pode importar uma nova planilha e selecionar o RZ.');
     // opcional: também limpe elementos visuais/contadores via eventos do seu store
   });

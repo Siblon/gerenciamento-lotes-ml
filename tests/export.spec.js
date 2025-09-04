@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 import { exportarConferencia } from '../src/utils/excel.js';
 
 describe('exportarConferencia', () => {
