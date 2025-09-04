@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+vi.mock('../src/utils/ui.js', () => ({ renderCounts: vi.fn(), loadSettings: () => ({}), renderExcedentes: () => {} }));
 import { initActionsPanel } from '../src/components/ActionsPanel.js';
 import store from '../src/store/index.js';
 

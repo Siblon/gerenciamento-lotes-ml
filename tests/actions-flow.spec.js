@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+vi.mock('../src/utils/ui.js', () => ({ renderCounts: vi.fn(), loadSettings: () => ({}), renderExcedentes: () => {} }));
 import { initActionsPanel } from '../src/components/ActionsPanel.js';
 import store from '../src/store/index.js';
 
@@ -78,7 +79,7 @@ describe('actions flow', () => {
     btnReg.click();
     const exc = store.state.excedentes['R1'][0];
     expect(exc.sku).toBe('ZZZ');
-    expect(exc.preco).toBeUndefined();
+    expect(exc.preco_unit).toBeUndefined();
   });
 
   it('excedente registers without price', () => {
@@ -87,7 +88,7 @@ describe('actions flow', () => {
     preco.value = '';
     btnReg.click();
     const exc = store.state.excedentes['R1'][0];
-    expect(exc.preco).toBeUndefined();
+    expect(exc.preco_unit).toBeUndefined();
   });
 
   it('Enter consults and Ctrl+Enter registers', () => {

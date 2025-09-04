@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+vi.mock('../src/utils/ui.js', () => ({ renderCounts: vi.fn(), loadSettings: () => ({}), renderExcedentes: () => {} }));
 import { initActionsPanel } from '../src/components/ActionsPanel.js';
 import store from '../src/store/index.js';
 
@@ -54,7 +55,7 @@ describe('actions excedente', () => {
     preco.value = '';
     btnReg.click();
     const exc = store.state.excedentes['R1'][0];
-    expect(exc.preco).toBeUndefined();
+    expect(exc.preco_unit).toBeUndefined();
     expect(obsSelect.value).toBe('');
     expect(preco.value).toBe('');
     expect(document.activeElement).toBe(input);
@@ -66,6 +67,6 @@ describe('actions excedente', () => {
     preco.value = '10';
     btnReg.click();
     const exc = store.state.excedentes['R1'][0];
-    expect(exc.preco).toBe(10);
+    expect(exc.preco_unit).toBe(10);
   });
 });

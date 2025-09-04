@@ -71,8 +71,9 @@ th.sticky{left:0;z-index:2}
   .actions-grid .row{grid-template-columns:1fr auto auto}
 }
 
-/* Kill-switch para garantir que o painel NCM não apareça na home */
-#card-ncm,[data-panel="ncm"]{display:none !important}
+/* Kill-switch para garantir que o painel NCM possa ser ocultado */
+.ncm-disabled #card-ncm,
+.ncm-disabled [data-panel="ncm"]{display:none !important}
 
 /* === KPI icons sizing & layout ========================================== */
 .kpis {

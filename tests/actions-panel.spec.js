@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+vi.mock('../src/utils/ui.js', () => ({ renderCounts: vi.fn(), loadSettings: () => ({}), renderExcedentes: () => {} }));
 import { initActionsPanel } from '../src/components/ActionsPanel.js';
 import store from '../src/store/index.js';
 
@@ -59,7 +60,7 @@ describe('ActionsPanel behaviors', () => {
     btnReg.click();
     const exc = store.state.excedentes['R1'][0];
     expect(exc.sku).toBe('ABC');
-    expect(exc.preco).toBeUndefined();
+    expect(exc.preco_unit).toBeUndefined();
   });
 
   it('focus returns to input after register', () => {
