@@ -1,6 +1,7 @@
 import store from '../store/index.js';
 import { loadPrefs, savePrefs } from '../utils/prefs.js';
 import { startNcmQueue } from '../services/ncmQueue.js';
+import { getNcmCheckedForSku, setNcmCheckedForSku } from './ActionsPanel.js';
 
 export function initNcmPanel(){
   const panel = document.getElementById('card-ncm');
@@ -92,12 +93,52 @@ export function initNcmPanel(){
     }
     const start = page * limit;
     const slice = data.slice(start, start + limit);
-    if(tbody) tbody.innerHTML = slice.map(r=>{
-      const rowCls = r.status === 'ok' ? 'row-ok' : r.status === 'falha' ? 'row-falha' : '';
-      const badgeCls = r.status === 'ok' ? 'badge-ok' : r.status === 'falha' ? 'badge-falha' : '';
-      const status = r.status ? `<span class="badge ${badgeCls}">${r.status}</span>` : '';
-      return `<tr class="${rowCls}"><td>${r.sku}</td><td>${r.desc}</td><td>${r.ncm}</td><td>${r.source}</td><td>${status}</td></tr>`;
-    }).join('');
+    if (tbody) {
+      tbody.innerHTML = '';
+      slice.forEach(r => {
+        const tr = document.createElement('tr');
+        const rowCls = r.status === 'ok' ? 'row-ok' : r.status === 'falha' ? 'row-falha' : '';
+        if (rowCls) tr.className = rowCls;
+
+        const tdSku = document.createElement('td');
+        tdSku.textContent = r.sku;
+        tr.appendChild(tdSku);
+
+        const tdDesc = document.createElement('td');
+        tdDesc.textContent = r.desc;
+        tr.appendChild(tdDesc);
+
+        const tdNcm = document.createElement('td');
+        tdNcm.textContent = r.ncm;
+        tr.appendChild(tdNcm);
+
+        const tdSource = document.createElement('td');
+        tdSource.textContent = r.source;
+        tr.appendChild(tdSource);
+
+        const tdStatus = document.createElement('td');
+        if (r.status) {
+          const badge = document.createElement('span');
+          const badgeCls = r.status === 'ok' ? 'badge-ok' : r.status === 'falha' ? 'badge-falha' : '';
+          badge.className = `badge ${badgeCls}`;
+          badge.textContent = r.status;
+          tdStatus.appendChild(badge);
+        }
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-ghost';
+        btn.type = 'button';
+        btn.textContent = getNcmCheckedForSku(r.sku) ? 'Desmarcar' : 'Marcar OK';
+        btn.addEventListener('click', () => {
+          const now = !getNcmCheckedForSku(r.sku);
+          setNcmCheckedForSku(r.sku, now);
+          btn.textContent = now ? 'Desmarcar' : 'Marcar OK';
+        });
+        tdStatus.appendChild(btn);
+        tr.appendChild(tdStatus);
+
+        tbody.appendChild(tr);
+      });
+    }
     if(pageInfo){
       const end = Math.min(start + slice.length, total);
       pageInfo.textContent = total ? `${start+1}-${end}/${total}` : '0/0';
