@@ -15,9 +15,15 @@ export default defineConfig({
         ncm: path.resolve(__dirname, 'public/ncm.html'),
       },
     },
+    commonjsOptions: {
+      transformMixedEsModules: true,
+    },
   },
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
+  },
+  optimizeDeps: {
+    include: ['xlsx-js-style'],
   },
   server: {
     proxy: {

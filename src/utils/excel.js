@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 import { setRZs, setItens } from '../store/index.js';
 import { parseBRLLoose } from './number.js';
 import { startNcmQueue } from '../services/ncmQueue.js';
@@ -279,4 +279,26 @@ export function exportarConferencia({ conferidos, pendentes, excedentes, resumoR
   ]);
 
   XLSX.writeFile(wb, `conferencia_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// Exporta dados simples aplicando estilo no cabeçalho
+export function exportToExcel(data, meta = {}) {
+  const ws = XLSX.utils.json_to_sheet(data);
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const addr = XLSX.utils.encode_cell({ r: 0, c });
+    if (!ws[addr]) continue;
+    ws[addr].s = {
+      fill: { patternType: 'solid', fgColor: { rgb: 'FFA500' } },
+      font: { color: { rgb: 'FFFFFF' }, bold: true },
+      alignment: { horizontal: 'center', vertical: 'center' },
+    };
+  }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Planilha');
+  const safe = s => String(s || '').replace(/[\\/:*?"<>|]/g, '-');
+  const { lote = '', rz = '', date = new Date() } = meta;
+  const timestamp = new Date(date).toISOString().replace(/[-:T]/g, '').split('.')[0];
+  const filename = `${safe(lote)}_${safe(rz)}_${timestamp}.xlsx`;
+  XLSX.writeFile(wb, filename);
 }
