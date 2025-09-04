@@ -140,6 +140,13 @@ th.sticky{left:0;z-index:2}
   padding-top: 8px;
 }
 
+#boot-status{
+  position:fixed;left:16px;bottom:16px;z-index:1000;
+  background:#0B1221;color:#fff;border-radius:12px;
+  padding:10px 14px;box-shadow:0 10px 25px rgba(0,0,0,.2);
+}
+#boot-status strong{ margin-right:6px; color:#A7B3FF; }
+
 /* Responsivo */
 @media (max-width: 920px){
   .kpis{grid-template-columns:1fr 1fr}

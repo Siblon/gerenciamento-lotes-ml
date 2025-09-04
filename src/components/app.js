@@ -8,7 +8,8 @@ import { initNcmPanel } from './NcmPanel.js';
 import { initDashboard } from './Dashboard.js';
 import { refreshIndicators } from './Indicators.js';
 import { updateBoot } from '../utils/boot.js';
-import { wireNcmToggle, renderExcedentes, renderCounts, loadSettings, saveSettings, wireExcedenteDialog } from '../utils/ui.js';
+import { wireNcmToggle, renderExcedentes, renderCounts, loadSettings, saveSettings } from '../utils/ui.js';
+import { loadConferidos, loadExcedentes } from '../services/persist.js';
 import store from '../store/index.js';
 
 export function initApp(){
@@ -47,10 +48,11 @@ export function initApp(){
   applySettings();
   wireSettingsUI();
   wireNcmToggle();
-  wireExcedenteDialog();
+  window.refreshExcedentesTable = renderExcedentes;
   renderExcedentes();
   renderCounts();
   refreshIndicators();
+  window.refreshKpis?.();
   render();
 }
 
@@ -128,9 +130,10 @@ function exportCSV(name, rows, headers) {
 }
 
 function rowsConferidos() {
-  const items = (typeof store?.selectAllConfirmedItems === 'function')
-    ? store.selectAllConfirmedItems() || []
-    : [];
+  const items = (() => {
+    if (typeof store?.selectAllConfirmedItems === 'function') return store.selectAllConfirmedItems() || [];
+    return loadConferidos();
+  })();
   return items.map(it => ({
     SKU: it.sku,
     Descrição: it.descricao || it.desc || '',
@@ -160,7 +163,7 @@ function rowsPendentes() {
 function rowsExcedentes() {
   const local = (() => {
     if (typeof store?.selectExcedentes === 'function') return store.selectExcedentes() || [];
-    try { return JSON.parse(localStorage.getItem('confApp.excedentes')) || []; } catch { return []; }
+    return loadExcedentes();
   })();
   return local.map(ex => ({
     SKU: ex.sku,
