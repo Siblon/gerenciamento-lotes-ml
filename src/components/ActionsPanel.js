@@ -126,7 +126,9 @@ function abrirModalExcedente(sku, fonte='manual'){
 }
 
 export function initActionsPanel(render){
-  const codigoInput = document.getElementById('input-codigo-produto');
+  const codigoInput = document.getElementById('input-codigo-produto')
+    || document.getElementById('codigo-produto')
+    || document.getElementById('in-sku');
   const btnCons = document.querySelector('#btn-consultar') || Array.from(document.querySelectorAll('button')).find(b=>/consultar/i.test(b.textContent||''));
   const btnReg  = document.querySelector('#btn-registrar') || Array.from(document.querySelectorAll('button')).find(b=>/registrar/i.test(b.textContent||''));
   const btnFinal = document.querySelector('#finalizarBtn');
@@ -138,8 +140,23 @@ export function initActionsPanel(render){
   const selRateio = document.getElementById('fin-rateio');
   const selMode   = document.getElementById('fin-mode');
 
+  let lastAction = null; // 'consult' | 'register'
+
   btnCons?.classList.add('btn','btn-primary');
   btnReg?.classList.add('btn','btn-primary');
+
+  function safeClick(el){ el && typeof el.click === 'function' && el.click(); }
+
+  function exigeLoteAtual(){
+    const sel = document.getElementById('select-lote');
+    if (!sel) return 1;
+    const lotId = Number(sel.value);
+    if (!lotId){
+      window.updateBoot?.('Selecione um lote antes de consultar/registrar ⚠️');
+      return null;
+    }
+    return lotId;
+  }
 
   let excedenteObs = '';
 
@@ -205,6 +222,9 @@ export function initActionsPanel(render){
   selMode?.addEventListener('change', ()=>{ const p = loadPrefs(); p.calcFreteMode = selMode.value; savePrefs(p); window.refreshIndicators?.(); });
 
   function handleConsultar(fonte='manual') {
+    lastAction = 'consult';
+    const lotId = exigeLoteAtual();
+    if (!lotId) return false;
     const sku = normalizeSku(codigoInput?.value || '');
     if (sku.length < 3) { toast('Código vazio', 'warn'); return false; }
     const active = document.activeElement;
@@ -242,9 +262,12 @@ export function initActionsPanel(render){
     }
   }
 
-  btnCons?.addEventListener('click', ()=>handleConsultar('manual'));
+  btnCons?.addEventListener('click', () => { lastAction = 'consult'; handleConsultar('manual'); });
 
   async function handleRegistrar() {
+    lastAction = 'register';
+    const lotId = exigeLoteAtual();
+    if (!lotId) return;
     const sku = normalizeSku(codigoInput?.value || '');
     const priceStr = precoInput?.value || '';
     const obsPreset = obsSelect?.value || '';
@@ -287,7 +310,9 @@ export function initActionsPanel(render){
       toast.success('Item registrado');
       if (!toExcedentes) updateBoot(`Conferido: ${sku} • ${item?.descricao || ''}`);
       if (typeof window.refreshKpis === 'function') window.refreshKpis();
+      window.refreshAll?.();
       setLastLookup(null, false, null);
+      lastAction = null;
     } catch(e) {
       console.error(e); toast('Falha ao registrar', 'error');
     }
@@ -299,14 +324,22 @@ export function initActionsPanel(render){
     codigoInput?.select();
   }
 
-  btnReg?.addEventListener('click', handleRegistrar);
+  btnReg?.addEventListener('click', () => { lastAction = 'register'; handleRegistrar(); });
 
-  codigoInput?.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-    if (e.ctrlKey) { handleRegistrar(); return; }
-    if (lastLookup.okToRegister) handleRegistrar();
-    else handleConsultar();
+  codigoInput?.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter') return;
+    ev.preventDefault();
+    ev.stopPropagation?.();
+    if (ev.ctrlKey) { safeClick(btnReg); return; }
+    if (lastAction === 'consult') safeClick(btnReg);
+    else safeClick(btnCons);
+  });
+
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter') return;
+    if (document.activeElement === codigoInput) return;
+    if (lastAction === 'consult') safeClick(btnReg);
+    else safeClick(btnCons);
   });
 
   btnFinal?.addEventListener('click', () => {
