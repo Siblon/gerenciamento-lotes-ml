@@ -126,14 +126,25 @@ th.sticky{left:0;z-index:2}
 .ncm-disabled [data-panel="ncm"]{display:none !important}
 
 /* === KPI icons sizing & layout ========================================== */
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-4);margin-bottom:var(--sp-4)}
-.kpi{
-  display:flex;align-items:center;gap:12px;
-  padding:14px 16px;border:1px solid var(--border);border-radius:16px;background:#fff;box-shadow:var(--shadow);
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 16px 0 8px;
 }
-.kpi svg{width:26px;height:26px;opacity:.9}
-.kpi .count{font-weight:800;font-size:20px;color:#0B1221}
-.kpi .label{font-size:13px;color:var(--color-muted)}
+.kpi-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #eef1f4;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+.kpi-icon { color: #1F6FEB; }
+.kpi-label { font-size: 12px; color: #667085; }
+.kpi-value { font-size: 22px; font-weight: 700; color: #0f172a; }
 
 .ncm-inline-actions {
   border-top: 1px dashed var(--border);
@@ -148,13 +159,8 @@ th.sticky{left:0;z-index:2}
 #boot-status strong{ margin-right:6px; color:#A7B3FF; }
 
 /* Responsivo */
-@media (max-width: 920px){
-  .kpis{grid-template-columns:1fr 1fr}
-}
-@media (max-width: 560px){
-  .kpis{grid-template-columns:1fr}
-  .actions{display:flex;gap:8px;flex-wrap:wrap}
-}
+@media (max-width: 900px){ .kpis { grid-template-columns: repeat(2, 1fr);} }
+@media (max-width: 520px){ .kpis { grid-template-columns: 1fr;} .actions{display:flex;gap:8px;flex-wrap:wrap} }
 
 
 /* Toast (boot) auto-hide */
