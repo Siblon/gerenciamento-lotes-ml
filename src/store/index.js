@@ -48,6 +48,10 @@ const state = {
   itemTags: {},
 };
 
+// assinatura leve (pub/sub quando itens mudarem)
+const listeners = new Set();
+export function subscribeCounts(fn) { listeners.add(fn); return () => listeners.delete(fn); }
+
 function updateContadores(rz){
   const totalMap = state.totalByRZSku[rz] || {};
   const confMap = state.conferidosByRZSku[rz] || {};
@@ -55,6 +59,18 @@ function updateContadores(rz){
   const conf = Object.keys(confMap).filter(sku => (confMap[sku]?.qtd || 0) >= (totalMap[sku] || 0)).length;
   const exc  = (state.excedentes[rz] || []).length;
   state.contadores[rz] = { conferidos: conf, total, excedentes: exc };
+  listeners.forEach(l => l());
+}
+
+// selects agregados
+export function selectCounts() {
+  const rz = state.rzAtual || state.currentRZ;
+  const c = state.contadores[rz] || {};
+  const total = c.total ?? 0;
+  const conferidos = c.conferidos ?? 0;
+  const excedentes = c.excedentes ?? 0;
+  const pendentes = Math.max(0, total - conferidos - excedentes);
+  return { total, conferidos, excedentes, pendentes };
 }
 
 export function setCurrentRZ(rz){
@@ -104,6 +120,7 @@ export function setItens(items = []){
   state.conferidosByRZSku = {};
   state.excedentes = {};
   if(!state.currentRZ) state.currentRZ = Object.keys(itemsByRZ)[0] || null;
+  if(state.currentRZ) updateContadores(state.currentRZ);
   try{ localStorage.setItem(NCM_CACHE_KEY, JSON.stringify(state.ncmCache)); }catch{}
   return { itemsByRZ, totalByRZSku, metaByRZSku };
 }
@@ -396,6 +413,6 @@ export function selectAllImportedItems(){
   return items;
 }
 
-const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir, registrarExcedente, setItemNcm, setItemNcmStatus, tagItem, untagItem, selectAllItems, selectAllImportedItems, setExcedente, setDescarte, selectDescartes, setRZs, setItens };
+const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir, registrarExcedente, setItemNcm, setItemNcmStatus, tagItem, untagItem, selectAllItems, selectAllImportedItems, setExcedente, setDescarte, selectDescartes, setRZs, setItens, selectCounts, subscribeCounts };
 
 export default store;
