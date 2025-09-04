@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <title>Sistema de Conferência</title>
-  <script type="module" crossorigin src="/assets/main-c5f0157a.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/ncmQueue-5277f22d.js">
-  <link rel="stylesheet" href="/assets/index-2ce20c69.css">
+  <script type="module" crossorigin src="/assets/main-e6cbf0ad.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/ncmQueue-0b48ccb8.js">
+  <link rel="stylesheet" href="/assets/index-909508a5.css">
 </head>
 <body>
   <main class="container">
@@ -15,6 +15,10 @@
       </h1>
       <div class="actions">
         <a href="/ncm.html" title="Console de NCM" class="btn btn-ghost">NCM</a>
+        <label class="switch" style="display:inline-flex;gap:8px;align-items:center">
+          <input type="checkbox" id="resolve-ncm" />
+          <span>Resolver NCM</span>
+        </label>
         <button id="helpBtn" title="Ajuda/Atalhos" aria-label="Ajuda" class="btn btn-ghost">?</button>
       </div>
     </header>
@@ -303,7 +307,7 @@
       </div>
       <div class="field">
         <label for="exc-preco">Preço unitário (R$)</label>
-        <input id="exc-preco" type="number" step="0.01" min="0.01" required class="input" />
+        <input id="exc-preco" type="number" step="0.01" min="0" class="input" />
       </div>
       <div class="field">
         <label for="exc-obs">Observação</label>
