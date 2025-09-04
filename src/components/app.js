@@ -9,6 +9,7 @@ import { initDashboard } from './Dashboard.js';
 import { refreshIndicators } from './Indicators.js';
 import { updateBoot } from '../utils/boot.js';
 import { wireNcmToggle, renderExcedentes, renderCounts, loadSettings, saveSettings, wireExcedenteDialog } from '../utils/ui.js';
+import store from '../store/index.js';
 
 export function initApp(){
   const render = () => { renderResults(); window.updateDashboard?.(); };
@@ -98,7 +99,107 @@ function wireSettingsUI() {
       s.freightMode = selFreight.value;
       saveSettings(s);
       applySettings();
-      updateBoot('Configurações salvas ⚙️');
-    }
-  });
+    updateBoot('Configurações salvas ⚙️');
+  }
+});
 }
+
+// ===== Export helpers =====
+function toCSV(rows, headers) {
+  const esc = v => {
+    const s = (v == null ? '' : String(v));
+    return /[",\n;]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+  };
+  const head = headers.map(esc).join(';');
+  const body = rows.map(r => headers.map(h => esc(r[h])).join(';')).join('\n');
+  return head + '\n' + body;
+}
+
+function downloadFile(name, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportCSV(name, rows, headers) {
+  const csv = toCSV(rows, headers);
+  downloadFile(name, new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+}
+
+function rowsConferidos() {
+  const items = (typeof store?.selectAllConfirmedItems === 'function')
+    ? store.selectAllConfirmedItems() || []
+    : [];
+  return items.map(it => ({
+    SKU: it.sku,
+    Descrição: it.descricao || it.desc || '',
+    Qtd: it.qtd || it.quantidade || 0,
+    'Preço Médio (R$)': it.preco_ml_unit ?? it.preco ?? 0,
+    'Valor Total (R$)': (Number(it.qtd || 0) * Number(it.preco_ml_unit ?? it.preco ?? 0)).toFixed(2),
+    Status: 'Conferido'
+  }));
+}
+
+function rowsPendentes() {
+  const all = (typeof store?.selectAllImportedItems === 'function')
+    ? store.selectAllImportedItems() || []
+    : [];
+  const conf = new Set(rowsConferidos().map(r => r.SKU));
+  const exc = new Set(rowsExcedentes().map(r => r.SKU));
+  return all.filter(x => !conf.has(x.sku) && !exc.has(x.sku)).map(it => ({
+    SKU: it.sku,
+    Descrição: it.descricao || it.desc || '',
+    Qtd: it.qtd || it.quantidade || 0,
+    'Preço Médio (R$)': it.preco_ml_unit ?? it.preco ?? 0,
+    'Valor Total (R$)': (Number(it.qtd || 0) * Number(it.preco_ml_unit ?? it.preco ?? 0)).toFixed(2),
+    Status: 'Pendente'
+  }));
+}
+
+function rowsExcedentes() {
+  const local = (() => {
+    if (typeof store?.selectExcedentes === 'function') return store.selectExcedentes() || [];
+    try { return JSON.parse(localStorage.getItem('confApp.excedentes')) || []; } catch { return []; }
+  })();
+  return local.map(ex => ({
+    SKU: ex.sku,
+    Descrição: ex.descricao || ex.desc || '',
+    Qtd: ex.qtd || 0,
+    'Preço Unitário (R$)': ex.preco_unit ?? '',
+    'Valor Total (R$)': (ex.preco_unit == null ? '' : (Number(ex.preco_unit) * Number(ex.qtd || 0)).toFixed(2)),
+    Status: 'Excedente'
+  }));
+}
+
+function doExport() {
+  const conferidos = rowsConferidos();
+  const pendentes  = rowsPendentes();
+  const excedentes = rowsExcedentes();
+
+  const hConf = ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)','Status'];
+  const hPend = ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)','Status'];
+  const hExc  = ['SKU','Descrição','Qtd','Preço Unitário (R$)','Valor Total (R$)','Status'];
+
+  const hasXLSX = typeof window !== 'undefined' && window.XLSX && typeof XLSX.utils?.book_new === 'function';
+
+  if (hasXLSX) {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(conferidos, { header: hConf }), 'Conferidos');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pendentes , { header: hPend }), 'Pendentes');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(excedentes, { header: hExc  }), 'Excedentes');
+    const wbout = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    downloadFile(`conferencia_${new Date().toISOString().slice(0,10)}.xlsx`, new Blob([wbout], { type: 'application/octet-stream' }));
+  } else {
+    exportCSV(`conferidos_${new Date().toISOString().slice(0,10)}.csv`, conferidos, hConf);
+    exportCSV(`pendentes_${new Date().toISOString().slice(0,10)}.csv`,  pendentes , hPend);
+    exportCSV(`excedentes_${new Date().toISOString().slice(0,10)}.csv`, excedentes, hExc );
+  }
+}
+
+// Ligar no botão:
+(function wireExportButton(){
+  const btn = document.getElementById('exportBtn');
+  if (!btn) return;
+  btn.addEventListener('click', doExport);
+})();
