@@ -4,6 +4,8 @@ import store, { setCurrentRZ, setRZs, setItens } from '../store/index.js';
 import { startNcmQueue } from '../services/ncmQueue.js';
 import { toast } from '../utils/toast.js';
 import { loadSettings, renderCounts, renderExcedentes } from '../utils/ui.js';
+import { importPlanilhaAsLot } from '../services/importer.js';
+import { initLotSelector } from './LotSelector.js';
 
 export function initImportPanel(render){
   const fileInput = document.getElementById('file');
@@ -29,6 +31,24 @@ export function initImportPanel(render){
       console.error(err);
       toast.error('Não foi possível processar a planilha...');
       return;
+    }
+
+    try {
+      await importPlanilhaAsLot({
+        file: f,
+        selectedRz: rzs[0],
+        parsedItems: itens.map(it => ({
+          sku: it.codigoML,
+          descricao: it.descricao,
+          qtd: it.qtd,
+          preco_ml_unit: it.valorUnit,
+          valor_total: Number(it.valorUnit || 0) * Number(it.qtd || 0),
+          status: 'pendente'
+        }))
+      });
+      initLotSelector();
+    } catch (err) {
+      console.error(err);
     }
     setRZs(rzs);
     setItens(itens);
