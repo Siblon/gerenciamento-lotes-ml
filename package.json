@@ -6,7 +6,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run --reporter=dot --silent",
-    "test:verbose": "cross-env VERBOSE=1 vitest run --reporter=verbose"
+    "test:verbose": "cross-env VERBOSE=1 vitest run --reporter=verbose",
+    "health": "echo 'Abra o app em http://localhost:5173/?nocache=1 e veja \"HEALTH MODE\" no console'",
+    "reset-data": "node scripts/reset-data.js"
   },
   "dependencies": {
     "@zxing/browser": "^0.1.5",

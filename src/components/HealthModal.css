@@ -1,0 +1,5 @@
+.health-modal { padding: 16px; }
+.health-modal ul { list-style: none; padding: 0; }
+.health-modal li { margin: 8px 0; }
+.health-modal .status-ok { color: var(--success, #22C55E); }
+.health-modal .status-fail { color: var(--danger, #EF4444); }

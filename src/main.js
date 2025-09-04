@@ -1,6 +1,7 @@
 import './styles.css';
 import { initImportPanel } from './components/ImportPanel.js';
 import { initLotSelector } from './components/LotSelector.js';
+import { initHealthModal } from './components/HealthModal.js';
 import { getCurrentLotId, countByStatus, getItemsByLotAndStatus, clearAll } from './store/db.js';
 
 async function renderPendentes(lotId) {
@@ -47,5 +48,6 @@ window.resetAllData = async () => { await clearAll(); window.location.reload(); 
 window.addEventListener('DOMContentLoaded', async () => {
   await initLotSelector();
   initImportPanel();
+  initHealthModal();
   refreshAll();
 });
