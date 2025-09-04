@@ -1,5 +1,5 @@
 // src/services/loteDb.js
-import { db, getSetting } from '../store/db.js';
+import { db, getSetting } from '../store/db.js'; // garantir que exista o export (acima)
 
 export async function markAsConferido(sku, patch = {}) {
   const lotId = await getSetting('activeLotId', null);

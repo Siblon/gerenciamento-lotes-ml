@@ -4,7 +4,8 @@ export const db = new Dexie('conferenciaDB');
 db.version(1).stores({
   itens: '++id, sku, rz, lote, status',  // dados da conferência
   excedentes: '++id, sku, descricao, qtd, preco, rz, lote',
-  meta: '&key'                           // chave-valor (rzAtual, loteAtual, etc.)
+  meta: '&key',                          // chave-valor (rz, loteName, etc.)
+  lots: '++id, name, rz, createdAt'
 });
 
 /** Salva metadado arbitrário */
@@ -29,11 +30,12 @@ export async function resetDb() {
   try {
     await db.delete();
     await db.open(); // reabre vazio com o mesmo schema
-    await db.version(1).stores({
-      itens: '++id, sku, rz, lote, status',
-      excedentes: '++id, sku, descricao, qtd, preco, rz, lote',
-      meta: '&key'
-    });
+      await db.version(1).stores({
+        itens: '++id, sku, rz, lote, status',
+        excedentes: '++id, sku, descricao, qtd, preco, rz, lote',
+        meta: '&key',
+        lots: '++id, name, rz, createdAt'
+      });
   } catch {}
   // caches auxiliares
   try {
@@ -42,4 +44,19 @@ export async function resetDb() {
     localStorage.removeItem('confApp.prefs');
   } catch {}
 }
+
+// Compatibilidade: novos utilitários de configuração
+export async function getSetting(key, defaultVal = null) {
+  return getMeta(key, defaultVal);
+}
+
+export async function setSetting(key, value) {
+  return setMeta(key, value);
+}
+
+export async function resetAll() {
+  return resetDb();
+}
+
+export default db;
 
