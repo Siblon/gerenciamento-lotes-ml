@@ -237,6 +237,7 @@ export function initActionsPanel(render){
     } finally {
       btnCons?.classList.remove?.('loading');
       btnCons?.removeAttribute?.('disabled');
+      renderCounts();
     }
   }
 
@@ -279,6 +280,7 @@ export function initActionsPanel(render){
       render();
       window.refreshIndicators?.();
       renderCounts();
+      window.dispatchEvent?.(new CustomEvent('app:changed', { detail: { type: 'conferido:add', sku } }));
       toast.success('Item registrado');
       setLastLookup(null, false, null);
     } catch(e) {

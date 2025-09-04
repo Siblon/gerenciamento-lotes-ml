@@ -8,8 +8,7 @@ import { initNcmPanel } from './NcmPanel.js';
 import { initDashboard } from './Dashboard.js';
 import { refreshIndicators } from './Indicators.js';
 import { updateBoot } from '../utils/boot.js';
-import store from '../store/index.js';
-import { wireNcmToggle, renderExcedentes, renderCounts, loadSettings, saveSettings } from '../utils/ui.js';
+import { wireNcmToggle, renderExcedentes, renderCounts, loadSettings, saveSettings, wireExcedenteDialog } from '../utils/ui.js';
 
 export function initApp(){
   const render = () => { renderResults(); window.updateDashboard?.(); };
@@ -47,43 +46,11 @@ export function initApp(){
   applySettings();
   wireSettingsUI();
   wireNcmToggle();
+  wireExcedenteDialog();
   renderExcedentes();
   renderCounts();
   refreshIndicators();
   render();
-
-  const formExc = document.getElementById('form-exc');
-  if (formExc) {
-    formExc.addEventListener('submit', (ev) => {
-      if (formExc.returnValue !== 'default') return;
-      ev.preventDefault();
-
-      const sku  = (document.getElementById('exc-sku')?.value || '').trim();
-      const desc = (document.getElementById('exc-desc')?.value || '').trim();
-      const qtd  = Math.max(1, Number(document.getElementById('exc-qtd')?.value || 1));
-      const precoIn = document.getElementById('exc-preco')?.value ?? '';
-      const preco = precoIn === '' ? null : Math.max(0, Number(precoIn));
-      const obs  = (document.getElementById('exc-obs')?.value || '').trim() || null;
-
-      if (!sku || !desc) {
-        console.warn('Excedente inválido', { sku, desc });
-        return;
-      }
-
-      if (typeof store?.addExcedente === 'function') {
-        store.addExcedente(store.state.rzAtual, { sku, descricao: desc, qtd, preco_unit: preco, obs, status: 'excedente' });
-      } else {
-        const KEY = 'confApp.excedentes';
-        let arr = [];
-        try { arr = JSON.parse(localStorage.getItem(KEY)) || []; } catch {}
-        arr.push({ sku, descricao: desc, qtd, preco_unit: preco, obs, status: 'excedente' });
-        localStorage.setItem(KEY, JSON.stringify(arr));
-      }
-
-      renderExcedentes();
-      renderCounts();
-    });
-  }
 }
 
 function applySettings() {

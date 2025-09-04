@@ -1,6 +1,12 @@
 import store from '../store/index.js';
 
 const SETTINGS_KEY = 'confApp.settings';
+const EXC_KEY = 'confApp.excedentes';
+
+function loadJSON(key, fallback = []) {
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
+}
+function saveJSON(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
 export function loadSettings() {
   try {
@@ -42,11 +48,18 @@ export function wireNcmToggle() {
 }
 
 export function getExcedentes() {
+  if (typeof store?.selectExcedentes === 'function') return store.selectExcedentes() || [];
   if (typeof store?.state?.rzAtual !== 'undefined') {
     return store.state.excedentes?.[store.state.rzAtual] || [];
   }
-  const KEY = 'confApp.excedentes';
-  try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; }
+  return loadJSON(EXC_KEY, []);
+}
+
+export function addExcedente(ex) {
+  if (typeof store?.addExcedente === 'function') return store.addExcedente(store.state.rzAtual, ex);
+  const arr = getExcedentes();
+  arr.push(ex);
+  saveJSON(EXC_KEY, arr);
 }
 
 export function renderExcedentes() {
@@ -92,6 +105,32 @@ export function renderExcedentes() {
   });
 }
 
+export function wireExcedenteDialog() {
+  const dlg = document.getElementById('dlg-excedente');
+  if (!dlg) return;
+
+  dlg.addEventListener('close', () => {
+    if (dlg.returnValue !== 'default') return;
+
+    const sku  = (document.getElementById('exc-sku')?.value || '').trim();
+    const desc = (document.getElementById('exc-desc')?.value || '').trim();
+    const qtd  = Math.max(1, Number(document.getElementById('exc-qtd')?.value || 1));
+
+    const precoIn = document.getElementById('exc-preco')?.value ?? '';
+    const preco = (precoIn === '' ? null : Math.max(0, Number(precoIn)));
+
+    const obs  = (document.getElementById('exc-obs')?.value || '').trim() || null;
+
+    if (!sku || !desc) return;
+
+    addExcedente({ sku, descricao: desc, qtd, preco_unit: preco, obs, status: 'excedente' });
+    renderExcedentes();
+    renderCounts();
+
+    window.dispatchEvent?.(new CustomEvent('app:changed', { detail: { type: 'excedente:add', sku } }));
+  });
+}
+
 export function getAllItems() {
   if (typeof store?.selectAllImportedItems === 'function') return store.selectAllImportedItems() || [];
   return [];
@@ -124,14 +163,18 @@ export function renderCounts() {
 
   const kpiItens = document.querySelector('#card-importacao')?.closest('main')?.querySelector?.('.kpi-itens') || document.getElementById('count-itens');
   setText(kpiItens, total);
+  setText(document.getElementById('kpi-total-val'), total);
 
   setText(document.getElementById('count-conferidos'), conferidos);
+  setText(document.getElementById('kpi-conf-val'), conferidos);
 
   const kpiExc = document.getElementById('excedentesCount') || document.getElementById('count-excedentes');
   setText(kpiExc, excedentes);
+  setText(document.getElementById('kpi-exc-val'), excedentes);
 
   const kpiPend = document.getElementById('count-pendentes') || document.getElementById('count-pend');
   setText(kpiPend, pend);
+  setText(document.getElementById('kpi-pend-val'), pend);
 
   const hdr = document.getElementById('hdr-conferidos');
   if (hdr) hdr.textContent = `${conferidos} de ${total} conferidos`;

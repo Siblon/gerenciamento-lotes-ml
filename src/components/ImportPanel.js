@@ -34,6 +34,7 @@ export function initImportPanel(render){
     setItens(itens);
     renderExcedentes();
     renderCounts();
+    window.dispatchEvent?.(new CustomEvent('app:changed', { detail: { type: 'import' } }));
     try {
       if (ncmActive) startNcmQueue(itens);
     } catch (err) {
