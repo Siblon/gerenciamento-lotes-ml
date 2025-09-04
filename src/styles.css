@@ -156,3 +156,29 @@ th.sticky{left:0;z-index:2}
   .actions{display:flex;gap:8px;flex-wrap:wrap}
 }
 
+
+/* Toast (boot) auto-hide */
+#boot-status {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 9999;
+  max-width: min(680px, 92vw);
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #fff;
+  box-shadow: var(--shadow);
+  transition: opacity .3s ease, transform .3s ease, visibility .3s ease;
+}
+#boot-status.hidden {
+  opacity: 0;
+  transform: translateY(6px);
+  visibility: hidden;
+}
+#boot-status .debug-link { color: #93c5fd; text-decoration: underline; cursor: pointer; }
+
+/* opcional: badge do nível */
+#boot-status[data-level="warn"] { background:#F59E0B; color:#111827; }
+#boot-status[data-level="error"]{ background:#EF4444; }
+
