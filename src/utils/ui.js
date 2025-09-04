@@ -1,12 +1,7 @@
 import store from '../store/index.js';
+import { loadExcedentes, saveExcedente } from '../services/persist.js';
 
 const SETTINGS_KEY = 'confApp.settings';
-const EXC_KEY = 'confApp.excedentes';
-
-function loadJSON(key, fallback = []) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
-}
-function saveJSON(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
 export function loadSettings() {
   try {
@@ -52,14 +47,12 @@ export function getExcedentes() {
   if (typeof store?.state?.rzAtual !== 'undefined') {
     return store.state.excedentes?.[store.state.rzAtual] || [];
   }
-  return loadJSON(EXC_KEY, []);
+  return loadExcedentes();
 }
 
 export function addExcedente(ex) {
   if (typeof store?.addExcedente === 'function') return store.addExcedente(store.state.rzAtual, ex);
-  const arr = getExcedentes();
-  arr.push(ex);
-  saveJSON(EXC_KEY, arr);
+  saveExcedente(ex);
 }
 
 export function renderExcedentes() {
@@ -105,31 +98,6 @@ export function renderExcedentes() {
   });
 }
 
-export function wireExcedenteDialog() {
-  const dlg = document.getElementById('dlg-excedente');
-  if (!dlg) return;
-
-  dlg.addEventListener('close', () => {
-    if (dlg.returnValue !== 'default') return;
-
-    const sku  = (document.getElementById('exc-sku')?.value || '').trim();
-    const desc = (document.getElementById('exc-desc')?.value || '').trim();
-    const qtd  = Math.max(1, Number(document.getElementById('exc-qtd')?.value || 1));
-
-    const precoIn = document.getElementById('exc-preco')?.value ?? '';
-    const preco = (precoIn === '' ? null : Math.max(0, Number(precoIn)));
-
-    const obs  = (document.getElementById('exc-obs')?.value || '').trim() || null;
-
-    if (!sku || !desc) return;
-
-    addExcedente({ sku, descricao: desc, qtd, preco_unit: preco, obs, status: 'excedente' });
-    renderExcedentes();
-    renderCounts();
-
-    window.dispatchEvent?.(new CustomEvent('app:changed', { detail: { type: 'excedente:add', sku } }));
-  });
-}
 
 export function getAllItems() {
   if (typeof store?.selectAllImportedItems === 'function') return store.selectAllImportedItems() || [];

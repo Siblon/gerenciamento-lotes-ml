@@ -1,12 +1,13 @@
 // src/components/ActionsPanel.js
 import { exportarConferencia } from '../utils/excel.js';
-import store, { findConferido, findEmOutrosRZ, moveItemEntreRZ, addExcedente } from '../store/index.js';
+import store, { findConferido, findEmOutrosRZ, moveItemEntreRZ } from '../store/index.js';
 import { loadFinanceConfig, saveFinanceConfig } from '../utils/finance.js';
 import { loadPrefs, savePrefs } from '../utils/prefs.js';
 import { toast } from '../utils/toast.js';
 import { openExcedenteModal } from './ExcedenteModal.js';
 import { updateBoot } from '../utils/boot.js';
 import { renderCounts } from '../utils/ui.js';
+import { saveConferido, saveExcedente } from '../services/persist.js';
 
 // memória da última consulta
 let lastLookup = {
@@ -272,8 +273,10 @@ export function initActionsPanel(render){
     try {
       if (toExcedentes && typeof store.registrarExcedente === 'function') {
         store.registrarExcedente({ sku, qty, price, note });
+        saveExcedente({ sku, descricao: '', qtd: qty, preco_unit: price, obs: note });
       } else if (typeof store.conferir === 'function') {
         store.conferir(sku, { qty, price, note });
+        saveConferido({ sku, descricao: item?.descricao || '', qtd: qty, preco: price, obs: note });
       } else {
         console.warn('Ação de registro não disponível no store.');
       }
@@ -282,6 +285,8 @@ export function initActionsPanel(render){
       renderCounts();
       window.dispatchEvent?.(new CustomEvent('app:changed', { detail: { type: 'conferido:add', sku } }));
       toast.success('Item registrado');
+      if (!toExcedentes) updateBoot(`Conferido: ${sku} • ${item?.descricao || ''}`);
+      if (typeof window.refreshKpis === 'function') window.refreshKpis();
       setLastLookup(null, false, null);
     } catch(e) {
       console.error(e); toast('Falha ao registrar', 'error');
