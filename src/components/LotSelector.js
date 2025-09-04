@@ -1,27 +1,20 @@
 // src/components/LotSelector.js
-import store from '@/store';
+import { getLots, getCurrentLotId, setCurrentLotId } from '../store/db.js';
 
-export function initLotSelector() {
+export async function initLotSelector(){
   const host = document.getElementById('lot-selector-host');
   if (!host) return;
-
-  const lotes = store.selectLotes ? store.selectLotes() : [];
-  const current = store.selectLote?.() || lotes[0] || '';
-
-  if (lotes.length <= 1) {
-    host.innerHTML = `<input type="hidden" id="select-lote" value="${current}">`;
+  const lots = await getLots();
+  const current = getCurrentLotId();
+  if (!lots.length){
+    host.innerHTML = '<select id="select-lote" class="input" disabled></select>';
     return;
   }
-
-  host.innerHTML = `
-    <select id="select-lote" class="input">
-      ${lotes.map(l => `<option ${l===current?'selected':''}>${l}</option>`).join('')}
-    </select>
-  `;
-}
-
-export function setCurrentLote(filename) {
-  const el = document.getElementById('select-lote');
-  if (el) el.value = filename;
-  if (store.setLote) store.setLote(filename);
+  host.innerHTML = `<select id="select-lote" class="input" title="Cada planilha importada vira um lote. Use este seletor para alternar entre lotes">${lots.map(l=>`<option value="${l.id}" ${l.id===current?'selected':''}>${l.name}</option>`).join('')}</select>`;
+  const sel = host.querySelector('select');
+  sel.addEventListener('change', e=>{
+    const id = Number(e.target.value);
+    setCurrentLotId(id);
+    window.refreshAll?.();
+  });
 }
