@@ -47,18 +47,31 @@ export async function downloadSnapshot(db, filename = 'backup-lotes.json') {
 }
 
 let intervalId = null;
+let backupDb = null;
+
+async function salvarBackup() {
+  if (!backupDb) return;
+  try {
+    await saveSnapshotToLocalStorage(backupDb);
+  } catch {}
+}
+
+async function handleBeforeUnload() {
+  await salvarBackup();
+}
 
 export function startAutoBackup(db, { intervalMs = DEFAULT_INTERVAL_MS } = {}) {
   stopAutoBackup();
+  backupDb = db;
   intervalId = setInterval(() => { saveSnapshotToLocalStorage(db); }, intervalMs);
   // Flush em navegação/fechamento
-  window.addEventListener('beforeunload', onBeforeUnload);
-  async function onBeforeUnload() { try { await saveSnapshotToLocalStorage(db); } catch {} }
+  window.addEventListener('beforeunload', handleBeforeUnload);
 }
 
 export function stopAutoBackup() {
   if (intervalId) clearInterval(intervalId);
   intervalId = null;
-  window.removeEventListener('beforeunload', () => {});
+  window.removeEventListener('beforeunload', handleBeforeUnload);
+  backupDb = null;
 }
 
