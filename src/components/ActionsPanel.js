@@ -140,12 +140,13 @@ export function initActionsPanel(render){
   const selRateio = document.getElementById('fin-rateio');
   const selMode   = document.getElementById('fin-mode');
 
-  let lastAction = null; // 'consult' | 'register'
+  // estadoConsulta controla qual etapa será disparada ao pressionar Enter
+  // true  -> próxima tecla Enter consulta o SKU
+  // false -> próxima tecla Enter registra o item
+  let estadoConsulta = true;
 
   btnCons?.classList.add('btn','btn-primary');
   btnReg?.classList.add('btn','btn-primary');
-
-  function safeClick(el){ el && typeof el.click === 'function' && el.click(); }
 
   function exigeLoteAtual(){
     const sel = document.getElementById('select-lote');
@@ -221,8 +222,8 @@ export function initActionsPanel(render){
   selRateio?.addEventListener('change', saveFinance);
   selMode?.addEventListener('change', ()=>{ const p = loadPrefs(); p.calcFreteMode = selMode.value; savePrefs(p); window.refreshIndicators?.(); });
 
+  // Dispara a consulta do SKU. Retorna true se item foi encontrado.
   function handleConsultar(fonte='manual') {
-    lastAction = 'consult';
     const lotId = exigeLoteAtual();
     if (!lotId) return false;
     const sku = normalizeSku(codigoInput?.value || '');
@@ -241,6 +242,7 @@ export function initActionsPanel(render){
             moveItemEntreRZ(outro, rz, sku, 1);
             toast('Item movido', 'info');
             render();
+            estadoConsulta = false;
             return true;
           }
         }
@@ -254,6 +256,8 @@ export function initActionsPanel(render){
       setLastLookup(sku, true, item);
       updateBoot?.('Consulta OK — pressione Enter novamente para registrar');
       active?.focus?.();
+      // após consulta bem sucedida, próxima tecla Enter irá registrar
+      estadoConsulta = false;
       return true;
     } finally {
       btnCons?.classList.remove?.('loading');
@@ -262,10 +266,10 @@ export function initActionsPanel(render){
     }
   }
 
-  btnCons?.addEventListener('click', () => { lastAction = 'consult'; handleConsultar('manual'); });
+  // clique manual também dispara a consulta
+  btnCons?.addEventListener('click', () => { handleConsultar('manual'); });
 
   async function handleRegistrar() {
-    lastAction = 'register';
     const lotId = exigeLoteAtual();
     if (!lotId) return;
     const sku = normalizeSku(codigoInput?.value || '');
@@ -312,7 +316,6 @@ export function initActionsPanel(render){
       if (typeof window.refreshKpis === 'function') window.refreshKpis();
       window.refreshAll?.();
       setLastLookup(null, false, null);
-      lastAction = null;
     } catch(e) {
       console.error(e); toast('Falha ao registrar', 'error');
     }
@@ -322,24 +325,32 @@ export function initActionsPanel(render){
 
     codigoInput?.focus();
     codigoInput?.select();
+    // após registrar, próxima tecla Enter volta a consultar
+    estadoConsulta = true;
   }
 
-  btnReg?.addEventListener('click', () => { lastAction = 'register'; handleRegistrar(); });
+  // clique manual também dispara o registro
+  btnReg?.addEventListener('click', () => { handleRegistrar(); });
 
+  // Listener principal: alterna entre consultar e registrar a cada Enter
   codigoInput?.addEventListener('keydown', (ev) => {
     if (ev.key !== 'Enter') return;
     ev.preventDefault();
     ev.stopPropagation?.();
-    if (ev.ctrlKey) { safeClick(btnReg); return; }
-    if (lastAction === 'consult') safeClick(btnReg);
-    else safeClick(btnCons);
+    if (ev.ctrlKey) {
+      handleRegistrar();
+      return;
+    }
+    if (estadoConsulta) handleConsultar('enter');
+    else handleRegistrar();
   });
 
+  // Atalho global: permite usar Enter fora do campo de SKU
   document.addEventListener('keydown', (ev) => {
     if (ev.key !== 'Enter') return;
     if (document.activeElement === codigoInput) return;
-    if (lastAction === 'consult') safeClick(btnReg);
-    else safeClick(btnCons);
+    if (estadoConsulta) handleConsultar('enter');
+    else handleRegistrar();
   });
 
   btnFinal?.addEventListener('click', () => {
