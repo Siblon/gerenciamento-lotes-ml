@@ -1,4 +1,4 @@
-import XLSX from 'xlsx-js-style';
+import * as XLSX from 'xlsx-js-style/dist/xlsx.mjs';
 
 function headerRow(headers) {
   return headers.map(h => ({
@@ -62,6 +62,15 @@ export function exportWorkbook({ conferidos, pendentes, excedentes, meta }) {
   const safeLote = (lote || 'lote').replace(/[^\w\-]+/g, '_');
   const filename = `conferencia_${safeLote}_${y}-${m}-${d}.xlsx`;
 
-  XLSX.writeFile(wb, filename, { compression: true });
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true });
+  const blob = new Blob([wbout], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
