@@ -136,7 +136,7 @@ function rowsConferidos() {
   })();
   return items.map(it => ({
     SKU: it.sku,
-    Descrição: it.descricao || it.desc || '',
+    Descrição: it.descricao || '',
     Qtd: it.qtd || it.quantidade || 0,
     'Preço Médio (R$)': it.preco_ml_unit ?? it.preco ?? 0,
     'Valor Total (R$)': (Number(it.qtd || 0) * Number(it.preco_ml_unit ?? it.preco ?? 0)).toFixed(2),
@@ -152,7 +152,7 @@ function rowsPendentes() {
   const exc = new Set(rowsExcedentes().map(r => r.SKU));
   return all.filter(x => !conf.has(x.sku) && !exc.has(x.sku)).map(it => ({
     SKU: it.sku,
-    Descrição: it.descricao || it.desc || '',
+    Descrição: it.descricao || '',
     Qtd: it.qtd || it.quantidade || 0,
     'Preço Médio (R$)': it.preco_ml_unit ?? it.preco ?? 0,
     'Valor Total (R$)': (Number(it.qtd || 0) * Number(it.preco_ml_unit ?? it.preco ?? 0)).toFixed(2),
@@ -167,7 +167,7 @@ function rowsExcedentes() {
   })();
   return local.map(ex => ({
     SKU: ex.sku,
-    Descrição: ex.descricao || ex.desc || '',
+    Descrição: ex.descricao || '',
     Qtd: ex.qtd || 0,
     'Preço Unitário (R$)': ex.preco_unit ?? '',
     'Valor Total (R$)': (ex.preco_unit == null ? '' : (Number(ex.preco_unit) * Number(ex.qtd || 0)).toFixed(2)),
