@@ -18,7 +18,7 @@ export async function addExcedente({ sku, descricao, qtd, preco }) {
   await db.items.add({
     lotId,
     sku,
-    desc: descricao || '',
+    descricao: descricao || '',
     qtd: Number(qtd || 1),
     precoMedio: Number(preco || 0),
     valorTotal: Number((preco || 0) * (qtd || 1)),

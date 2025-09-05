@@ -31,20 +31,20 @@ export function wireExcedenteDialog() {
   form?.addEventListener('submit', (e) => {
     e.preventDefault();
     const sku   = document.getElementById('exc-sku')?.value?.trim();
-    const desc  = document.getElementById('exc-desc')?.value?.trim();
+    const descricao  = document.getElementById('exc-desc')?.value?.trim();
     const qtd   = Number(document.getElementById('exc-qtd')?.value || 0);
     const preco = document.getElementById('exc-preco')?.value; // opcional
     const obs   = document.getElementById('exc-obs')?.value?.trim();
 
     if (!sku)  { updateBoot('SKU inválido'); return; }
-    if (!desc) { updateBoot('Informe a descrição'); inputs[0]?.focus(); return; }
+    if (!descricao) { updateBoot('Informe a descrição'); inputs[0]?.focus(); return; }
     if (!(qtd >= 1)) { updateBoot('Qtd deve ser ≥ 1'); inputs[1]?.focus(); return; }
 
-    const reg = { sku, descricao: desc, qtd, preco_unit: (preco === '' ? null : Number(preco)), obs };
+    const reg = { sku, descricao, qtd, preco_unit: (preco === '' ? null : Number(preco)), obs };
     saveExcedente(reg);
 
     try { dlg.close(); } catch {}
-    updateBoot(`Excedente salvo: ${sku} • ${desc}`);
+    updateBoot(`Excedente salvo: ${sku} • ${descricao}`);
 
     // atualiza a lista/contadores imediatamente (ajuste para seus renders)
     if (typeof window.refreshExcedentesTable === 'function') window.refreshExcedentesTable();
