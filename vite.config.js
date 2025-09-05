@@ -15,7 +15,17 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: { '@': path.resolve(__dirname, 'src') },
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+      stream: path.resolve(__dirname, 'src/shims/empty.js'),
+      fs: path.resolve(__dirname, 'src/shims/empty.js'),
+      crypto: path.resolve(__dirname, 'src/shims/empty.js'),
+      util: path.resolve(__dirname, 'src/shims/empty.js'),
+      buffer: path.resolve(__dirname, 'src/shims/empty.js'),
+    },
+  },
+  optimizeDeps: {
+    include: ['xlsx-js-style/dist/xlsx.mjs'],
   },
   server: {
     proxy: {
