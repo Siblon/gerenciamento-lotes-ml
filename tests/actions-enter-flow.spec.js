@@ -69,4 +69,16 @@ describe('enter flow', () => {
     input.dispatchEvent({ type:'keydown', key:'Enter', ctrlKey:true, preventDefault: () => {} });
     expect(spy).toHaveBeenCalled();
   });
+
+  it('Second Enter after consulta triggers Registrar', () => {
+    store.findInRZ = () => ({ qtd:1, precoMedio:10 });
+    const spy = vi.spyOn(store, 'conferir').mockImplementation(() => {});
+    input.value = 'AAA';
+    elements['preco-ajustado'].value = '1';
+    // Primeiro Enter consulta
+    input.dispatchEvent({ type:'keydown', key:'Enter', preventDefault: () => {} });
+    // Segundo Enter registra
+    input.dispatchEvent({ type:'keydown', key:'Enter', preventDefault: () => {} });
+    expect(spy).toHaveBeenCalled();
+  });
 });
