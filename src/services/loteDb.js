@@ -8,7 +8,8 @@ export async function markAsConferido(sku, patch = {}) {
   const row = await db.items.where({ lotId, sku }).first();
   if (!row) return;
 
-  await db.items.update(row.id, { status: 'conferido', ...patch });
+  // Usa "checked" como status padrão, permitindo sobrescrita via patch
+  await db.items.update(row.id, { status: 'checked', ...patch });
 }
 
 export async function addExcedente({ sku, descricao, qtd, preco }) {

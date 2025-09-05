@@ -59,17 +59,29 @@ export async function addItemsBulk(lotId, items) {
 
 export async function countByStatus(lotId) {
   await ensureDbOpen();
-  const [pending, checked, excedente, total] = await Promise.all([
-    db.items.where({ lotId, status: 'pending' }).count(),
-    db.items.where({ lotId, status: 'checked' }).count(),
-    db.items.where({ lotId, status: 'excedente' }).count(),
-    db.items.where({ lotId }).count(),
-  ]);
-  return { pending, checked, excedente, total };
+  const pending = db.items.where({ lotId, status: 'pending' }).count();
+  const excedente = db.items.where({ lotId, status: 'excedente' }).count();
+  const total = db.items.where({ lotId }).count();
+  // Compatibilidade: aceita registros legados com status "conferido"
+  const checked = db.items
+    .where({ lotId })
+    .filter(it => it.status === 'checked' || it.status === 'conferido')
+    .count();
+  const [p, c, e, t] = await Promise.all([pending, checked, excedente, total]);
+  return { pending: p, checked: c, excedente: e, total: t };
 }
 
 export async function getItemsByLotAndStatus(lotId, status, { limit = 50, offset = 0 } = {}) {
   await ensureDbOpen();
+  if (status === 'checked') {
+    // inclui registros com status antigo "conferido"
+    return db.items
+      .where({ lotId })
+      .filter(it => it.status === 'checked' || it.status === 'conferido')
+      .offset(offset)
+      .limit(limit)
+      .toArray();
+  }
   return db.items.where({ lotId, status }).offset(offset).limit(limit).toArray();
 }
 
