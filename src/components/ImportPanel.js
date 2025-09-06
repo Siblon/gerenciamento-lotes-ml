@@ -1,5 +1,4 @@
-// src/components/ImportPanel.js
-import { importFile } from '../services/importer.js';
+import { importFile, loadMeta, saveMeta } from '../services/importer.js';
 import { initLotSelector } from './LotSelector.js';
 import { toast } from '../utils/toast.js';
 import { clearAll } from '../store/db.js';
@@ -9,6 +8,18 @@ export function initImportPanel() {
   const fileInput = document.getElementById('file');
   const fileName = document.getElementById('file-name');
   const rzSelect = document.getElementById('select-rz');
+
+  // 🧠 Restaura RZ previamente salvo (se existir)
+  const meta = loadMeta();
+  if (meta.rz && rzSelect) {
+    rzSelect.value = meta.rz;
+  }
+
+  // 🧠 Salva RZ sempre que for alterado
+  rzSelect?.addEventListener('change', () => {
+    const rz = rzSelect.value || '';
+    saveMeta({ rz });
+  });
 
   ensureResetButton();
 
