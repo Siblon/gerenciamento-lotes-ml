@@ -14,16 +14,18 @@ export function loadMeta() {
 export function saveMeta(partial) {
   const cur = loadMeta();
   const next = { ...cur, ...partial, savedAt: new Date().toISOString() };
+
   try {
     localStorage.setItem(META_KEY, JSON.stringify(next));
   } catch (err) {
     console.warn('Falha ao salvar meta:', err);
   }
+
   return next;
 }
 
-import { store } from '../store/index.js';
-const { state, setCurrentRZ } = store;
+import store, { setCurrentRZ } from '../store/index.js';
+const { state } = store;
 
 /**
  * Preenche o <select> com os valores de state.rzList
