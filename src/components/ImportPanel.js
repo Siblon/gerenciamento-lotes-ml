@@ -1,4 +1,5 @@
-import { importFile, loadMeta, saveMeta } from '../services/importer.js';
+import { importFile } from '../services/importer.js';
+import { hydrateRzSelect, wireRzCapture } from '../services/meta.js';
 import { initLotSelector } from './LotSelector.js';
 import { toast } from '../utils/toast.js';
 import { clearAll } from '../store/db.js';
@@ -9,17 +10,8 @@ export function initImportPanel() {
   const fileName = document.getElementById('file-name');
   const rzSelect = document.getElementById('select-rz');
 
-  // 🧠 Restaura RZ previamente salvo (se existir)
-  const meta = loadMeta();
-  if (meta.rz && rzSelect) {
-    rzSelect.value = meta.rz;
-  }
-
-  // 🧠 Salva RZ sempre que for alterado
-  rzSelect?.addEventListener('change', () => {
-    const rz = rzSelect.value || '';
-    saveMeta({ rz });
-  });
+  hydrateRzSelect(rzSelect);
+  wireRzCapture(rzSelect);
 
   ensureResetButton();
 
@@ -38,6 +30,8 @@ export function initImportPanel() {
     try {
       // Processa a planilha
       await importFile(file, rz);
+
+      hydrateRzSelect(rzSelect);
 
       // Atualiza o seletor de lotes após importar
       await initLotSelector();
