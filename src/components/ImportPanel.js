@@ -1,4 +1,4 @@
-import { importFile } from '../services/importer.js';
+import { processarPlanilha } from '../services/planilha.js'; // Substitui importFile
 import { hydrateRzSelect, wireRzCapture } from '../services/meta.js';
 import { initLotSelector } from './LotSelector.js';
 import { toast } from '../utils/toast.js';
@@ -10,6 +10,7 @@ export function initImportPanel() {
   const fileName = document.getElementById('file-name');
   const rzSelect = document.getElementById('select-rz');
 
+  // Preenche o select com RZs já salvos e conecta o listener de mudança
   hydrateRzSelect(rzSelect);
   wireRzCapture(rzSelect);
 
@@ -19,7 +20,7 @@ export function initImportPanel() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Atualiza o nome do arquivo na UI
+    // Atualiza o nome do arquivo exibido na UI
     if (fileName) {
       fileName.textContent = file.name;
       fileName.title = file.name;
@@ -28,15 +29,16 @@ export function initImportPanel() {
     const rz = rzSelect?.value || '';
 
     try {
-      // Processa a planilha
-      await importFile(file, rz);
+      // 📦 Processa a planilha e atualiza o estado do app (incluindo store.state.rzList)
+      await processarPlanilha(file, rz);
 
+      // 🔁 Reidrata o select de RZ após a importação
       hydrateRzSelect(rzSelect);
 
-      // Atualiza o seletor de lotes após importar
+      // 🔄 Atualiza os lotes disponíveis
       await initLotSelector();
 
-      // Exibe notificações visuais
+      // ✅ Notifica o usuário
       toast.success(`Lote carregado: ${file.name} — prossiga com a conferência`);
       updateBoot(`Lote carregado: <strong>${file.name}</strong> — prossiga com a conferência`);
     } catch (err) {
@@ -51,6 +53,7 @@ function ensureResetButton() {
     document.querySelector('#card-importacao .card-header, #card-importacao .card-body') ||
     document.body;
 
+  // Verifica se o botão já existe
   if (!host || typeof host.querySelector !== 'function' || host.querySelector('#btn-reset-db')) return;
 
   const btn = document.createElement('button');
