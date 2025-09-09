@@ -1,6 +1,6 @@
 // Novo util de Excel com estilos
 import XLSX from 'xlsx-js-style';
-import store, { setRZs, setItens, bulkUpsertItems, emit, setCurrentRZ } from '../store/index.js';
+import store, { setRZs, setItens, emit, setCurrentRZ } from '../store/index.js';
 import { parseBRLLoose } from './number.js';
 import { startNcmQueue } from '../services/ncmQueue.js';
 
@@ -184,19 +184,13 @@ export async function processarPlanilha(input, currentRZ) {
   setRZs(rzs);
   if (currentRZ) setCurrentRZ(currentRZ);
   const { itemsByRZ, totalByRZSku, metaByRZSku } = setItens(itens);
-  const itemsComRz = itens.map((it) => {
-    const rz = it.rz || store.state.currentRZ;
-    return {
-      id: `${rz}:${it.codigoML || it.codigo || it.sku || it.mlCode}`,
-      codigo: it.codigo || it.codigoML || null,
-      sku: it.codigoML || it.sku || null,
-      mlCode: it.mlCode || null,
-      descricao: it.descricao || '',
-      qtd: it.qtd || 0,
-      rz,
-    };
-  });
-  bulkUpsertItems(itemsComRz);
+  const rz = store.state.currentRZ || null;
+  const withRz = itens.map((it, i) => ({
+    id: it.id || crypto.randomUUID?.() || `tmp_${Date.now()}_${i}`,
+    ...it,
+    rz,
+  }));
+  await store.bulkUpsertItems(withRz);
   emit('refresh');
   startNcmQueue(itens);
   return { rzList: rzs, itemsByRZ, totalByRZSku, metaByRZSku };

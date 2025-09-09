@@ -1,6 +1,7 @@
 let _bootTimer;
 function getEl(){
-  return document.querySelector('#boot-status, #boot, .boot-badge, [data-boot]');
+  if (typeof document === 'undefined' || !document.querySelector) return null;
+  return document.querySelector('#boot, .boot-badge, [data-boot]');
 }
 
 export function showBoot(msg='aguardando...'){
