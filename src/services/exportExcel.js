@@ -18,18 +18,19 @@ function headerRow(headers) {
   }));
 }
 
-function toSheet(data, headers) {
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+function toSheet(data, headerStyled, headerLabels) {
+  const ws = XLSX.utils.aoa_to_sheet([headerStyled, ...data]);
   // largura aproximada
-  const widths = headers.map(h => ({ wch: Math.max(12, String(h).length + 2) }));
+  const labels = headerLabels || headerStyled.map(h => (typeof h === 'object' ? h.v : h));
+  const widths = labels.map(h => ({ wch: Math.max(12, String(h).length + 2) }));
   ws['!cols'] = widths;
   return ws;
 }
 
 export function exportWorkbook({ conferidos, pendentes, excedentes, meta }) {
   const { rz, lote } = meta || {};
-  const headers = ['SKU', 'Descrição', 'Qtd', 'Preço Méd', 'Valor Total', 'Status', 'RZ', 'Lote'];
-  const headerStyled = headerRow(headers);
+  const headerLabels = ['SKU', 'Descrição', 'Qtd', 'Preço Méd', 'Valor Total', 'Status', 'RZ', 'Lote'];
+  const headerStyled = headerRow(headerLabels);
 
   const mapRow = (it) => ([
     it.sku, it.descricao ?? '', it.qtd ?? 0,
@@ -43,15 +44,15 @@ export function exportWorkbook({ conferidos, pendentes, excedentes, meta }) {
   const pendData = (pendentes || []).map(mapRow);
   const excData  = (excedentes || []).map(mapRow);
 
-  const wsConf = toSheet([], headerStyled);
+  const wsConf = toSheet([], headerStyled, headerLabels);
   XLSX.utils.sheet_add_aoa(wsConf, confData, { origin: 'A2' });
   XLSX.utils.book_append_sheet(wb, wsConf, 'Conferidos');
 
-  const wsPend = toSheet([], headerStyled);
+  const wsPend = toSheet([], headerStyled, headerLabels);
   XLSX.utils.sheet_add_aoa(wsPend, pendData, { origin: 'A2' });
   XLSX.utils.book_append_sheet(wb, wsPend, 'Pendentes');
 
-  const wsExc = toSheet([], headerStyled);
+  const wsExc = toSheet([], headerStyled, headerLabels);
   XLSX.utils.sheet_add_aoa(wsExc, excData, { origin: 'A2' });
   XLSX.utils.book_append_sheet(wb, wsExc, 'Excedentes');
 
