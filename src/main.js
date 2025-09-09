@@ -5,11 +5,16 @@ import { startNcmQueue } from './services/ncmQueue.js';
 import { initIndicators, computeFinance } from './components/Indicators.js';
 import { initActionsPanel } from './components/ActionsPanel.js';
 import { initRzBinding } from './components/RzBinding.js';
+import { hideBoot, showBoot } from './utils/boot.js';
 
+showBoot('aguardando...');
 init();
-initRzBinding?.();
 window.computeFinance = computeFinance;
 initIndicators?.();
+initRzBinding?.();
 initActionsPanel?.();
-startNcmQueue?.();
+// Iniciar NCM; não deve travar a UI; em localhost deve retornar 'skipped'
+Promise.resolve(startNcmQueue?.()).finally(() => hideBoot());
+// Fallback de segurança:
+setTimeout(() => hideBoot(), 2000);
 

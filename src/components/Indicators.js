@@ -8,7 +8,7 @@ import {
   computeAggregates,
 } from '../utils/financeUtils.js';
 import { loadPrefs, savePrefs } from '../utils/prefs.js';
-import { updateBoot } from '../utils/boot.js';
+import { hideBoot } from '../utils/boot.js';
 
 function brl(n) {
   return (n || 0).toLocaleString('pt-BR', {
@@ -189,7 +189,7 @@ function wireSettingsUI() {
       s.freightMode = selFreight.value;
       saveSettings(s);
       applySettings();
-      updateBoot('Configurações salvas ⚙️');
+      hideBoot();
     }
   });
 }

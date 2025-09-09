@@ -1,18 +1,22 @@
 let _bootTimer;
-export function updateBoot(msg) {
-  const el = document.getElementById('boot-status');
-  if (!el) return;
-  el.textContent = msg || '';
-  el.classList?.add('show');
-  clearTimeout(_bootTimer);
-  _bootTimer = setTimeout(() => {
-    el.classList?.remove('show');
-    el.textContent = '';
-  }, 10000); // 10s
+function getEl(){
+  return document.querySelector('#boot-status, #boot, .boot-badge, [data-boot]');
 }
 
-export function hideBoot() {
-  const el = document.getElementById('boot-status');
+export function showBoot(msg='aguardando...'){
+  const el = getEl();
+  if (!el) return;
+  if (el.querySelector('strong')) {
+    el.innerHTML = `<strong>Boot:</strong> ${msg}`;
+  } else {
+    el.textContent = `Boot: ${msg}`;
+  }
+  el.classList?.add('show');
+  clearTimeout(_bootTimer);
+}
+
+export function hideBoot(){
+  const el = getEl();
   if (!el) return;
   el.classList?.remove('show');
   el.textContent = '';

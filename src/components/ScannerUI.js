@@ -1,5 +1,5 @@
 // src/components/ScannerUI.js
-import { updateBoot } from '../utils/boot.js';
+import { hideBoot } from '../utils/boot.js';
 import { getMode, switchTo } from '../utils/scannerController.js';
 
 let stream = null;
@@ -50,10 +50,10 @@ export function initScannerUI() {
         await startScanner();
         card.classList.add('is-on');
         toggleBtn.textContent = 'Parar Scanner';
-        updateBoot('Scanner ligado ✅');
+        hideBoot();
       } catch (e) {
         console.error('[SCAN] falha ao iniciar', e);
-        updateBoot('Falha ao iniciar scanner ❌ (veja Console)');
+        hideBoot();
         card.classList.remove('is-on');
         toggleBtn.textContent = 'Ativar Scanner';
       }
@@ -61,7 +61,7 @@ export function initScannerUI() {
       stopScanner();
       card.classList.remove('is-on');
       toggleBtn.textContent = 'Ativar Scanner';
-      updateBoot('Scanner desligado ⏹️');
+      hideBoot();
     }
   });
 

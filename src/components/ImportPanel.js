@@ -3,7 +3,7 @@ import { hydrateRzSelect, wireRzCapture } from '../services/meta.js';
 import { initLotSelector } from './LotSelector.js';
 import { toast } from '../utils/toast.js';
 import { clearAll } from '../store/db.js';
-import { updateBoot } from '../utils/boot.js';
+import { hideBoot } from '../utils/boot.js';
 import store from '../store/index.js';
 
 export function initImportPanel() {
@@ -43,7 +43,7 @@ export function initImportPanel() {
 
       // ✅ Notifica o usuário
       toast.success(`Lote carregado: ${file.name} — prossiga com a conferência`);
-      updateBoot(`Lote carregado: <strong>${file.name}</strong> — prossiga com a conferência`);
+      hideBoot();
     } catch (err) {
       console.error(err);
       toast.error('Não foi possível processar a planilha...');

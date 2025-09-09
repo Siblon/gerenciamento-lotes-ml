@@ -1,5 +1,5 @@
 import { saveExcedente } from '../services/persist.js';
-import { updateBoot } from '../utils/boot.js';
+import { hideBoot } from '../utils/boot.js';
 
 export function wireExcedenteDialog() {
   const dlg  = document.getElementById('dlg-excedente');
@@ -36,15 +36,15 @@ export function wireExcedenteDialog() {
     const preco = document.getElementById('exc-preco')?.value; // opcional
     const obs   = document.getElementById('exc-obs')?.value?.trim();
 
-    if (!sku)  { updateBoot('SKU inválido'); return; }
-    if (!descricao) { updateBoot('Informe a descrição'); inputs[0]?.focus(); return; }
-    if (!(qtd >= 1)) { updateBoot('Qtd deve ser ≥ 1'); inputs[1]?.focus(); return; }
+    if (!sku)  { hideBoot(); return; }
+    if (!descricao) { hideBoot(); inputs[0]?.focus(); return; }
+    if (!(qtd >= 1)) { hideBoot(); inputs[1]?.focus(); return; }
 
     const reg = { sku, descricao, qtd, preco_unit: (preco === '' ? null : Number(preco)), obs };
     saveExcedente(reg);
 
     try { dlg.close(); } catch {}
-    updateBoot(`Excedente salvo: ${sku} • ${descricao}`);
+    hideBoot();
 
     // atualiza a lista/contadores imediatamente (ajuste para seus renders)
     if (typeof window.refreshExcedentesTable === 'function') window.refreshExcedentesTable();
@@ -53,7 +53,7 @@ export function wireExcedenteDialog() {
 
   // Quando o diálogo abrir, focar descrição
   dlg?.addEventListener('close', () => {
-    // nada; o submit já chama updateBoot
+    // nada; o submit já chama hideBoot
   });
   dlg?.addEventListener('show', () => {
     inputs[0]?.focus();
