@@ -448,6 +448,15 @@ function bulkUpsertItems(items){
   }
 }
 
+function upsertItem(obj){
+  const it = state.items.find(i => i.id === obj.id);
+  if (it) {
+    Object.assign(it, obj);
+  } else {
+    state.items.push(obj);
+  }
+}
+
 function updateItem(id, patch){
   const it = state.items.find(i => i.id === id);
   if (it) Object.assign(it, patch);
@@ -461,6 +470,7 @@ store.emit = emit;
 store.on = on;
 store.reset = reset;
 store.bulkUpsertItems = bulkUpsertItems;
+store.upsertItem = upsertItem;
 store.updateItem = updateItem;
 store.listByRZ = listByRZ;
 store.setCurrentRZ = setCurrentRZ;

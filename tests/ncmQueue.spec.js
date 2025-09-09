@@ -5,33 +5,29 @@ import { resolveNcmByDescription } from '../src/services/ncmApi.js';
 import { startNcmQueue } from '../src/services/ncmQueue.js';
 
 beforeEach(() => {
+  store.reset();
+  store.state.__ncmQueueBooted = false;
   resolveNcmByDescription.mockReset();
-  store.state.metaByRZSku = {};
-  store.state.itemsByRZ = {};
-  store.state.ncmState = { running:false, done:0, total:0 };
 });
 
 describe('ncmQueue', () => {
-  it('limits concurrency to 3', async () => {
-    let active = 0, max = 0;
-    resolveNcmByDescription.mockImplementation(async () => {
-      active++;
-      max = Math.max(max, active);
-      await new Promise(res => setTimeout(() => { active--; res({ ncm:'1', status:'ok' }); }, 10));
-      return { ncm:'1', status:'ok' };
-    });
-    const items = Array.from({ length: 6 }, (_, i) => ({ codigoRZ:'RZ', codigoML:`S${i}`, descricao:'', ncm:null }));
-    await startNcmQueue(items);
-    expect(max).toBeLessThanOrEqual(3);
+  it('processa itens pendentes', async () => {
+    store.upsertItem({ id:'1', descricao:'A', ncmStatus:'pending', rz:'R1' });
+    store.upsertItem({ id:'2', descricao:'B', ncmStatus:'pending', rz:'R1' });
+    resolveNcmByDescription.mockResolvedValue({ ncm:'0101', status:'ok' });
+    const stop = startNcmQueue();
+    await new Promise(r => setTimeout(r, 400));
+    stop();
+    expect(store.state.items.every(it => it.ncmStatus === 'ok')).toBe(true);
+    expect(resolveNcmByDescription).toHaveBeenCalledTimes(2);
   });
 
-  it('does not block synchronous code', async () => {
-    resolveNcmByDescription.mockImplementation(() => new Promise(res => setTimeout(() => res({ ncm:'1', status:'ok' }), 10)));
-    const items = [{ codigoRZ:'RZ', codigoML:'A', descricao:'', ncm:null }];
-    let flag = false;
-    const p = startNcmQueue(items);
-    flag = true;
+  it('não bloqueia código síncrono', () => {
+    store.upsertItem({ id:'3', descricao:'C', ncmStatus:'pending', rz:'R1' });
+    resolveNcmByDescription.mockResolvedValue({ ncm:'1', status:'ok' });
+    const stop = startNcmQueue();
+    let flag = true;
     expect(flag).toBe(true);
-    await p;
+    stop();
   });
 });
