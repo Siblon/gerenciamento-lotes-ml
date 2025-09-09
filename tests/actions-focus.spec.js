@@ -10,10 +10,13 @@ function createEl(tag = 'input') {
   const el = {
     tagName: tag.toUpperCase(),
     value: '',
+    innerHTML: '',
     classList: { add: () => {}, remove: () => {} },
     focus() { document.activeElement = this; },
     select() { this._selected = true; },
     addEventListener(type, fn) { (el._l ||= {})[type] = fn; },
+    appendChild: () => {},
+    removeChild: () => {},
     click() { el._l?.click?.({}); },
     dispatchEvent(ev) { el._l?.[ev.type]?.(ev); },
     setAttribute: () => {},

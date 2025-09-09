@@ -1,9 +1,8 @@
 import { describe, it, beforeEach, expect, vi } from 'vitest';
-vi.mock('../src/utils/excel.js', () => ({ parsePlanilha: vi.fn() }));
-vi.mock('../src/services/ncmQueue.js', () => ({ startNcmQueue: vi.fn() }));
+vi.mock('../src/services/planilha.js', () => ({ processarPlanilha: vi.fn() }));
 vi.mock('../src/utils/ui.js', () => ({ loadSettings: () => ({ resolveNcm: false }), renderCounts: vi.fn(), renderExcedentes: vi.fn() }));
 import { initImportPanel } from '../src/components/ImportPanel.js';
-import { parsePlanilha } from '../src/utils/excel.js';
+import { processarPlanilha } from '../src/services/planilha.js';
 import store from '../src/store/index.js';
 import { toast } from '../src/utils/toast.js';
 
@@ -42,7 +41,7 @@ describe('ImportPanel error handling', () => {
   });
 
   it('emits toast.error and keeps state when parse fails', async () => {
-    parsePlanilha.mockRejectedValue(new Error('fail'));
+    processarPlanilha.mockRejectedValue(new Error('fail'));
     const spy = vi.spyOn(toast, 'error').mockImplementation(() => {});
     const file = { name: 'x.xlsx', arrayBuffer: async () => new ArrayBuffer(0) };
     await fileEl._l.change({ target: { files: [file] } });
