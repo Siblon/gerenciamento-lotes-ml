@@ -3,7 +3,7 @@ import path from 'path'
 
 export default defineConfig({
   test: {
-    include: ['tests/**/*.spec.js'],
+    include: ['tests/**/*.{spec,test}.js'],
     setupFiles: ['tests/setup.ts'],
     deps: {
       inline: []

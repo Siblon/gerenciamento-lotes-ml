@@ -125,7 +125,7 @@ function abrirModalExcedente(sku, fonte='manual'){
   if (inpDesc) setTimeout(() => inpDesc.focus(), 0);
 }
 
-export function initActionsPanel(render){
+export function initActionsPanel(render = () => {}){
   const codigoInput = document.getElementById('input-codigo-produto')
     || document.getElementById('codigo-produto')
     || document.getElementById('in-sku');

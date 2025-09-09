@@ -1,75 +1,30 @@
-// src/services/ncmQueue.js
 import { resolveNcmByDescription } from './ncmApi.js';
-import store, { setItemNcm, setItemNcmStatus } from '../store/index.js';
+import store from '../store/index.js';
 
-let cancelled = false;
-if (typeof document !== 'undefined') {
-  document.addEventListener('ncm-cancel', () => { cancelled = true; });
-}
+export function startNcmQueue(){
+  const { state, updateItem } = store;
+  if (state.__ncmQueueBooted) return;
+  state.__ncmQueueBooted = true;
+  let stopped = false;
 
-export async function startNcmQueue(items = []){
-  cancelled = false;
-  const pending = items
-    .filter(it => !it.ncm)
-    .map(it => ({ id: `${it.codigoRZ}:${it.codigoML}`, it }));
-
-  const total = pending.length;
-  let done = 0;
-  store.state.ncmState = { running: total > 0, done, total };
-  const hasDoc = typeof document !== 'undefined';
-  if(hasDoc) document.dispatchEvent(new CustomEvent('ncm-progress',{ detail:{ done, total } }));
-  if(!total) return;
-
-  const queue = pending.slice();
-  const workers = [];
-  const limit = 3;
-  let errStreak = 0;
-  let pausePromise = null;
-
-  async function worker(){
-    while(queue.length && !cancelled){
-      if(pausePromise) await pausePromise;
-      const { id, it } = queue.shift();
+  (async function loop(){
+    while(!stopped){
+      const next = state.items?.find(it => it.ncmStatus === 'pending' && (it?.descricao || it?.nome));
+      if(!next){ await sleep(1500); continue; }
+      next.ncmStatus = 'resolving';
       try{
-        setItemNcmStatus(id,'pendente');
-        const r = await resolveNcmByDescription(it.descricao || '');
-        if (r.status === 'ok' && r.ncm){
-          it.ncm = r.ncm;
-          setItemNcm(id, r.ncm, 'api');
-          errStreak = 0;
-        } else if (r.status === 'skipped') {
-          setItemNcmStatus(id,'skipped');
-        } else {
-          setItemNcmStatus(id,'falha');
-          errStreak++;
-        }
+        const { ncm, status } = await resolveNcmByDescription(next.descricao || next.nome || '');
+        updateItem(next.id, { ncm: ncm || next.ncm || null, ncmStatus: status });
       }catch{
-        setItemNcmStatus(id,'falha');
-        errStreak++;
-      }finally{
-        done++;
-        store.state.ncmState = { running: true, done, total };
-        if(hasDoc) document.dispatchEvent(new CustomEvent('ncm-progress',{ detail:{ done, total } }));
+        const h = (globalThis?.location?.hostname || '').toLowerCase();
+        const dev = h === 'localhost' || h === '127.0.0.1';
+        updateItem(next.id, { ncmStatus: dev ? 'skipped' : 'error' });
       }
-      if(errStreak > 10 && !pausePromise){
-        console.warn('API instável; tentando novamente em 30s');
-        store.state.ncmState = { running: true, done, total, paused:true };
-        if(hasDoc) document.dispatchEvent(new CustomEvent('ncm-progress',{ detail:{ done, total, paused:true } }));
-        pausePromise = new Promise(res=>setTimeout(()=>{
-          pausePromise = null;
-          store.state.ncmState = { running: true, done, total, paused:false };
-          if(hasDoc) document.dispatchEvent(new CustomEvent('ncm-progress',{ detail:{ done, total, paused:false } }));
-          errStreak = 0;
-          res();
-        },30000));
-        await pausePromise;
-      }
+      await sleep(120);
     }
-  }
-  for(let i=0;i<Math.min(limit,total);i++) workers.push(worker());
-  await Promise.all(workers);
-  store.state.ncmState = { running:false, done, total };
-  if(hasDoc) document.dispatchEvent(new CustomEvent('ncm-progress',{ detail:{ done, total } }));
-}
+  })();
 
-export default { startNcmQueue };
+  return () => { stopped = true; };
+
+  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+}
