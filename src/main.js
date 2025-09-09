@@ -9,7 +9,7 @@ import { hideBoot, showBoot } from './utils/boot.js';
 
 showBoot('aguardando...');
 init();
-window.computeFinance = computeFinance;
+if (typeof window !== 'undefined') window.computeFinance = computeFinance;
 initIndicators?.();
 initRzBinding?.();
 initActionsPanel?.();

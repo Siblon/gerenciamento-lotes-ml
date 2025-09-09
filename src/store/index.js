@@ -1,5 +1,12 @@
 import { NCM_CACHE_KEY } from '../config/runtime.js';
 import { markAsConferido as dbMarkAsConferido, addExcedente as dbAddExcedente } from '../services/loteDb.js';
+import { loadCurrentRZ, saveCurrentRZ } from './rzMeta.js';
+
+const DEBUG = () => {
+  try { return localStorage.getItem('DEBUG_RZ') === '1'; } catch { return false; }
+};
+
+let __booted = false;
 
 // src/store/index.js
 const state = {
@@ -78,7 +85,9 @@ export function selectCounts() {
 
 export function setCurrentRZ(rz){
   state.currentRZ = state.rzAtual = rz;
+  saveCurrentRZ(rz);
   if (rz) updateContadores(rz);
+  if (DEBUG()) console.log('[DEBUG_RZ] setCurrentRZ', rz);
   emit('refresh');
 }
 
@@ -420,7 +429,34 @@ export function selectAllImportedItems(){
   return items;
 }
 
-const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir, registrarExcedente, setItemNcm, setItemNcmStatus, tagItem, untagItem, selectAllItems, selectAllImportedItems, setExcedente, setDescarte, selectDescartes, setRZs, setItens, selectCounts, subscribeCounts };
+const store = (typeof window !== 'undefined' && window.__STORE_SINGLETON) || {
+  state,
+  dispatch,
+  getSkuInRZ,
+  isConferido,
+  findInRZ,
+  findConferido,
+  addExcedente,
+  findEmOutrosRZ,
+  moveItemEntreRZ,
+  conferir,
+  registrarExcedente,
+  setItemNcm,
+  setItemNcmStatus,
+  tagItem,
+  untagItem,
+  selectAllItems,
+  selectAllImportedItems,
+  setExcedente,
+  setDescarte,
+  selectDescartes,
+  setRZs,
+  setItens,
+  selectCounts,
+  subscribeCounts,
+};
+
+if (typeof window !== 'undefined') window.__STORE_SINGLETON = store;
 
 // novos utilitários simples -------------------------------------------------
 export function emit(event){
@@ -450,6 +486,7 @@ export function bulkUpsertItems(items){
       state.items.push(it);
     }
   }
+  if (DEBUG()) console.log('[DEBUG_RZ] bulkUpsertItems', items.length);
   emit('refresh');
 }
 
@@ -476,8 +513,23 @@ store.upsertItem = upsertItem;
 store.listByRZ = listByRZ;
 store.setCurrentRZ = setCurrentRZ;
 store.init = store.init || init;
+store.__resetBoot = () => { __booted = false; };
 
-function init(){
+if (typeof window !== 'undefined') {
+  window.app = Object.assign(window.app || {}, {
+    rzInfo(){ console.log({ currentRZ: store.state.currentRZ, items: store.state.items.length }); }
+  });
+}
+
+async function init(){
+  if (__booted) return;
+  __booted = true;
+  store.__booted = true;
+  const val = await loadCurrentRZ();
+  if (val && !state.currentRZ) {
+    state.currentRZ = state.rzAtual = val;
+    if (DEBUG()) console.log('[DEBUG_RZ] loadCurrentRZ', val);
+  }
   store.state = store.state || state;
   store.emit = store.emit || emit;
   store.on = store.on || on;

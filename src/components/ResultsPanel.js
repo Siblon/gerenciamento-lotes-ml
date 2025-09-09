@@ -1,6 +1,10 @@
 // src/components/ResultsPanel.js
 import store, { getTotals, getConferidos } from '../store/index.js';
 
+const DEBUG = () => {
+  try { return localStorage.getItem('DEBUG_RZ') === '1'; } catch { return false; }
+};
+
 function rowsConferidos(rz){
   const conf = Object.keys(getConferidos(rz));
   const meta = store.state.metaByRZSku[rz] || {};
@@ -48,6 +52,8 @@ function updateToggleLabels() {
 
 export function renderResults(){
   const rz = store.state.currentRZ; if (!rz) return;
+  const all = (store.state.items || []).filter(it => it.rz === rz);
+  if (DEBUG()) console.log('[DEBUG_RZ] renderResults', all.length);
   const confRows = rowsConferidos(rz);
   const pendRows = rowsPendentes(rz);
   const tbConf = document.querySelector('#tbl-conferidos tbody');
@@ -91,6 +97,7 @@ export function initResultsPanel(rootEl){
   function render(){
     const rz = store.state.currentRZ;
     const itens = (store.state.items || []).filter(it => it.rz === rz);
+    if (DEBUG()) console.log('[DEBUG_RZ] renderResults', itens.length);
     rootEl.innerHTML = itens.map(it => `
       <div class="linha">
         <span>${it.codigo || it.sku}</span>
