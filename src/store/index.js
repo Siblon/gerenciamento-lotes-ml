@@ -172,6 +172,7 @@ export function addConferido(rz, sku, payload = {}) {
   map[sku] = existente;
   state.movimentos.push({ ts: Date.now(), rz, sku, qty: efetivo, precoAjustado: existente.precoAjustado, observacao: existente.observacao, status: existente.status });
   updateContadores(rz);
+  emit('refresh');
 }
 
 export function getSkuInRZ(rz, sku){
@@ -235,6 +236,7 @@ export function addExcedente(rz, { sku, descricao, qtd, preco_unit, obs, fonte, 
   }
   state.movimentos.push({ ts: Date.now(), tipo: 'EXCEDENTE', rz, sku, qtd: q, preco_unit: p, obs, fonte });
   updateContadores(rz);
+  emit('refresh');
 }
 
 export function moveItemEntreRZ(origem, destino, sku, qtd=1){
@@ -253,6 +255,7 @@ export function moveItemEntreRZ(origem, destino, sku, qtd=1){
   }
   updateContadores(origem);
   updateContadores(destino);
+  emit('refresh');
 }
 
 export function dispatch(action){
@@ -474,7 +477,7 @@ store.listByRZ = listByRZ;
 store.setCurrentRZ = setCurrentRZ;
 store.init = store.init || init;
 
-export function init(){
+function init(){
   store.state = store.state || state;
   store.emit = store.emit || emit;
   store.on = store.on || on;
@@ -487,6 +490,6 @@ export function init(){
   } catch {}
 }
 
-export { setCurrentRZ as selectRZ };
+export { init, setCurrentRZ as selectRZ };
 
 export default store;

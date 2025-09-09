@@ -22,7 +22,7 @@ export function applyFinanceVisibility(show) {
   panel?.classList.toggle('collapsed', !show);
 }
 
-function computeFinance(opts = {}) {
+export function computeFinance(opts = {}) {
   const { includeFrete = false } = opts;
   const cfg = loadFinanceConfig();
   const prefs = loadPrefs();
