@@ -1,3 +1,4 @@
+// Main application entry point
 import './styles.css';
 import { init } from './store/index.js';
 import { startNcmQueue } from './services/ncmQueue.js';
