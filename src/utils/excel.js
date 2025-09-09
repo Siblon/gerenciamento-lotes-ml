@@ -184,16 +184,18 @@ export async function processarPlanilha(input, currentRZ) {
   setRZs(rzs);
   if (currentRZ) setCurrentRZ(currentRZ);
   const { itemsByRZ, totalByRZSku, metaByRZSku } = setItens(itens);
-  const rz = currentRZ || store.state.currentRZ;
-  const itemsComRz = itens.map((it) => ({
-    id: `${rz}:${it.codigoML || it.codigo || it.sku || it.mlCode}`,
-    codigo: it.codigo || it.codigoML || null,
-    sku: it.codigoML || it.sku || null,
-    mlCode: it.mlCode || null,
-    descricao: it.descricao || '',
-    qtd: it.qtd || 0,
-    rz,
-  }));
+  const itemsComRz = itens.map((it) => {
+    const rz = it.rz || store.state.currentRZ;
+    return {
+      id: `${rz}:${it.codigoML || it.codigo || it.sku || it.mlCode}`,
+      codigo: it.codigo || it.codigoML || null,
+      sku: it.codigoML || it.sku || null,
+      mlCode: it.mlCode || null,
+      descricao: it.descricao || '',
+      qtd: it.qtd || 0,
+      rz,
+    };
+  });
   bulkUpsertItems(itemsComRz);
   emit('refresh');
   startNcmQueue(itens);

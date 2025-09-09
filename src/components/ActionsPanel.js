@@ -5,7 +5,7 @@ import { loadFinanceConfig, saveFinanceConfig } from '../utils/financeUtils.js';
 import { loadPrefs, savePrefs } from '../utils/prefs.js';
 import { toast } from '../utils/toast.js';
 import { openExcedenteModal } from './ExcedenteModal.js';
-import { updateBoot } from '../utils/boot.js';
+import { hideBoot } from '../utils/boot.js';
 import { renderCounts } from '../utils/ui.js';
 import { saveConferido, saveExcedente } from '../services/persist.js';
 
@@ -20,23 +20,28 @@ function setLastLookup(sku, ok, item) {
   lastLookup = { sku, okToRegister: !!ok, item: item || null };
 }
 
-function findItemBySku(sku) {
-  if (!sku) return null;
+function findItemBySku(code) {
+  if (!code) return null;
+  const sku = String(code).trim().toUpperCase();
+  const rz = store.state.currentRZ;
+  const items = store.state.items || [];
+  const direct = items.find(it => it.rz === rz && [it.codigo, it.sku, it.mlCode].some(v => String(v || '').trim().toUpperCase() === sku));
+  if (direct) return direct;
   if (typeof store.findInRZ === 'function') {
-    return store.findInRZ(store.state.currentRZ, sku);
+    return store.findInRZ(rz, sku);
   }
   if (typeof store.selectAllImportedItems === 'function') {
     const all = store.selectAllImportedItems() || [];
-    return all.find(x => String(x.sku).trim().toUpperCase() === String(sku).trim().toUpperCase()) || null;
+    return all.find(x => x.rz === rz && [x.sku, x.codigo, x.mlCode].some(v => String(v || '').trim().toUpperCase() === sku)) || null;
   }
   return null;
 }
 
 function setNcmCheckedForSku(sku, checked) {
-  if (store.ncm?.setOk) {
-    store.ncm.setOk(sku, !!checked);
-    return;
-  }
+      if (store.ncm?.setOk) {
+        store.ncm.setOk(sku, !!checked);
+        return;
+      }
   const KEY = 'ncm.checked.map';
   let map = {};
   try { map = JSON.parse(localStorage.getItem(KEY)) || {}; } catch {}
@@ -81,7 +86,7 @@ function ensureNcmToggleInCard(sku) {
 
   chk.addEventListener('change', () => {
     setNcmCheckedForSku(sku, chk.checked);
-    updateBoot?.(chk.checked ? 'NCM marcado como conferido' : 'NCM desmarcado');
+    hideBoot?.();
   });
 
   lbl.appendChild(chk);
@@ -153,7 +158,8 @@ export function initActionsPanel(render){
     if (!sel) return 1;
     const lotId = Number(sel.value);
     if (!lotId){
-      window.updateBoot?.('Selecione um lote antes de consultar/registrar ⚠️');
+      toast('Selecione um lote antes de consultar/registrar ⚠️', 'warn');
+      window.hideBoot?.();
       return null;
     }
     return lotId;
@@ -254,7 +260,7 @@ export function initActionsPanel(render){
       mostrarProdutoInfo(item);
       if (precoInput && !precoInput.value) precoInput.value = item.precoMedio ?? '';
       setLastLookup(sku, true, item);
-      updateBoot?.('Consulta OK — pressione Enter novamente para registrar');
+      hideBoot?.();
       active?.focus?.();
       // após consulta bem sucedida, próxima tecla Enter irá registrar
       estadoConsulta = false;
@@ -313,7 +319,7 @@ export function initActionsPanel(render){
       renderCounts();
       window.dispatchEvent?.(new CustomEvent('app:changed', { detail: { type: 'conferido:add', sku } }));
       toast.success('Item registrado');
-      if (!toExcedentes) updateBoot(`Conferido: ${sku} • ${item?.descricao || ''}`);
+      if (!toExcedentes) hideBoot();
       if (typeof window.refreshKpis === 'function') window.refreshKpis();
       window.refreshAll?.();
       setLastLookup(null, false, null);
