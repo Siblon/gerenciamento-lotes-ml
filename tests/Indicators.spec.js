@@ -7,7 +7,7 @@ vi.mock('../src/utils/prefs.js', () => ({
   savePrefs: vi.fn(),
 }));
 
-vi.mock('../src/utils/finance.js', () => ({
+vi.mock('../src/utils/financeUtils.js', () => ({
   loadFinanceConfig: vi.fn(() => ({ frete_total: 0, rateio_frete: 'valor', percent_pago_sobre_ml: 0.2, desconto_venda_vs_ml: 0.1 })),
   loadMetricsPrefs: vi.fn(() => ({ visible: { preco_medio_ml_palete: true } })),
   saveMetricsPrefs: vi.fn(),

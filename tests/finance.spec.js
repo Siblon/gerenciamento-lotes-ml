@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { computeFreteUnit, computeItemFinance, loadMetricsPrefs, saveMetricsPrefs } from '../src/utils/finance.js';
+import { computeFreteUnit, computeItemFinance, loadMetricsPrefs, saveMetricsPrefs } from '../src/utils/financeUtils.js';
 
 describe('finance computations', () => {
   it('base case quantity rateio', () => {

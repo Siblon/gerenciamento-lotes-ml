@@ -1,7 +1,7 @@
 // src/components/ActionsPanel.js
 import { exportarConferencia } from '../utils/excel.js';
 import store, { findConferido, findEmOutrosRZ, moveItemEntreRZ } from '../store/index.js';
-import { loadFinanceConfig, saveFinanceConfig } from '../utils/finance.js';
+import { loadFinanceConfig, saveFinanceConfig } from '../utils/financeUtils.js';
 import { loadPrefs, savePrefs } from '../utils/prefs.js';
 import { toast } from '../utils/toast.js';
 import { openExcedenteModal } from './ExcedenteModal.js';

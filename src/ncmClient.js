@@ -1,3 +1,4 @@
+// Client-side utilities for manual NCM operations
 import { NCM_CACHE_KEY } from './config/runtime.js';
 import { resolve, normalizeNCM, slug, cacheSet } from './services/ncmService.js';
 import { startNcmQueue } from './services/ncmQueue.js';

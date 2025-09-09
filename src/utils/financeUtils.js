@@ -1,4 +1,5 @@
-import { FINANCE } from '../config/finance.js';
+// Utilities for finance configuration and calculations
+import { FINANCE } from '../config/financeConfig.js';
 
 export const FINANCE_KEY = 'config:finance:v1';
 export const METRICS_PREFS_KEY = 'ui:metricsPrefs:v1';

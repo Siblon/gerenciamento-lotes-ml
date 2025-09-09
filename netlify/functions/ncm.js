@@ -1,3 +1,4 @@
+// Netlify function proxying NCM API requests
 export async function handler(evt) {
   const url = new URL(evt.rawUrl);
   const q = url.searchParams.get('descricao') || url.searchParams.get('codigo');

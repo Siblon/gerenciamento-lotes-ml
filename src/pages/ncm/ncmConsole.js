@@ -1,3 +1,4 @@
+// Entry point for the NCM console page
 import { RUNTIME, NCM_CACHE_KEY } from '../../config/runtime.js';
 import * as ncmSvc from '../../services/ncmService.js';
 import { startNcmQueue } from '../../services/ncmQueue.js';

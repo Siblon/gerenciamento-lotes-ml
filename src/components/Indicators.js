@@ -6,7 +6,7 @@ import {
   saveMetricsPrefs,
   computeItemFinance,
   computeAggregates,
-} from '../utils/finance.js';
+} from '../utils/financeUtils.js';
 import { loadPrefs, savePrefs } from '../utils/prefs.js';
 import { updateBoot } from '../utils/boot.js';
 
