@@ -1,16 +1,10 @@
-import { resolve, resolveWithRetry } from './ncmService.js';
+// src/services/ncmQueue.js
+import { resolveNcmByDescription } from './ncmApi.js';
 import store, { setItemNcm, setItemNcmStatus } from '../store/index.js';
 
 let cancelled = false;
 if (typeof document !== 'undefined') {
   document.addEventListener('ncm-cancel', () => { cancelled = true; });
-}
-
-function timeout(promise, ms){
-  return Promise.race([
-    promise,
-    new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')), ms))
-  ]);
 }
 
 export async function startNcmQueue(items = []){
@@ -38,12 +32,14 @@ export async function startNcmQueue(items = []){
       const { id, it } = queue.shift();
       try{
         setItemNcmStatus(id,'pendente');
-        const r = await resolveWithRetry(() => timeout(resolve({ sku: it.codigoML, descricao: it.descricao }), 4000), 3, 500);
-        if(r.status === 'ok' && r.ncm){
+        const r = await resolveNcmByDescription(it.descricao || '');
+        if (r.status === 'ok' && r.ncm){
           it.ncm = r.ncm;
-          setItemNcm(id, r.ncm, r.source);
+          setItemNcm(id, r.ncm, 'api');
           errStreak = 0;
-        }else{
+        } else if (r.status === 'skipped') {
+          setItemNcmStatus(id,'skipped');
+        } else {
           setItemNcmStatus(id,'falha');
           errStreak++;
         }

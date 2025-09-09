@@ -83,3 +83,21 @@ export function renderResults(){
   updateToggleLabels();
   window.refreshIndicators?.();
 }
+
+// Versão simplificada para uso em páginas leves -----------------------------
+export function initResultsPanel(rootEl){
+  function render(){
+    const rz = store.state.currentRZ;
+    const itens = store.listByRZ ? store.listByRZ(rz) : [];
+    rootEl.innerHTML = itens.map(it => `
+      <div class="linha">
+        <span>${it.codigo || it.sku}</span>
+        <span>${it.descricao || '-'}</span>
+        <span>${it.ncm || '-'}</span>
+      </div>
+    `).join('') || '<em>Nenhum item para este RZ.</em>';
+  }
+  render();
+  const unsub = store.on ? store.on('refresh', render) : null;
+  return () => unsub && unsub();
+}

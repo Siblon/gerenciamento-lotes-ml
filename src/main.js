@@ -3,6 +3,7 @@ import { initImportPanel } from './components/ImportPanel.js';
 import { initLotSelector } from './components/LotSelector.js';
 import { initHealthModal } from './components/HealthModal.js';
 import { getCurrentLotId, countByStatus, getItemsByLotAndStatus, clearAll } from './store/db.js';
+import { startNcmQueue } from './services/ncmQueue.js';
 
 async function renderPendentes(lotId) {
   const tbody = document.querySelector('#tbl-pendentes tbody');
@@ -50,4 +51,5 @@ window.addEventListener('DOMContentLoaded', async () => {
   initImportPanel();
   initHealthModal();
   refreshAll();
+  startNcmQueue([]);
 });

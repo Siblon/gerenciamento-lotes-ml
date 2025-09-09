@@ -46,6 +46,9 @@ const state = {
 
   // tags livres por item (id -> Set)
   itemTags: {},
+  // lista simples de itens para recursos básicos
+  items: [],
+  __listeners: {},
 };
 
 // assinatura leve (pub/sub quando itens mudarem)
@@ -414,5 +417,52 @@ export function selectAllImportedItems(){
 }
 
 const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir, registrarExcedente, setItemNcm, setItemNcmStatus, tagItem, untagItem, selectAllItems, selectAllImportedItems, setExcedente, setDescarte, selectDescartes, setRZs, setItens, selectCounts, subscribeCounts };
+
+// novos utilitários simples -------------------------------------------------
+function emit(event){
+  (state.__listeners[event] || []).forEach(fn => {
+    try { fn(); } catch (err) { console.error(err); }
+  });
+}
+
+function on(event, fn){
+  (state.__listeners[event] ||= []).push(fn);
+  return () => {
+    state.__listeners[event] = (state.__listeners[event] || []).filter(f => f !== fn);
+  };
+}
+
+function reset(){
+  state.items = [];
+}
+
+function bulkUpsertItems(items){
+  const map = new Map(state.items.map(it => [it.id, it]));
+  for (const it of items){
+    if (map.has(it.id)) {
+      Object.assign(map.get(it.id), it);
+    } else {
+      map.set(it.id, it);
+      state.items.push(it);
+    }
+  }
+}
+
+function updateItem(id, patch){
+  const it = state.items.find(i => i.id === id);
+  if (it) Object.assign(it, patch);
+}
+
+function listByRZ(rz){
+  return state.items.filter(it => it.rz === rz);
+}
+
+store.emit = emit;
+store.on = on;
+store.reset = reset;
+store.bulkUpsertItems = bulkUpsertItems;
+store.updateItem = updateItem;
+store.listByRZ = listByRZ;
+store.setCurrentRZ = setCurrentRZ;
 
 export default store;
