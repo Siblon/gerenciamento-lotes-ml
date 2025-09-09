@@ -276,7 +276,7 @@ export function conferir(sku, opts = {}) {
 }
 
 export function registrarExcedente({ sku, qty, price, note }) {
-  const rz = state.rzAtual;
+  const rz = state.currentRZ;
   addExcedente(rz, { sku, descricao: '', qtd: qty, preco_unit: price, obs: note, fonte: 'preset' });
   dbAddExcedente({ sku, descricao: '', qtd: qty, preco: price }).catch(console.error);
 }

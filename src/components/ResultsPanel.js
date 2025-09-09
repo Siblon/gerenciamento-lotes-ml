@@ -47,7 +47,7 @@ function updateToggleLabels() {
 }
 
 export function renderResults(){
-  const rz = store.state.rzAtual; if (!rz) return;
+  const rz = store.state.currentRZ; if (!rz) return;
   const confRows = rowsConferidos(rz);
   const pendRows = rowsPendentes(rz);
   const tbConf = document.querySelector('#tbl-conferidos tbody');
@@ -90,7 +90,7 @@ store.on?.('refresh', renderResults);
 export function initResultsPanel(rootEl){
   function render(){
     const rz = store.state.currentRZ;
-    const itens = store.listByRZ ? store.listByRZ(rz) : [];
+    const itens = (store.state.items || []).filter(it => it.rz === rz);
     rootEl.innerHTML = itens.map(it => `
       <div class="linha">
         <span>${it.codigo || it.sku}</span>

@@ -45,7 +45,7 @@ describe('ActionsPanel behaviors', () => {
     global.localStorage = {
       _s:{}, getItem(k){return this._s[k]||null;}, setItem(k,v){this._s[k]=String(v);}, removeItem(k){delete this._s[k];}, clear(){this._s={};}
     };
-    store.state.rzAtual = 'R1';
+    store.state.currentRZ = 'R1';
     store.state.excedentes = {};
     initActionsPanel(()=>{});
     input = elements['input-codigo-produto'];

@@ -23,7 +23,7 @@ function setLastLookup(sku, ok, item) {
 function findItemBySku(sku) {
   if (!sku) return null;
   if (typeof store.findInRZ === 'function') {
-    return store.findInRZ(store.state.rzAtual, sku);
+    return store.findInRZ(store.state.currentRZ, sku);
   }
   if (typeof store.selectAllImportedItems === 'function') {
     const all = store.selectAllImportedItems() || [];
@@ -98,7 +98,7 @@ function mostrarProdutoInfo(item) {
   $('#pi-qtd').textContent = item.qtd ?? 0;
   $('#pi-preco').textContent = Number(item.precoMedio || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
   $('#pi-total').textContent = Number((item.qtd || 0) * (item.precoMedio || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-  $('#pi-rz').textContent = store.state.rzAtual || '';
+  $('#pi-rz').textContent = store.state.currentRZ || '';
   document.getElementById('pi-ncm').textContent = item?.ncm || '—';
   document.getElementById('produto-info').hidden = false;
   ensureNcmToggleInCard(item.sku);
@@ -229,7 +229,7 @@ export function initActionsPanel(render){
     const sku = normalizeSku(codigoInput?.value || '');
     if (sku.length < 3) { toast('Código vazio', 'warn'); return false; }
     const active = document.activeElement;
-    const rz = store.state.rzAtual;
+    const rz = store.state.currentRZ;
     btnCons?.classList.add('loading');
     btnCons?.setAttribute?.('disabled','disabled');
     try {
@@ -275,7 +275,7 @@ export function initActionsPanel(render){
     const sku = normalizeSku(codigoInput?.value || '');
     const priceStr = precoInput?.value || '';
     const obsPreset = obsSelect?.value || '';
-    const item = store.findInRZ?.(store.state.rzAtual, sku);
+    const item = store.findInRZ?.(store.state.currentRZ, sku);
     const toExcedentes = obsPreset === 'excedente' || !item;
     if (!toExcedentes && (!lastLookup.okToRegister || lastLookup.sku !== sku)) {
       if (item) setLastLookup(sku, true, item);
@@ -356,7 +356,7 @@ export function initActionsPanel(render){
 
   btnFinal?.addEventListener('click', () => {
     try {
-      const rz = store.state.rzAtual;
+      const rz = store.state.currentRZ;
       const tot = store.state.totalByRZSku[rz] || {};
       const meta = store.state.metaByRZSku[rz] || {};
       const confMap = store.state.conferidosByRZSku[rz] || {};
@@ -445,13 +445,15 @@ export function initSimpleActionsPanel(){
     if (!code) return;
 
     const rz = store.state.currentRZ;
-    const found = store.state.items?.find(it => (it.codigo === code || it.sku === code) && it.rz === rz);
+    const found = store.state.items?.find(
+      it => it.rz === rz && (it.codigo === code || it.sku === code || it.mlCode === code)
+    );
     if (found) {
       store.conferir?.(found.id || found.sku);
       store.emit?.('refresh');
       toast(`OK: ${found.descricao || found.sku}`);
     } else {
-      store.registrarExcedente?.({ codigo: code, rz });
+      store.addExcedente?.(rz, { sku: code, descricao: '', qtd: 1 });
       store.emit?.('refresh');
       toast(`Excedente registrado: ${code}`);
     }

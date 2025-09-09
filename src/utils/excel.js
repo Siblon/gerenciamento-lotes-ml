@@ -1,6 +1,6 @@
 // Novo util de Excel com estilos
 import XLSX from 'xlsx-js-style';
-import { setRZs, setItens } from '../store/index.js';
+import store, { setRZs, setItens, bulkUpsertItems, emit, setCurrentRZ } from '../store/index.js';
 import { parseBRLLoose } from './number.js';
 import { startNcmQueue } from '../services/ncmQueue.js';
 
@@ -179,10 +179,23 @@ export async function parsePlanilha(input) {
   return { rzs, itens: [] };
 }
 
-export async function processarPlanilha(input) {
+export async function processarPlanilha(input, currentRZ) {
   const { rzs, itens } = await parsePlanilha(input);
   setRZs(rzs);
+  if (currentRZ) setCurrentRZ(currentRZ);
   const { itemsByRZ, totalByRZSku, metaByRZSku } = setItens(itens);
+  const rz = currentRZ || store.state.currentRZ;
+  const itemsComRz = itens.map((it) => ({
+    id: `${rz}:${it.codigoML || it.codigo || it.sku || it.mlCode}`,
+    codigo: it.codigo || it.codigoML || null,
+    sku: it.codigoML || it.sku || null,
+    mlCode: it.mlCode || null,
+    descricao: it.descricao || '',
+    qtd: it.qtd || 0,
+    rz,
+  }));
+  bulkUpsertItems(itemsComRz);
+  emit('refresh');
   startNcmQueue(itens);
   return { rzList: rzs, itemsByRZ, totalByRZSku, metaByRZSku };
 }
