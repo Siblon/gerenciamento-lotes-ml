@@ -34,4 +34,18 @@ describe('ncmQueue', () => {
     expect(flag).toBe(true);
     await p;
   });
+
+  it('skips items without identifiers', async () => {
+    resolveNcmByDescription.mockResolvedValue({ ncm:'1', status:'ok' });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const items = [
+      { codigoRZ:'RZ', codigoML:'A', descricao:'', ncm:null },
+      { codigoRZ:'', codigoML:'B', descricao:'', ncm:null },
+      { codigoRZ:'RZ', codigoML:'', descricao:'', ncm:null },
+    ];
+    await startNcmQueue(items);
+    expect(resolveNcmByDescription).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledTimes(2);
+    warn.mockRestore();
+  });
 });

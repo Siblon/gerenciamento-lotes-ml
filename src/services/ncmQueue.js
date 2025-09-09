@@ -11,7 +11,18 @@ export async function startNcmQueue(items = []){
   cancelled = false;
   const pending = items
     .filter(it => !it.ncm)
-    .map(it => ({ id: `${it.codigoRZ}:${it.codigoML}`, it }));
+    .map(it => {
+      const rz = String(it.codigoRZ || '').trim().toUpperCase();
+      const sku = String(it.codigoML || '').trim().toUpperCase();
+      if(!rz || !sku){
+        console.warn('Item sem codigoRZ/codigoML, ignorando', it);
+        return null;
+      }
+      it.codigoRZ = rz;
+      it.codigoML = sku;
+      return { id: `${rz}:${sku}`, it };
+    })
+    .filter(Boolean);
 
   const total = pending.length;
   let done = 0;
