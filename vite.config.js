@@ -25,7 +25,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['xlsx-js-style/dist/xlsx.mjs'],
+    include: ['xlsx-js-style'],
   },
   server: {
     proxy: {

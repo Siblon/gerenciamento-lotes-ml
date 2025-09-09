@@ -307,6 +307,7 @@ export function initActionsPanel(render){
       } else {
         console.warn('Ação de registro não disponível no store.');
       }
+      store.emit?.('refresh');
       render();
       window.refreshIndicators?.();
       renderCounts();

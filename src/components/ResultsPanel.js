@@ -84,6 +84,8 @@ export function renderResults(){
   window.refreshIndicators?.();
 }
 
+store.on?.('refresh', renderResults);
+
 // Versão simplificada para uso em páginas leves -----------------------------
 export function initResultsPanel(rootEl){
   function render(){
