@@ -30,7 +30,7 @@ describe('renderResults row classes', () => {
     Object.keys(store.state).forEach(k => {
       store.state[k] = JSON.parse(JSON.stringify(baseState[k]));
     });
-    store.state.rzAtual = 'R1';
+    store.state.currentRZ = 'R1';
     store.state.totalByRZSku = { R1: { A:1, B:1 } };
     store.state.conferidosByRZSku = { R1: { A: { qtd:1 } } };
     store.state.metaByRZSku = { R1: { A:{ descricao:'A', precoMedio:0 }, B:{ descricao:'B', precoMedio:0 } } };

@@ -49,7 +49,7 @@ beforeEach(() => {
   };
   global.window = { refreshIndicators: () => {}, scrollTo: () => {} };
 
-  store.state.rzAtual = 'R1';
+  store.state.currentRZ = 'R1';
   store.state.totalByRZSku = { R1: { ABC: 1 } };
   store.state.metaByRZSku = { R1: { ABC: { descricao: '', precoMedio: 10 } } };
   store.state.conferidosByRZSku = {};

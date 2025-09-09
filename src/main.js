@@ -4,8 +4,10 @@ import { init } from './store/index.js';
 import { startNcmQueue } from './services/ncmQueue.js';
 import { initIndicators, computeFinance } from './components/Indicators.js';
 import { initActionsPanel } from './components/ActionsPanel.js';
+import { initRzBinding } from './components/RzBinding.js';
 
 init();
+initRzBinding?.();
 window.computeFinance = computeFinance;
 initIndicators?.();
 initActionsPanel?.();
