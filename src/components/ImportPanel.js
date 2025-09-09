@@ -4,6 +4,7 @@ import { initLotSelector } from './LotSelector.js';
 import { toast } from '../utils/toast.js';
 import { clearAll } from '../store/db.js';
 import { updateBoot } from '../utils/boot.js';
+import store from '../store/index.js';
 
 export function initImportPanel() {
   const fileInput = document.getElementById('file');
@@ -31,6 +32,8 @@ export function initImportPanel() {
     try {
       // 📦 Processa a planilha e atualiza o estado do app (incluindo store.state.rzList)
       await processarPlanilha(file, rz);
+      store.setCurrentRZ?.(rz);
+      store.emit?.('refresh');
 
       // 🔁 Reidrata o select de RZ após a importação
       hydrateRzSelect(rzSelect);

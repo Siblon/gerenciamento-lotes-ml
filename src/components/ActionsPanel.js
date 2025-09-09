@@ -433,3 +433,26 @@ export function initActionsPanel(render){
     setSku: (sku)=>{ if (codigoInput) codigoInput.value = sku; }
   };
 }
+
+// Implementação simplificada utilizada em modos de desenvolvimento
+export function initSimpleActionsPanel(){
+  const input = document.getElementById('codigo-input') || document.getElementById('input-codigo-produto');
+  const btn = document.getElementById('btn-consultar');
+
+  btn?.addEventListener('click', () => {
+    const code = (input?.value || '').trim();
+    if (!code) return;
+
+    const rz = store.state.currentRZ;
+    const found = store.state.items?.find(it => (it.codigo === code || it.sku === code) && it.rz === rz);
+    if (found) {
+      store.conferir?.(found.id || found.sku);
+      store.emit?.('refresh');
+      toast(`OK: ${found.descricao || found.sku}`);
+    } else {
+      store.registrarExcedente?.({ codigo: code, rz });
+      store.emit?.('refresh');
+      toast(`Excedente registrado: ${code}`);
+    }
+  });
+}
