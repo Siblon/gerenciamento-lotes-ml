@@ -79,6 +79,7 @@ export function selectCounts() {
 export function setCurrentRZ(rz){
   state.currentRZ = state.rzAtual = rz;
   if (rz) updateContadores(rz);
+  emit('refresh');
 }
 
 export function setRZs(rzs = []){
@@ -419,13 +420,13 @@ export function selectAllImportedItems(){
 const store = { state, dispatch, getSkuInRZ, isConferido, findInRZ, findConferido, addExcedente, findEmOutrosRZ, moveItemEntreRZ, conferir, registrarExcedente, setItemNcm, setItemNcmStatus, tagItem, untagItem, selectAllItems, selectAllImportedItems, setExcedente, setDescarte, selectDescartes, setRZs, setItens, selectCounts, subscribeCounts };
 
 // novos utilitários simples -------------------------------------------------
-function emit(event){
+export function emit(event){
   (state.__listeners[event] || []).forEach(fn => {
     try { fn(); } catch (err) { console.error(err); }
   });
 }
 
-function on(event, fn){
+export function on(event, fn){
   (state.__listeners[event] ||= []).push(fn);
   return () => {
     state.__listeners[event] = (state.__listeners[event] || []).filter(f => f !== fn);
@@ -436,7 +437,7 @@ function reset(){
   state.items = [];
 }
 
-function bulkUpsertItems(items){
+export function bulkUpsertItems(items){
   const map = new Map(state.items.map(it => [it.id, it]));
   for (const it of items){
     if (map.has(it.id)) {
@@ -446,11 +447,17 @@ function bulkUpsertItems(items){
       state.items.push(it);
     }
   }
+  emit('refresh');
 }
 
-function updateItem(id, patch){
+export function updateItem(id, patch){
   const it = state.items.find(i => i.id === id);
   if (it) Object.assign(it, patch);
+  emit('refresh');
+}
+
+export function upsertItem(obj){
+  bulkUpsertItems([obj]);
 }
 
 function listByRZ(rz){
@@ -462,7 +469,24 @@ store.on = on;
 store.reset = reset;
 store.bulkUpsertItems = bulkUpsertItems;
 store.updateItem = updateItem;
+store.upsertItem = upsertItem;
 store.listByRZ = listByRZ;
 store.setCurrentRZ = setCurrentRZ;
+store.init = store.init || init;
+
+export function init(){
+  store.state = store.state || state;
+  store.emit = store.emit || emit;
+  store.on = store.on || on;
+  try {
+    if (typeof store.load === 'function') {
+      store.load();
+    } else if (typeof load === 'function') {
+      load();
+    }
+  } catch {}
+}
+
+export { setCurrentRZ as selectRZ };
 
 export default store;
