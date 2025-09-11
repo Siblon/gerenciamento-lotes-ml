@@ -27,10 +27,10 @@ function pickSheet(wb) {
   return { name, ws: wb.Sheets[name] };
 }
 
-function findHeaderRow(rows) {
+function findHeaderRow(rows, maxRows = 200) {
   // procura uma linha que contenha pelo menos estes campos (tolerante):
   // "Código RZ", "Código ML", "Qtd" (ou equivalentes)
-  for (let i = 0; i < Math.min(rows.length, 50); i++) {
+  for (let i = 0; i < Math.min(rows.length, maxRows); i++) {
     const r = rows[i].map(norm);
     const hasRZ  = r.some(v => v.includes('codigo rz') || v.includes('cod rz') || v === 'rz' || v.includes('rz-'));
     const hasML  = r.some(v => v.includes('codigo ml') || v.includes('codigo do ml') || v.includes('codigo ml'));
