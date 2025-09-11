@@ -545,3 +545,8 @@ async function init(){
 export { init, setCurrentRZ as selectRZ };
 
 export default store;
+
+// Expor store para debug quando existir window (dev/preview)
+if (typeof window !== 'undefined') {
+  window.store = window.store || store;
+}
