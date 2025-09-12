@@ -1,5 +1,6 @@
 // Main application entry point
 import './styles.css';
+import './styles/icons.css';
 import { init } from './store/index.js';
 import { startNcmQueue } from './services/ncmQueue.js';
 import { initIndicators, computeFinance } from './components/Indicators.js';
