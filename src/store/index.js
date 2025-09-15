@@ -1,4 +1,3 @@
-import { NCM_CACHE_KEY } from '../config/runtime.js';
 import { markAsConferido as dbMarkAsConferido, addExcedente as dbAddExcedente } from '../services/loteDb.js';
 import { loadCurrentRZ, saveCurrentRZ } from './rzMeta.js';
 
@@ -21,7 +20,7 @@ const state = {
   totalByRZSku: {},       // { [rz]: { [sku]: qtdTotal } }
 
   // metadados por RZ → SKU (vindo do Excel)
-  metaByRZSku: {},        // { [rz]: { [sku]: { descricao, precoMedio, ncm } } }
+  metaByRZSku: {},        // { [rz]: { [sku]: { descricao, precoMedio } } }
 
     // conferidos em runtime (pode acumular quantidade)
     conferidosByRZSku: {},  // { [rz]: { [sku]: { qtd, precoAjustado, observacao, status } } }
@@ -33,23 +32,12 @@ const state = {
   movimentos: [],         // [{ ts, rz, sku, precoAjustado, observacao }]
 
   // excedentes por RZ
-  excedentes: {},         // { [rz]: [ { sku, descricao, qtd, preco_unit, obs, fonte, ncm } ] }
+  excedentes: {},         // { [rz]: [ { sku, descricao, qtd, preco_unit, obs, fonte } ] }
 
   limits: {
     conferidos: 50,
     pendentes: 50,
   },
-
-  // cache simples de NCM por SKU
-  ncmCache: (() => {
-    try {
-      return JSON.parse(localStorage.getItem(NCM_CACHE_KEY) || '{}');
-    } catch {
-      return {};
-    }
-  })(),
-
-  ncmState: { running:false, done:0, total:0 },
 
   // tags livres por item (id -> Set)
   itemTags: {},
@@ -113,17 +101,7 @@ export function setItens(items = []){
     if(!metaByRZSku[it.codigoRZ][sku]){
       const descricao = String(it.descricao || '').trim();
       const precoMedio = Number(it.valorUnit || 0);
-      const ncm = it.ncm || null;
-      const meta = { descricao, precoMedio, ncm };
-      if(ncm){
-        const ts = now;
-        meta.ncm_source = 'row';
-        meta.ncm_ts = ts;
-        meta.ncmMeta = { source:'row', ts, status:'ok' };
-        meta.ncm_status = 'ok';
-        it.ncmMeta = { source:'row', ts, status:'ok' };
-        state.ncmCache[sku] = ncm;
-      }
+      const meta = { descricao, precoMedio };
       metaByRZSku[it.codigoRZ][sku] = meta;
     }
   }
@@ -134,7 +112,6 @@ export function setItens(items = []){
   state.excedentes = {};
   if(!state.currentRZ) state.currentRZ = Object.keys(itemsByRZ)[0] || null;
   if(state.currentRZ) updateContadores(state.currentRZ);
-  try{ localStorage.setItem(NCM_CACHE_KEY, JSON.stringify(state.ncmCache)); }catch{}
   return { itemsByRZ, totalByRZSku, metaByRZSku };
 }
 
@@ -205,7 +182,6 @@ export function findInRZ(rz, sku){
     descricao: meta.descricao || '',
     qtd: tot[sku] - confQtd,
     precoMedio: meta.precoMedio,
-    ncm: meta.ncm ?? null,
   };
 }
 
@@ -218,7 +194,6 @@ export function findConferido(rz, sku){
     descricao: meta.descricao || '',
     qtd: conf.qtd || 0,
     precoMedio: meta.precoMedio,
-    ncm: meta.ncm ?? null,
   };
 }
 
@@ -229,19 +204,17 @@ export function findEmOutrosRZ(sku){
   return null;
 }
 
-export function addExcedente(rz, { sku, descricao, qtd, preco_unit, obs, fonte, ncm }){
+export function addExcedente(rz, { sku, descricao, qtd, preco_unit, obs, fonte }){
   const list = (state.excedentes[rz] ||= []);
   const existente = list.find(it => it.sku === sku);
   const q = Number(qtd) || 0;
   const p = (preco_unit === undefined || preco_unit === null || preco_unit === '') ? undefined : Number(preco_unit);
-  const metaNcm = ncm ?? state.metaByRZSku[rz]?.[sku]?.ncm ?? null;
   if (existente) {
     existente.qtd += q;
     if (p !== undefined) existente.preco_unit = p;
     existente.obs = obs || existente.obs;
-    existente.ncm = metaNcm ?? existente.ncm ?? null;
   } else {
-    list.push({ sku, descricao: descricao || '', qtd: q, preco_unit: p, obs: obs || '', fonte: fonte || '', ncm: metaNcm });
+    list.push({ sku, descricao: descricao || '', qtd: q, preco_unit: p, obs: obs || '', fonte: fonte || '' });
   }
   state.movimentos.push({ ts: Date.now(), tipo: 'EXCEDENTE', rz, sku, qtd: q, preco_unit: p, obs, fonte });
   updateContadores(rz);
@@ -349,40 +322,6 @@ export function selectDescartes() {
   return out;
 }
 
-export function setItemNcm(id, ncm, source){
-  const { rz, sku } = parseId(id);
-  if(!rz || !sku) return;
-  (state.metaByRZSku[rz] ||= {});
-  const meta = (state.metaByRZSku[rz][sku] ||= {});
-  const ts = Date.now();
-  meta.ncm = ncm;
-  meta.ncm_source = source;
-  meta.ncm_ts = ts;
-  meta.ncmMeta = { source, ts, status:'ok' };
-  meta.ncm_status = 'ok';
-  const item = (state.itemsByRZ[rz] || []).find(it => String(it.codigoML || '').toUpperCase() === sku);
-  if(item){
-    item.ncm = ncm;
-    item.ncmMeta = { source, ts, status:'ok' };
-  }
-  state.ncmCache[sku] = ncm;
-  try{ localStorage.setItem(NCM_CACHE_KEY, JSON.stringify(state.ncmCache)); }catch{}
-  if(typeof document !== 'undefined') document.dispatchEvent(new Event('ncm-update'));
-}
-
-export function setItemNcmStatus(id, status){
-  const { rz, sku } = parseId(id);
-  const meta = state.metaByRZSku[rz]?.[sku];
-  if(meta){
-    meta.ncm_status = status;
-    (meta.ncmMeta ||= {}).status = status;
-  }
-  const item = (state.itemsByRZ[rz] || []).find(it => String(it.codigoML || '').toUpperCase() === sku);
-  if(item){
-    (item.ncmMeta ||= {}).status = status;
-  }
-  if(typeof document !== 'undefined') document.dispatchEvent(new Event('ncm-update'));
-}
 
 export function tagItem(id, tag){
   const set = (state.itemTags[id] ||= new Set());
@@ -422,7 +361,6 @@ export function selectAllImportedItems(){
         descricao: meta[sku]?.descricao || '',
         preco_ml_unit: Number(meta[sku]?.precoMedio || 0),
         qtd: Number(qtd || 0),
-        ncm: meta[sku]?.ncm || null,
       });
     }
   }
@@ -441,8 +379,6 @@ const store = (typeof window !== 'undefined' && window.__STORE_SINGLETON) || {
   moveItemEntreRZ,
   conferir,
   registrarExcedente,
-  setItemNcm,
-  setItemNcmStatus,
   tagItem,
   untagItem,
   selectAllItems,

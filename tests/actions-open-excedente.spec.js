@@ -35,7 +35,6 @@ describe('consultar opens excedente when SKU missing', () => {
     elements['pi-preco'] = { textContent: '' };
     elements['pi-total'] = { textContent: '' };
     elements['pi-rz'] = { textContent: '' };
-    elements['pi-ncm'] = { textContent: '' };
     elements['produto-info'] = { hidden: false };
 
     dlg = { open: false, dataset: {}, showModal: vi.fn(function(){ this.open = true; }), close: () => {} };

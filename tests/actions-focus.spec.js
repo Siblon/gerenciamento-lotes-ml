@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-vi.mock('../src/utils/ui.js', () => ({ renderCounts: vi.fn(), renderExcedentes: vi.fn(), loadSettings: () => ({ resolveNcm: false }) }));
+vi.mock('../src/utils/ui.js', () => ({ renderCounts: vi.fn(), renderExcedentes: vi.fn(), loadSettings: () => ({}) }));
 import { initActionsPanel } from '../src/components/ActionsPanel.js';
 import { initImportPanel } from '../src/components/ImportPanel.js';
 import store from '../src/store/index.js';
@@ -40,7 +40,6 @@ describe('focus management', () => {
     elements['pi-preco'] = { textContent: '' };
     elements['pi-total'] = { textContent: '' };
     elements['pi-rz'] = { textContent: '' };
-    elements['pi-ncm'] = { textContent: '' };
     elements['produto-info'] = { hidden: false };
 
     global.document = {

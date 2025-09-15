@@ -2,7 +2,6 @@
 import XLSX from 'xlsx-js-style';
 import store, { setRZs, setItens, emit, setCurrentRZ } from '../store/index.js';
 import { parseBRLLoose } from './number.js';
-import { startNcmQueue } from '../services/ncmQueue.js';
 
 const isDev = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV);
 const DBG = (...a) => { if (isDev) console.log('[XLSX]', ...a); };
@@ -57,7 +56,6 @@ function buildHeaderMap(headerCells) {
     if (/valor\s*tot/.test(n)) map.valorTotal = idx;
     if (/^categoria$/.test(n)) map.categoria = idx;
     if (/subcat/.test(n)) map.subcategoria = idx;
-    if (n.replace(/\./g, '') === 'ncm' || n === 'ncm_code') map.ncm = idx;
   });
   return map;
 }
@@ -69,11 +67,6 @@ function parseNumberBR(v) {
   const t = s.replace(/\./g, '').replace(',', '.');
   const n = Number(t);
   return Number.isFinite(n) ? n : 0;
-}
-
-function sanitizeNCM(n) {
-  const onlyDigits = String(n ?? '').replace(/\D/g, '');
-  return /^\d{8}$/.test(onlyDigits) ? onlyDigits : null;
 }
 
 function normalizeRZ(v) {
@@ -148,7 +141,6 @@ export async function parsePlanilha(input) {
         valorTotalPlan: parseBRLLoose(totalRaw),
         categoria: get('categoria'),
         subcategoria: get('subcategoria'),
-        ncm: sanitizeNCM(get('ncm')),
         __preco_raw: precoRaw,
         __valor_total_raw: totalRaw,
         _rowIndex: i + 1,
@@ -192,7 +184,6 @@ export async function processarPlanilha(input, currentRZ) {
   }));
   await store.bulkUpsertItems(withRz);
   emit('refresh');
-  startNcmQueue(itens);
   return { rzList: rzs, itemsByRZ, totalByRZSku, metaByRZSku };
 }
 
@@ -268,9 +259,9 @@ export function exportarConferencia({ conferidos, pendentes, excedentes, resumoR
     }));
   }
 
-  addSheet('Conferidos', conferidos, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)','NCM']);
-  addSheet('Pendentes', pendentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)','NCM']);
-  addSheet('Excedentes', excedentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)','NCM']);
+  addSheet('Conferidos', conferidos, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
+  addSheet('Pendentes', pendentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
+  addSheet('Excedentes', excedentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
   const fin = (typeof window !== 'undefined' && window.computeFinance) ? window.computeFinance({ includeFrete: true }) : null;
   addSheet('Resumo RZ', resumoRZ.map(r => ({
     'RZ': r.rz,

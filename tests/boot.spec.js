@@ -6,7 +6,6 @@ vi.mock('../src/utils/boot.js', () => ({
 }));
 
 vi.mock('../src/store/index.js', () => ({ init: vi.fn() }));
-vi.mock('../src/services/ncmQueue.js', () => ({ startNcmQueue: vi.fn(() => Promise.resolve({ status: 'skipped' })) }));
 vi.mock('../src/components/Indicators.js', () => ({ initIndicators: vi.fn(), computeFinance: vi.fn() }));
 vi.mock('../src/components/ActionsPanel.js', () => ({ initActionsPanel: vi.fn() }));
 vi.mock('../src/components/RzBinding.js', () => ({ initRzBinding: vi.fn() }));

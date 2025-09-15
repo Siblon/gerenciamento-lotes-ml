@@ -71,7 +71,7 @@ h3{font-size:18px;margin:0}
 }
 .btn-ghost{background:transparent;border-color:transparent;box-shadow:none}
 
-/* Badges (ex: NCM counters) */
+/* Badges */
 .badge{padding:4px 10px;border-radius:999px;font-weight:700;font-size:12px;background:#EEF2FF;color:#334155}
 .badge-ok{background:#EAFBF1;color:#14532D}
 .badge-falha{background:#FFF1F2;color:#7F1D1D}
@@ -121,10 +121,6 @@ th.sticky{left:0;z-index:2}
   .actions-grid .row{grid-template-columns:1fr auto auto}
 }
 
-/* Kill-switch para garantir que o painel NCM possa ser ocultado */
-.ncm-disabled #card-ncm,
-.ncm-disabled [data-panel="ncm"]{display:none !important}
-
 /* === KPI icons sizing & layout ========================================== */
 .kpis {
   display: grid;
@@ -160,10 +156,6 @@ th.sticky{left:0;z-index:2}
   align-items: center;
 }
 
-.ncm-inline-actions {
-  border-top: 1px dashed var(--border);
-  padding-top: 8px;
-}
 
 #boot-status{
   position:fixed;left:16px;bottom:16px;z-index:1000;

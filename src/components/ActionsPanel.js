@@ -37,64 +37,7 @@ function findItemBySku(code) {
   return null;
 }
 
-function setNcmCheckedForSku(sku, checked) {
-      if (store.ncm?.setOk) {
-        store.ncm.setOk(sku, !!checked);
-        return;
-      }
-  const KEY = 'ncm.checked.map';
-  let map = {};
-  try { map = JSON.parse(localStorage.getItem(KEY)) || {}; } catch {}
-  map[sku] = !!checked;
-  localStorage.setItem(KEY, JSON.stringify(map));
-}
-
-function getNcmCheckedForSku(sku) {
-  if (store.ncm?.isOk) return !!store.ncm.isOk(sku);
-  const KEY = 'ncm.checked.map';
-  try {
-    const map = JSON.parse(localStorage.getItem(KEY)) || {};
-    return !!map[sku];
-  } catch { return false; }
-}
-
-function ensureNcmToggleInCard(sku) {
-  const card = document.getElementById('produto-info');
-  if (!card || typeof card.querySelector !== 'function') return;
-
-  let bar = card.querySelector('.ncm-inline-actions');
-  if (!bar) {
-    bar = document.createElement('div');
-    bar.className = 'ncm-inline-actions';
-    bar.style.marginTop = '8px';
-    card.querySelector('.card-body')?.appendChild(bar);
-  } else {
-    bar.innerHTML = '';
-  }
-
-  const lbl = document.createElement('label');
-  lbl.style.display = 'inline-flex';
-  lbl.style.alignItems = 'center';
-  lbl.style.gap = '8px';
-
-  const chk = document.createElement('input');
-  chk.type = 'checkbox';
-  chk.checked = getNcmCheckedForSku(sku);
-
-  const span = document.createElement('span');
-  span.textContent = 'NCM conferido';
-
-  chk.addEventListener('change', () => {
-    setNcmCheckedForSku(sku, chk.checked);
-    hideBoot?.();
-  });
-
-  lbl.appendChild(chk);
-  lbl.appendChild(span);
-  bar.appendChild(lbl);
-}
-
-export { getNcmCheckedForSku, setNcmCheckedForSku };
+// NCM-related helpers removidos
 
 function mostrarProdutoInfo(item) {
   const $ = (sel) => document.querySelector(sel);
@@ -104,9 +47,7 @@ function mostrarProdutoInfo(item) {
   $('#pi-preco').textContent = Number(item.precoMedio || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
   $('#pi-total').textContent = Number((item.qtd || 0) * (item.precoMedio || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
   $('#pi-rz').textContent = store.state.currentRZ || '';
-  document.getElementById('pi-ncm').textContent = item?.ncm || '—';
   document.getElementById('produto-info').hidden = false;
-  ensureNcmToggleInCard(item.sku);
   document.getElementById('produto-info').scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -376,7 +317,6 @@ export function initActionsPanel(render){
           Qtd: qtd,
           'Preço Médio (R$)': preco,
           'Valor Total (R$)': qtd * preco,
-          NCM: m.ncm || '',
           Observação: confMap[sku]?.observacao || ''
         };
       });
@@ -389,8 +329,7 @@ export function initActionsPanel(render){
           Descrição: m.descricao || '',
           Qtd: qtd,
           'Preço Médio (R$)': preco,
-          'Valor Total (R$)': qtd * preco,
-          NCM: m.ncm || ''
+          'Valor Total (R$)': qtd * preco
         };
       });
       const excedentes = (store.state.excedentes[rz] || []).map(it => {
@@ -401,7 +340,6 @@ export function initActionsPanel(render){
           Qtd: it.qtd,
           'Preço Médio (R$)': p ?? '',
           'Valor Total (R$)': p != null ? Number(it.qtd || 0) * p : '',
-          NCM: it.ncm || '',
           Observação: it.obs || ''
         };
       });

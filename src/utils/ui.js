@@ -15,32 +15,7 @@ export function saveSettings(s) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(s || {}));
 }
 
-export function applyNcmToggleToUI(enabled) {
-  const card = document.getElementById('card-ncm');
-  if (card) card.classList.toggle('collapsed', !enabled);
-  document.body?.classList.toggle('ncm-disabled', !enabled);
-}
-
-export function wireNcmToggle() {
-  const chkPrimary = document.getElementById('resolve-ncm');
-  const chkAlt = document.getElementById('dash-ncm');
-  const s = loadSettings();
-  const cur = !!s.resolveNcm;
-  if (chkPrimary) chkPrimary.checked = cur;
-  if (chkAlt) chkAlt.checked = cur;
-  applyNcmToggleToUI(cur);
-
-  const onChange = (v) => {
-    const s2 = loadSettings();
-    s2.resolveNcm = !!v;
-    saveSettings(s2);
-    applyNcmToggleToUI(!!v);
-    document.dispatchEvent(new CustomEvent('ncm-pref-changed', { detail: { enabled: !!v } }));
-  };
-
-  chkPrimary?.addEventListener('change', () => onChange(chkPrimary.checked));
-  chkAlt?.addEventListener('change', () => onChange(chkAlt.checked));
-}
+// NCM toggle functions removidos
 
 export function getExcedentes() {
   if (typeof store?.selectExcedentes === 'function') return store.selectExcedentes() || [];

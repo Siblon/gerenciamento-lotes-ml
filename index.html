@@ -12,11 +12,6 @@
       </h1>
       <div id="kpis-host"></div>
       <div class="actions">
-        <a href="/ncm.html" title="Console de NCM" class="btn btn-ghost">NCM</a>
-        <label class="switch" style="display:inline-flex;gap:8px;align-items:center">
-          <input type="checkbox" id="resolve-ncm" />
-          <span>Resolver NCM</span>
-        </label>
         <button id="helpBtn" title="Ajuda/Atalhos" aria-label="Ajuda" class="btn btn-ghost">?</button>
         <button id="btn-download-backup" class="btn btn-ghost">Baixar backup</button>
         <button id="btn-health" class="btn btn-ghost">Health</button>
@@ -48,7 +43,6 @@
             <div class="field">
               <label for="select-rz" class="label">RZ</label>
               <select id="select-rz" class="input"></select>
-              <span id="ncm-badge" class="badge" hidden>Resolvendo NCM… <span id="ncm-badge-count">0/0</span></span>
             </div>
             <div class="field">
               <label for="select-lote" class="label">Lote</label>
@@ -109,7 +103,6 @@
                 <div class="kv"><span class="muted">Preço médio (R$)</span><span id="pi-preco">0,00</span></div>
                 <div class="kv"><span class="muted">Valor total (R$)</span><span id="pi-total">0,00</span></div>
                 <div class="kv"><span class="muted">RZ</span><span id="pi-rz">—</span></div>
-                <div class="kv"><span class="muted">NCM</span><span id="pi-ncm">—</span></div>
               </div>
             </section>
           </div>

@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, expect, vi } from 'vitest';
 vi.mock('../src/services/planilha.js', () => ({ processarPlanilha: vi.fn() }));
-vi.mock('../src/utils/ui.js', () => ({ loadSettings: () => ({ resolveNcm: false }), renderCounts: vi.fn(), renderExcedentes: vi.fn() }));
+vi.mock('../src/utils/ui.js', () => ({ loadSettings: () => ({}), renderCounts: vi.fn(), renderExcedentes: vi.fn() }));
 import { initImportPanel } from '../src/components/ImportPanel.js';
 import { processarPlanilha } from '../src/services/planilha.js';
 import store from '../src/store/index.js';
