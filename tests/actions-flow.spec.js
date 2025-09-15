@@ -35,7 +35,6 @@ beforeEach(() => {
   elements['pi-preco'] = { textContent: '' };
   elements['pi-total'] = { textContent: '' };
   elements['pi-rz'] = { textContent: '' };
-  elements['pi-ncm'] = { textContent: '' };
   elements['produto-info'] = { hidden: false };
 
   global.document = {

@@ -102,7 +102,6 @@ export function initResultsPanel(rootEl){
       <div class="linha">
         <span>${it.codigo || it.sku}</span>
         <span>${it.descricao || '-'}</span>
-        <span>${it.ncm || '-'}</span>
       </div>
     `).join('') || '<em>Nenhum item para este RZ.</em>';
   }

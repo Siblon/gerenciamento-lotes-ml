@@ -10,7 +10,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
-        ncm: path.resolve(__dirname, 'public/ncm.html'),
       },
     },
   },
@@ -29,11 +28,6 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api/ncm': {
-        target: 'https://portalunico.siscomex.gov.br',
-        changeOrigin: true,
-        rewrite: p => p.replace(/^\/api\/ncm/, '/classif/api/publico/ncm'),
-      },
     },
   },
 });

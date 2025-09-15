@@ -14,7 +14,6 @@ const DEFAULT_PREFS = {
   autoRegisterOnSecondEnter: false,
   predefineExcedente: false,
   askDiscardOnFinalize: true,
-  ncmEnabled: true,
 };
 
 export function loadPrefs() {

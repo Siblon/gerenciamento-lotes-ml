@@ -61,15 +61,6 @@ export function initDashboard() {
     kpiHost.innerHTML = kpisHTML;
   }
 
-  // Se existir o checkbox para habilitar NCM no cabeçalho, apenas ligue o handler.
-  const chk = document.getElementById('dash-ncm');
-  if (chk && typeof loadPrefs === 'function' && typeof savePrefs === 'function') {
-    chk.addEventListener('change', (e) => {
-      const p = loadPrefs();
-      p.ncmEnabled = !!e.target.checked;
-      savePrefs(p);
-    });
-  }
 }
 
 export default { initDashboard };
