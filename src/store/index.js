@@ -72,16 +72,26 @@ export function selectCounts() {
 }
 
 export function setCurrentRZ(rz){
-  state.currentRZ = state.rzAtual = rz;
-  saveCurrentRZ(rz);
-  if (rz) updateContadores(rz);
-  if (DEBUG()) console.log('[DEBUG_RZ] setCurrentRZ', rz);
+  const list = Array.isArray(state.rzList) ? state.rzList : [];
+  let next = rz || null;
+  if (list.length) {
+    if (next && !list.includes(next)) next = null;
+    if (!next) next = list[0] || null;
+  }
+  state.currentRZ = state.rzAtual = next;
+  saveCurrentRZ(next);
+  if (next) updateContadores(next);
+  if (DEBUG()) console.log('[DEBUG_RZ] setCurrentRZ', next);
   emit('refresh');
 }
 
 export function setRZs(rzs = []){
   state.rzList = Array.isArray(rzs) ? rzs : [];
-  if(!state.currentRZ) state.currentRZ = state.rzList[0] || null;
+  if (!state.rzList.includes(state.currentRZ)) {
+    state.currentRZ = state.rzAtual = state.rzList[0] || null;
+    saveCurrentRZ(state.currentRZ);
+  }
+  state.rzAtual = state.currentRZ;
   if(state.currentRZ) updateContadores(state.currentRZ);
 }
 
@@ -89,7 +99,6 @@ export function setItens(items = []){
   const itemsByRZ = {};
   const totalByRZSku = {};
   const metaByRZSku = {};
-  const now = Date.now();
   for(const it of items){
     (itemsByRZ[it.codigoRZ] ||= []).push(it);
     const sku = String(it.codigoML || '').trim().toUpperCase();
@@ -110,7 +119,12 @@ export function setItens(items = []){
   state.metaByRZSku = metaByRZSku;
   state.conferidosByRZSku = {};
   state.excedentes = {};
-  if(!state.currentRZ) state.currentRZ = Object.keys(itemsByRZ)[0] || null;
+  const availableRZs = Object.keys(itemsByRZ);
+  if (!state.currentRZ || !availableRZs.includes(state.currentRZ)) {
+    state.currentRZ = state.rzAtual = availableRZs[0] || null;
+    saveCurrentRZ(state.currentRZ);
+  }
+  state.rzAtual = state.currentRZ;
   if(state.currentRZ) updateContadores(state.currentRZ);
   return { itemsByRZ, totalByRZSku, metaByRZSku };
 }

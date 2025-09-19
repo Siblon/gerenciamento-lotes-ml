@@ -32,7 +32,9 @@ export function initImportPanel() {
     try {
       // 📦 Processa a planilha e atualiza o estado do app (incluindo store.state.rzList)
       await processarPlanilha(file, rz);
-      store.setCurrentRZ?.(rz);
+      if (rz && store.state?.rzList?.includes(rz)) {
+        store.setCurrentRZ?.(rz);
+      }
       store.emit?.('refresh');
 
       // 🔁 Reidrata o select de RZ após a importação
