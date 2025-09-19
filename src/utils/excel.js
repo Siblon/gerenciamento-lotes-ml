@@ -6,7 +6,61 @@ const isDev = (typeof import.meta !== 'undefined' && import.meta.env && import.m
 const DBG = (...args) => { if (isDev) console.log('[XLSX]', ...args); };
 
 const stripAccents = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-const norm = (value) => stripAccents(String(value ?? '').replace(/\s+/g, ' ').trim().toLowerCase());
+const norm = (value) => stripAccents(
+  String(value ?? '')
+    .replace(/[_–—\-]+/g, ' ')
+    .replace(/["'`´]/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+);
+
+const toTokens = (value) => norm(value).split(' ').filter(Boolean);
+
+const hasAnyToken = (tokens, candidates) => candidates.some((token) => tokens.includes(token));
+
+const isRZHeader = (value) => {
+  const tokens = toTokens(value);
+  if (!tokens.length) return false;
+  const collapsed = tokens.join('');
+  if (tokens.length === 1 && (tokens[0] === 'rz' || tokens[0].startsWith('rz'))) return true;
+  if (tokens.some((tok) => tok === 'rz' || tok.startsWith('rz') || tok.endsWith('rz'))) {
+    if (tokens.length <= 2) return true;
+    if (hasAnyToken(tokens, ['cod', 'codigo', 'num', 'numero', 'n', 'no', 'nro'])) return true;
+  }
+  if (collapsed.includes('codrz') || collapsed.includes('rzcod')) return true;
+  const normalized = tokens.join(' ');
+  if (normalized.includes('codigo rz') || normalized.includes('cod rz')) return true;
+  return false;
+};
+
+const isSkuHeader = (value) => {
+  const tokens = toTokens(value);
+  if (!tokens.length) return false;
+  const normalized = tokens.join(' ');
+  const collapsed = tokens.join('');
+  if (tokens.includes('sku')) return true;
+  if (
+    hasAnyToken(tokens, ['ml', 'mlb', 'idml']) &&
+    hasAnyToken(tokens, ['cod', 'codigo', 'codigo_ml'])
+  ) {
+    return true;
+  }
+  if ((normalized.includes('mercado livre') || collapsed.includes('mercadolivre')) && hasAnyToken(tokens, ['cod', 'codigo'])) return true;
+  if (normalized.includes('codigo ml') || normalized.includes('cod ml')) return true;
+  if (collapsed.includes('codigoml') || collapsed.includes('codml') || collapsed.includes('codmlb')) return true;
+  return false;
+};
+
+const isDescricaoHeader = (value) => {
+  const normalized = norm(value);
+  if (!normalized) return false;
+  if (normalized.includes('descricao')) return true;
+  if (normalized.includes('produto')) return true;
+  if (normalized.includes('item')) return true;
+  return false;
+};
 
 async function toArrayBuffer(input) {
   if (input instanceof ArrayBuffer) return input;
@@ -20,7 +74,7 @@ async function toArrayBuffer(input) {
 function pickSheet(wb) {
   const byName = wb.SheetNames.find((name) => {
     const n = norm(name);
-    return n === '3p' || n.includes('3p');
+    return n === '3p' || n.replace(/\s+/g, '') === '3p' || n.includes('3p');
   });
   if (byName) return { name: byName, ws: wb.Sheets[byName] };
 
@@ -30,9 +84,9 @@ function pickSheet(wb) {
     if (!rows.length) continue;
     const headerIndex = findHeaderRow(rows, 50);
     if (headerIndex >= 0) {
-      const header = rows[headerIndex].map(norm);
-      const hasRZ = header.some((cell) => cell.includes('codigo rz') || cell === 'rz');
-      const hasDescricao = header.some((cell) => cell.includes('descricao'));
+      const header = rows[headerIndex];
+      const hasRZ = header.some((cell) => isRZHeader(cell));
+      const hasDescricao = header.some((cell) => isDescricaoHeader(cell));
       if (hasRZ || hasDescricao) {
         return { name, ws };
       }
@@ -45,10 +99,10 @@ function pickSheet(wb) {
 
 function findHeaderRow(rows, maxRows = 200) {
   for (let i = 0; i < Math.min(rows.length, maxRows); i++) {
-    const header = rows[i].map(norm);
-    const hasRZ = header.some((v) => v.includes('codigo rz') || v.includes('cod rz') || v === 'rz' || v.includes('rz-'));
-    const hasSKU = header.some((v) => v.includes('codigo ml') || v.includes('codigo do ml') || v.includes('sku'));
-    const hasDescricao = header.some((v) => v.includes('descricao'));
+    const header = rows[i];
+    const hasRZ = header.some((cell) => isRZHeader(cell));
+    const hasSKU = header.some((cell) => isSkuHeader(cell));
+    const hasDescricao = header.some((cell) => isDescricaoHeader(cell));
     if ((hasRZ && hasSKU) || (hasRZ && hasDescricao)) {
       return i;
     }
@@ -59,21 +113,69 @@ function findHeaderRow(rows, maxRows = 200) {
 function buildHeaderMap(headerCells) {
   const map = {};
   headerCells.forEach((cell, idx) => {
-    const value = norm(cell);
-    if (!value) return;
-    if (/^tipo$/.test(value)) map.tipo = idx;
-    if (/end.*wms/.test(value)) map.enderecoWMS = idx;
-    if (/(cod|codigo)\s*ml/.test(value) || value === 'sku') map.codigoML = idx;
-    if (/(cod|codigo)\s*rz/.test(value) || value === 'rz') map.codigoRZ = idx;
-    if (/(cod|codigo)\s*p7/.test(value)) map.codigoP7 = idx;
-    if (/^qtd$|^qt$|quant|qde/.test(value)) map.qtd = idx;
-    if (/descricao/.test(value)) map.descricao = idx;
-    if (/^seller$/.test(value)) map.seller = idx;
-    if (/^vertical$/.test(value)) map.vertical = idx;
-    if (/valor\s*uni/.test(value) || /preco\s*unit/.test(value)) map.valorUnit = idx;
-    if (/valor\s*tot/.test(value)) map.valorTotal = idx;
-    if (/^categoria$/.test(value)) map.categoria = idx;
-    if (/subcat/.test(value)) map.subcategoria = idx;
+    const normalized = norm(cell);
+    if (!normalized) return;
+    const tokens = normalized.split(' ').filter(Boolean);
+    const collapsed = tokens.join('');
+    const hasCod = hasAnyToken(tokens, ['cod', 'codigo']);
+    if (map.tipo == null && tokens.includes('tipo')) map.tipo = idx;
+    if (map.enderecoWMS == null && normalized.includes('endereco wms')) map.enderecoWMS = idx;
+    if (
+      map.codigoML == null &&
+      (tokens.includes('sku') ||
+        (hasCod && hasAnyToken(tokens, ['ml', 'mlb'])) ||
+        normalized.includes('codigo ml') ||
+        normalized.includes('cod ml') ||
+        collapsed.includes('codigoml') ||
+        collapsed.includes('codml') ||
+        normalized.includes('mercado livre') ||
+        collapsed.includes('mercadolivre'))
+    ) {
+      map.codigoML = idx;
+    }
+    const maybeRZ =
+      map.codigoRZ == null &&
+      (tokens.includes('rz') ||
+        tokens.some((tok) => tok.startsWith('rz') || tok.endsWith('rz')) ||
+        collapsed.includes('codrz') ||
+        normalized.includes('codigo rz') ||
+        normalized.includes('cod rz'));
+    if (maybeRZ) {
+      if (tokens.length <= 2 || hasCod) {
+        map.codigoRZ = idx;
+      }
+    }
+    if (map.codigoP7 == null && hasCod && tokens.includes('p7')) map.codigoP7 = idx;
+    if (
+      map.qtd == null &&
+      tokens.some((tok) => tok === 'qtd' || tok === 'qt' || tok === 'qde' || tok === 'qtde' || tok.startsWith('quant'))
+    ) {
+      map.qtd = idx;
+    }
+    if (
+      map.descricao == null &&
+      (normalized.includes('descricao') || normalized.includes('produto') || normalized.includes('item'))
+    ) {
+      map.descricao = idx;
+    }
+    if (map.seller == null && tokens.includes('seller')) map.seller = idx;
+    if (map.vertical == null && tokens.includes('vertical')) map.vertical = idx;
+    if (
+      map.valorUnit == null &&
+      (normalized.includes('valor uni') || normalized.includes('preco unit') || normalized.includes('preco medio'))
+    ) {
+      map.valorUnit = idx;
+    }
+    if (
+      map.valorTotal == null &&
+      (normalized.includes('valor tot') || normalized.includes('valor geral') || normalized.includes('preco total'))
+    ) {
+      map.valorTotal = idx;
+    }
+    if (map.categoria == null && tokens.includes('categoria')) map.categoria = idx;
+    if (map.subcategoria == null && (tokens.includes('subcategoria') || normalized.includes('sub cat'))) {
+      map.subcategoria = idx;
+    }
   });
 
   if (map.descricao == null && headerCells.length > 7) {
@@ -94,9 +196,13 @@ function parseNumberBR(value) {
 
 function normalizeRZ(value) {
   if (!value) return '';
-  const match = String(value).match(/rz\s*[-–—_:]?\s*(\d+)/i);
+  const str = String(value);
+  const match = str.match(/rz\s*[-–—_:]?\s*(\d+)/i);
   if (match) return `RZ-${match[1]}`;
-  const digits = String(value).match(/\b(\d{3,})\b/);
+  const compact = stripAccents(str).replace(/[^0-9a-z]/gi, '').toLowerCase();
+  const withPrefix = compact.match(/rz(\d+)/i);
+  if (withPrefix) return `RZ-${withPrefix[1]}`;
+  const digits = str.match(/\b(\d{2,})\b/);
   return digits ? `RZ-${digits[1]}` : '';
 }
 
@@ -151,7 +257,8 @@ export async function parsePlanilha(input) {
       const descricao = get('descricao');
       const codigoRZ = normalizeRZ(get('codigoRZ'));
       if (!codigoML && !descricao && !codigoRZ) continue;
-      if (norm(codigoML) === 'total') continue;
+      const codigoMLNorm = norm(codigoML);
+      if (codigoMLNorm === 'total' || codigoMLNorm.replace(/\s+/g, '') === 'total') continue;
 
       const precoRaw = get('valorUnit');
       const totalRaw = get('valorTotal');
@@ -213,11 +320,11 @@ export async function processarPlanilha(input, currentRZ) {
   setRZs(rzs);
   if (currentRZ) setCurrentRZ(currentRZ);
   const { itemsByRZ, totalByRZSku, metaByRZSku } = setItens(itens);
-  const rz = store.state.currentRZ || null;
+  const activeRZ = store.state.currentRZ || null;
   const withRz = itens.map((it, idx) => ({
     id: it.id || crypto.randomUUID?.() || `tmp_${Date.now()}_${idx}`,
     ...it,
-    rz,
+    rz: it.codigoRZ || activeRZ,
   }));
   await store.bulkUpsertItems(withRz);
   emit('refresh');
