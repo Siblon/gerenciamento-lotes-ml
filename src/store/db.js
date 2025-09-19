@@ -1,93 +1,95 @@
-import Dexie from 'dexie';
+// src/store/db.js
+// Implementação simplificada sem Dexie
+// Armazena dados em memória + localStorage (fallback)
 
-const DB_NAME = 'confDb';
-const DB_VERSION = 2; // bump version
+const CUR_KEY = 'confApp.currentLotId';
+const LOTS_KEY = 'confApp.lots';
+const ITEMS_KEY = 'confApp.items';
 
-export const db = new Dexie(DB_NAME);
-
-// v2: duas stores: lots e items
-// lots: id auto, name e rz livre
-// items: índices compostos para consultas por lote/status e lote/sku
-// eslint-disable-next-line spellcheck/spell-checker
-// (dexie handles indexes by string)
-db.version(DB_VERSION).stores({
-  lots: '++id,name,rz,createdAt',
-  items: '++id, lotId, sku, status, [lotId+status], [lotId+sku]'
-});
-
-// fallback: if schema mismatch occurs, delete and recreate
-export async function ensureDbOpen() {
+function load(key, def = []) {
   try {
-    if (!db.isOpen()) await db.open();
-  } catch (err) {
-    console.warn('ensureDbOpen: reset DB due to schema mismatch', err);
-    await Dexie.delete(DB_NAME);
-    await db.open();
+    return JSON.parse(localStorage.getItem(key)) || def;
+  } catch {
+    return def;
   }
 }
 
-// helpers -------------------------------------------------------------
+function save(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
+}
+
+// Estado em memória (sincronizado com localStorage)
+let lots = load(LOTS_KEY);
+let items = load(ITEMS_KEY);
+
 export async function addLot({ name, rz }) {
-  await ensureDbOpen();
-  const id = await db.lots.add({ name, rz, createdAt: new Date() });
+  const id = Date.now(); // id simples baseado em timestamp
+  const lot = { id, name, rz, createdAt: new Date().toISOString() };
+  lots.push(lot);
+  save(LOTS_KEY, lots);
   return id;
 }
 
 export async function getLots() {
-  await ensureDbOpen();
-  return db.lots.orderBy('createdAt').reverse().toArray();
+  return lots.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
-const CUR_KEY = 'confApp.currentLotId';
-export function setCurrentLotId(id) { localStorage.setItem(CUR_KEY, String(id)); }
-export function getCurrentLotId() { return Number(localStorage.getItem(CUR_KEY) || '0'); }
+export function setCurrentLotId(id) {
+  localStorage.setItem(CUR_KEY, String(id));
+}
+
+export function getCurrentLotId() {
+  return Number(localStorage.getItem(CUR_KEY) || '0');
+}
 
 export async function clearAll() {
-  await ensureDbOpen();
-  await db.transaction('readwrite', db.lots, db.items, async () => {
-    await db.items.clear();
-    await db.lots.clear();
-  });
+  lots = [];
+  items = [];
+  save(LOTS_KEY, lots);
+  save(ITEMS_KEY, items);
   localStorage.removeItem(CUR_KEY);
 }
 
-export async function addItemsBulk(lotId, items) {
-  await ensureDbOpen();
-  const rows = items.map(it => ({ ...it, lotId }));
-  if (rows.length) await db.items.bulkAdd(rows);
+export async function addItemsBulk(lotId, newItems) {
+  const rows = newItems.map(it => ({ ...it, lotId }));
+  items.push(...rows);
+  save(ITEMS_KEY, items);
 }
 
 export async function countByStatus(lotId) {
-  await ensureDbOpen();
-  const pending = db.items.where({ lotId, status: 'pending' }).count();
-  const excedente = db.items.where({ lotId, status: 'excedente' }).count();
-  const total = db.items.where({ lotId }).count();
-  // Compatibilidade: aceita registros legados com status "conferido"
-  const checked = db.items
-    .where({ lotId })
-    .filter(it => it.status === 'checked' || it.status === 'conferido')
-    .count();
-  const [p, c, e, t] = await Promise.all([pending, checked, excedente, total]);
-  return { pending: p, checked: c, excedente: e, total: t };
+  const filtered = items.filter(it => it.lotId === lotId);
+  const pending = filtered.filter(it => it.status === 'pending').length;
+  const excedente = filtered.filter(it => it.status === 'excedente').length;
+  const total = filtered.length;
+  const checked = filtered.filter(
+    it => it.status === 'checked' || it.status === 'conferido'
+  ).length;
+  return { pending, checked, excedente, total };
 }
 
 export async function getItemsByLotAndStatus(lotId, status, { limit = 50, offset = 0 } = {}) {
-  await ensureDbOpen();
+  let filtered = items.filter(it => it.lotId === lotId);
   if (status === 'checked') {
-    // inclui registros com status antigo "conferido"
-    return db.items
-      .where({ lotId })
-      .filter(it => it.status === 'checked' || it.status === 'conferido')
-      .offset(offset)
-      .limit(limit)
-      .toArray();
+    filtered = filtered.filter(it => it.status === 'checked' || it.status === 'conferido');
+  } else {
+    filtered = filtered.filter(it => it.status === status);
   }
-  return db.items.where({ lotId, status }).offset(offset).limit(limit).toArray();
+  return filtered.slice(offset, offset + limit);
 }
 
-// Legacy helpers kept for compatibility with existing code/tests
-export async function resetAll() { return clearAll(); }
-export async function setSetting(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} }
+// Helpers de compatibilidade
+export async function resetAll() {
+  return clearAll();
+}
+
+export async function setSetting(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
+}
+
 export async function getSetting(key, def = null) {
   try {
     const v = localStorage.getItem(key);
@@ -96,5 +98,11 @@ export async function getSetting(key, def = null) {
     return def;
   }
 }
+
+// Export default como objeto "db" (compatível)
+export const db = {
+  lots,
+  items
+};
 
 export default db;

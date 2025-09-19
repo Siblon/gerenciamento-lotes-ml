@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 import XLSX from 'xlsx';
+=======
+// Novo util de Excel com estilos
+import * as XLSX from 'xlsx-js-style';
+>>>>>>> 9a88e59 (fix: ajustado excel.js para import correto)
 import store, { setRZs, setItens, emit, setCurrentRZ } from '../store/index.js';
 import { parseBRLLoose } from './number.js';
 
@@ -45,6 +50,7 @@ function pickSheet(wb) {
 
 function findHeaderRow(rows, maxRows = 200) {
   for (let i = 0; i < Math.min(rows.length, maxRows); i++) {
+<<<<<<< HEAD
     const header = rows[i].map(norm);
     const hasRZ = header.some((v) => v.includes('codigo rz') || v.includes('cod rz') || v === 'rz' || v.includes('rz-'));
     const hasSKU = header.some((v) => v.includes('codigo ml') || v.includes('codigo do ml') || v.includes('sku'));
@@ -52,6 +58,13 @@ function findHeaderRow(rows, maxRows = 200) {
     if ((hasRZ && hasSKU) || (hasRZ && hasDescricao)) {
       return i;
     }
+=======
+    const r = rows[i].map(norm);
+    const hasRZ  = r.some(v => v.includes('codigo rz') || v.includes('cod rz') || v === 'rz' || v.includes('rz-'));
+    const hasML  = r.some(v => v.includes('codigo ml') || v.includes('codigo do ml'));
+    const hasQtd = r.some(v => v === 'qtd' || v === 'qt' || v.includes('quant'));
+    if (hasRZ && hasML) return i;
+>>>>>>> 9a88e59 (fix: ajustado excel.js para import correto)
   }
   return -1;
 }
@@ -59,6 +72,7 @@ function findHeaderRow(rows, maxRows = 200) {
 function buildHeaderMap(headerCells) {
   const map = {};
   headerCells.forEach((cell, idx) => {
+<<<<<<< HEAD
     const value = norm(cell);
     if (!value) return;
     if (/^tipo$/.test(value)) map.tipo = idx;
@@ -74,6 +88,22 @@ function buildHeaderMap(headerCells) {
     if (/valor\s*tot/.test(value)) map.valorTotal = idx;
     if (/^categoria$/.test(value)) map.categoria = idx;
     if (/subcat/.test(value)) map.subcategoria = idx;
+=======
+    const n = norm(cell);
+    if (/^tipo$/.test(n)) map.tipo = idx;
+    if (/end.*wms/.test(n)) map.enderecoWMS = idx;
+    if (/(cod|codigo)\s*ml/.test(n)) map.codigoML = idx;
+    if (/(cod|codigo)\s*rz/.test(n) || n === 'rz') map.codigoRZ = idx;
+    if (/(cod|codigo)\s*p7/.test(n)) map.codigoP7 = idx;
+    if (/^qtd$|^qt$|quant/.test(n)) map.qtd = idx;
+    if (/descr/.test(n)) map.descricao = idx;
+    if (/^seller$/.test(n)) map.seller = idx;
+    if (/^vertical$/.test(n)) map.vertical = idx;
+    if (/valor\s*uni/.test(n)) map.valorUnit = idx;
+    if (/valor\s*tot/.test(n)) map.valorTotal = idx;
+    if (/^categoria$/.test(n)) map.categoria = idx;
+    if (/subcat/.test(n)) map.subcategoria = idx;
+>>>>>>> 9a88e59 (fix: ajustado excel.js para import correto)
   });
 
   if (map.descricao == null && headerCells.length > 7) {
@@ -84,12 +114,21 @@ function buildHeaderMap(headerCells) {
   return map;
 }
 
+<<<<<<< HEAD
 function parseNumberBR(value) {
   const str = String(value ?? '').replace(/[^\d,.-]/g, '');
   if (!str) return 0;
   const normalized = str.replace(/\./g, '').replace(',', '.');
   const number = Number(normalized);
   return Number.isFinite(number) ? number : 0;
+=======
+function parseNumberBR(v) {
+  const s = String(v ?? '').replace(/[^\d,.-]/g, '');
+  if (!s) return 0;
+  const t = s.replace(/\./g, '').replace(',', '.');
+  const n = Number(t);
+  return Number.isFinite(n) ? n : 0;
+>>>>>>> 9a88e59 (fix: ajustado excel.js para import correto)
 }
 
 function normalizeRZ(value) {
@@ -112,10 +151,16 @@ function bruteForceRZ(rows) {
 }
 
 function detectCentsMode(items) {
+<<<<<<< HEAD
   let checked = 0;
   let centsLike = 0;
   for (const item of items.slice(0, 50)) {
     const raw = String(item.__preco_raw ?? '').trim();
+=======
+  let checked = 0, centsLike = 0;
+  for (const it of items.slice(0, 50)) {
+    const raw = String(it.__preco_raw ?? '').trim();
+>>>>>>> 9a88e59 (fix: ajustado excel.js para import correto)
     if (!raw) continue;
     if (/[,\.]/.test(raw)) return false;
     if (/^\d+$/.test(raw)) {
@@ -129,17 +174,17 @@ function detectCentsMode(items) {
 export async function parsePlanilha(input) {
   const data = await toArrayBuffer(input);
   const wb = XLSX.read(data, { type: 'array' });
-  DBG('Abas:', wb.SheetNames);
-
   const { name, ws } = pickSheet(wb);
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
-  DBG(`Usando aba '${name}' — linhas:`, rows.length);
 
   const headerIndex = findHeaderRow(rows);
   if (headerIndex >= 0) {
     const header = rows[headerIndex];
     const map = buildHeaderMap(header);
+<<<<<<< HEAD
     DBG('Header index:', headerIndex, 'map:', map);
+=======
+>>>>>>> 9a88e59 (fix: ajustado excel.js para import correto)
 
     const items = [];
     for (let i = headerIndex + 1; i < rows.length; i++) {
@@ -184,9 +229,20 @@ export async function parsePlanilha(input) {
 
     const centsMode = detectCentsMode(validItems);
     if (centsMode) {
+<<<<<<< HEAD
       console.log('[PRICE] planilha em centavos detectada; normalizando');
       for (const item of validItems) {
         if (typeof item.valorUnit === 'number') item.valorUnit /= 100;
+=======
+      for (const it of items) {
+        if (typeof it.valorUnit === 'number') it.valorUnit /= 100;
+      }
+    }
+    for (const it of items) {
+      it.valorTotal = Number(it.valorUnit || 0) * (Number(it.qtd) || 0);
+      if (it.valorUnit > 1000 && (it.qtd || 0) <= 5) {
+        it.__price_anomaly = true;
+>>>>>>> 9a88e59 (fix: ajustado excel.js para import correto)
       }
     }
 
@@ -224,6 +280,7 @@ export async function processarPlanilha(input, currentRZ) {
   return { rzList: rzs, itemsByRZ, totalByRZSku, metaByRZSku };
 }
 
+<<<<<<< HEAD
 export function exportResult({
   conferidos,
   faltantes,
@@ -269,14 +326,24 @@ export function exportResult({
     XLSX.utils.book_append_sheet(wb, toSheet(resumo), 'resumoFinanceiro');
   }
 
+=======
+export function exportResult({ conferidos, faltantes, excedentes, ajustes = [], resumo = [] }, filename = 'resultado.xlsx') {
+  const wb = XLSX.utils.book_new();
+  const toSheet = arr => XLSX.utils.json_to_sheet(arr);
+  XLSX.utils.book_append_sheet(wb, toSheet(conferidos), 'conferidos');
+  XLSX.utils.book_append_sheet(wb, toSheet(faltantes), 'faltantes');
+  XLSX.utils.book_append_sheet(wb, toSheet(excedentes), 'excedentes');
+  XLSX.utils.book_append_sheet(wb, toSheet(ajustes), 'ajustesPrecoOuErro');
+  if (resumo.length) XLSX.utils.book_append_sheet(wb, toSheet(resumo), 'resumoFinanceiro');
+>>>>>>> 9a88e59 (fix: ajustado excel.js para import correto)
   XLSX.writeFile(wb, filename);
 }
 
 export function exportarConferencia({ conferidos, pendentes, excedentes, resumoRZ }) {
   const wb = XLSX.utils.book_new();
-
   function addSheet(nome, data, headers) {
     const ws = XLSX.utils.json_to_sheet(data, { header: headers });
+<<<<<<< HEAD
     XLSX.utils.book_append_sheet(wb, ws, nome);
   }
 
@@ -340,11 +407,58 @@ export function buildWorkbook({ sheetName, rows, rz, lote }) {
     header: ['SKU', 'Descrição', 'Qtd', 'Preço Méd', 'Valor Total', 'Status', 'RZ', 'Lote'],
   });
 
+=======
+    headers.forEach((h, i) => {
+      const addr = XLSX.utils.encode_cell({ r:0, c:i });
+      ws[addr].s = { font: { bold: true } };
+    });
+    ws['!cols'] = headers.map(h => ({ wch: Math.max(12, h.length + 2) }));
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+    XLSX.utils.book_append_sheet(wb, ws, nome);
+  }
+  addSheet('Conferidos', conferidos, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
+  addSheet('Pendentes', pendentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
+  addSheet('Excedentes', excedentes, ['SKU','Descrição','Qtd','Preço Médio (R$)','Valor Total (R$)']);
+  addSheet('Resumo RZ', resumoRZ, ['RZ','Conferidos','Pendentes','Excedentes','Valor Total (R$)']);
+  XLSX.writeFile(wb, `conferencia_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+export function buildWorkbook({ sheetName, rows, rz, lote }) {
+  const data = [];
+  const header = ['SKU', 'Descrição', 'Qtd', 'Preço Méd', 'Valor Total', 'Status', 'RZ', 'Lote'];
+  data.push(header);
+  for (const r of rows) {
+    data.push([
+      r.sku ?? '', r.descricao ?? '', r.qtd ?? 0,
+      r.precoMedio ?? '', r.valorTotal ?? '',
+      r.status ?? '', rz ?? '', lote ?? ''
+    ]);
+  }
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  const headerStyle = {
+    fill: { patternType: 'solid', fgColor: { rgb: 'FF7A1A' } },
+    font: { color: { rgb: 'FFFFFF' }, bold: true },
+    alignment: { vertical: 'center', horizontal: 'center' }
+  };
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const cell = XLSX.utils.encode_cell({ r: 0, c });
+    if (ws[cell]) ws[cell].s = headerStyle;
+  }
+  ws['!cols'] = [
+    { wch: 14 }, { wch: 50 }, { wch: 6 }, { wch: 10 },
+    { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 20 }
+  ];
+>>>>>>> 9a88e59 (fix: ajustado excel.js para import correto)
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, sheetName || 'Conferidos');
   return wb;
 }
 
 export function downloadWorkbook(wb, filename) {
+<<<<<<< HEAD
   XLSX.writeFile(wb, filename);
+=======
+  XLSX.writeFile(wb, filename, { compression: true });
+>>>>>>> 9a88e59 (fix: ajustado excel.js para import correto)
 }

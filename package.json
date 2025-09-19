@@ -1,35 +1,23 @@
 {
-  "name": "conferencia-lotes",
+  "name": "gerenciamento-lotes-ml",
   "version": "1.0.0",
+  "description": "Sistema de conferência de lotes do Mercado Livre",
+  "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "cross-env VITE_SAFE_MODE=0 vite",
+    "dev:safe": "cross-env VITE_SAFE_MODE=1 vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run --reporter=dot --silent",
-    "test:verbose": "cross-env VERBOSE=1 vitest run --reporter=verbose",
-    "health": "echo 'Abra o app em http://localhost:5173/?nocache=1 e veja \"HEALTH MODE\" no console'",
-    "reset-data": "node scripts/reset-data.js"
+    "test": "vitest run",
+    "doctor": "node scripts/doctor.js"
   },
   "dependencies": {
-    "@zxing/browser": "^0.1.5",
-    "@zxing/library": "^0.21.3",
-    "dexie": "^3.2.4",
-    "xlsx": "^0.18.5",
-    "xlsx-js-style": "^1.2.0"
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "cross-env": "^7.0.3",
-    "vite": "^4.0.0",
-    "vitest": "^0.34.0"
-  },
-  "type": "module",
-  "engines": {
-    "node": ">=20"
-  },
-  "browserslist": [
-    "last 2 Chrome versions",
-    "last 2 Edge versions",
-    "last 2 Firefox versions",
-    "Safari >= 15.4"
-  ]
+    "vite": "^5.3.1",
+    "vitest": "^1.6.0",
+    "jsdom": "^24.0.0",
+    "cross-env": "^10.0.0"
+  }
 }
