@@ -7,6 +7,10 @@ export default defineConfig({
   build: {
     // Bundle gerado para engines compatíveis com ES2020
     target: 'es2020',
+    commonjsOptions: {
+      include: [/node_modules/, /xlsx-js-style/],
+      transformMixedEsModules: true,
+    },
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
@@ -24,7 +28,8 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['xlsx-js-style'],
+    include: ['xlsx-js-style', 'xlsx'],
+    needsInterop: ['xlsx-js-style'],
   },
   server: {
     proxy: {
