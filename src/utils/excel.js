@@ -287,7 +287,27 @@ export async function parsePlanilha(input) {
       items.push(item);
     }
 
-    const validItems = items.filter((item) => item.codigoRZ);
+    let validItems = items.filter((item) => item.codigoRZ);
+
+    // Se não existir RZ → gera automaticamente
+    if (validItems.length === 0) {
+      const fileName = input?.name || 'DEFAULT';
+      const baseName = fileName.replace(/\..+$/, '').trim() || 'DEFAULT';
+      const rzAuto = `RZ-${baseName}`;
+      console.warn(`[IMPORT] Nenhuma coluna RZ encontrada, usando ${rzAuto}`);
+
+      validItems = items.map((it, idx) => {
+        // garante que tenha pelo menos SKU ou descrição
+        if (!it.codigoML && !it.descricao) {
+          throw new Error('Planilha inválida');
+        }
+        return {
+          ...it,
+          codigoRZ: rzAuto,
+          id: it.id || crypto.randomUUID?.() || `tmp_${Date.now()}_${idx}`,
+        };
+      });
+    }
 
     const centsMode = detectCentsMode(validItems);
     if (centsMode) {
