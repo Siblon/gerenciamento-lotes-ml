@@ -292,14 +292,18 @@ export async function parsePlanilha(input) {
     // Se não existir RZ → gera automaticamente
     if (validItems.length === 0) {
       const fileName = input?.name || 'DEFAULT';
-      const baseName = fileName.replace(/\..+$/, '').trim() || 'DEFAULT';
+      const baseNameRaw = fileName.replace(/\..+$/, '').trim();
+      const baseName = baseNameRaw || 'DEFAULT';
       const rzAuto = `RZ-${baseName}`;
       console.warn(`[IMPORT] Nenhuma coluna RZ encontrada, usando ${rzAuto}`);
+      if (typeof window !== 'undefined') {
+        window.alert(`⚠️ Nenhuma coluna RZ encontrada.\nFoi atribuído automaticamente: ${rzAuto}`);
+      }
 
       validItems = items.map((it, idx) => {
         // garante que tenha pelo menos SKU ou descrição
         if (!it.codigoML && !it.descricao) {
-          throw new Error('Planilha inválida');
+          throw new Error('Planilha inválida: nenhum SKU/descrição encontrado');
         }
         return {
           ...it,
