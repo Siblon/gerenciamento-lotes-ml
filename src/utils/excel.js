@@ -17,7 +17,6 @@ const norm = (value) => stripAccents(
 );
 
 const toTokens = (value) => norm(value).split(' ').filter(Boolean);
-
 const hasAnyToken = (tokens, candidates) => candidates.some((token) => tokens.includes(token));
 
 const isRZHeader = (value) => {
@@ -319,7 +318,6 @@ export async function parsePlanilha(input, options = {}) {
       console.warn(`[IMPORT] Nenhuma coluna RZ encontrada, usando ${rzAuto}`);
 
       validItems = items.map((it, idx) => {
-        // garante que tenha pelo menos SKU ou descrição
         if (!it.codigoML && !it.descricao) {
           throw new Error('Planilha inválida: nenhum SKU/descrição encontrado');
         }
@@ -416,130 +414,4 @@ export function exportResult({
       custo_medio_pago_palete: fin.aggregates.custo_medio_pago_palete,
       preco_venda_medio_palete: fin.aggregates.preco_venda_medio_palete,
       lucro_total_palete: fin.aggregates.lucro_total_palete,
-    });
-  }
-  if (resumo.length) {
-    XLSX.utils.book_append_sheet(wb, toSheet(resumo), 'resumoFinanceiro');
-  }
-
-  XLSX.writeFile(wb, filename, { compression: true });
-}
-
-export function exportarConferencia({ conferidos, pendentes, excedentes, resumoRZ }) {
-  const wb = XLSX.utils.book_new();
-
-  const headerStyle = {
-    fill: { patternType: 'solid', fgColor: { rgb: 'FF7A1A' } },
-    font: { color: { rgb: 'FFFFFFFF' }, bold: true },
-    alignment: { vertical: 'center', horizontal: 'center' },
-  };
-
-  function styleHeader(ws, headers) {
-    if (!headers?.length) return;
-    headers.forEach((_, idx) => {
-      const cellAddr = XLSX.utils.encode_cell({ r: 0, c: idx });
-      if (ws[cellAddr]) ws[cellAddr].s = headerStyle;
-    });
-    ws['!cols'] = headers.map((header) => ({ wch: Math.max(12, String(header).length + 2) }));
-    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
-  }
-
-  function addSheet(nome, data, headers) {
-    const ws = XLSX.utils.json_to_sheet(data, { header: headers });
-    styleHeader(ws, headers);
-    XLSX.utils.book_append_sheet(wb, ws, nome);
-  }
-
-  function sheetFinanceiroPorItem() {
-    const fin = (typeof window !== 'undefined' && window.computeFinance)
-      ? window.computeFinance({ includeFrete: true })
-      : null;
-    if (!fin) return [];
-    return fin.byItem.map((it) => ({
-      SKU: it.sku,
-      Descrição: it.descricao,
-      preco_ml_unit: it.preco_ml_unit,
-      _custo_pago_unit: it.custo_pago_unit,
-      _preco_venda_unit: it.preco_venda_unit,
-      _frete_unit: it.frete_unit,
-      _lucro_unit: it.lucro_unit,
-      _lucro_total: it.lucro_total,
-    }));
-  }
-
-  addSheet('Conferidos', conferidos, ['SKU', 'Descrição', 'Qtd', 'Preço Médio (R$)', 'Valor Total (R$)']);
-  addSheet('Pendentes', pendentes, ['SKU', 'Descrição', 'Qtd', 'Preço Médio (R$)', 'Valor Total (R$)']);
-  addSheet('Excedentes', excedentes, ['SKU', 'Descrição', 'Qtd', 'Preço Médio (R$)', 'Valor Total (R$)']);
-
-  const fin = (typeof window !== 'undefined' && window.computeFinance)
-    ? window.computeFinance({ includeFrete: true })
-    : null;
-
-  addSheet('Resumo RZ', resumoRZ.map((r) => ({
-    RZ: r.rz,
-    Conferidos: r.conferidos,
-    Pendentes: r.pendentes,
-    Excedentes: r.excedentes,
-    'Valor Total (R$)': r.valorTotal,
-    'Preço médio ML (palete)': fin?.aggregates.preco_medio_ml_palete,
-    'Custo pago médio (palete)': fin?.aggregates.custo_medio_pago_palete,
-    'Preço de venda médio (palete)': fin?.aggregates.preco_venda_medio_palete,
-    'Lucro total (palete)': fin?.aggregates.lucro_total_palete,
-  })), ['RZ', 'Conferidos', 'Pendentes', 'Excedentes', 'Valor Total (R$)', 'Preço médio ML (palete)', 'Custo pago médio (palete)', 'Preço de venda médio (palete)', 'Lucro total (palete)']);
-
-  addSheet('Financeiro (por item)', sheetFinanceiroPorItem(), [
-    'SKU', 'Descrição', 'preco_ml_unit', '_custo_pago_unit', '_preco_venda_unit', '_frete_unit', '_lucro_unit', '_lucro_total',
-  ]);
-
-  XLSX.writeFile(wb, `conferencia_${new Date().toISOString().slice(0, 10)}.xlsx`, { compression: true });
-}
-
-export function buildWorkbook({ sheetName, rows, rz, lote }) {
-  const header = ['SKU', 'Descrição', 'Qtd', 'Preço Méd', 'Valor Total', 'Status', 'RZ', 'Lote'];
-  const data = [header];
-  for (const row of rows) {
-    data.push([
-      row.sku ?? '',
-      row.descricao ?? '',
-      row.qtd ?? 0,
-      row.precoMedio ?? '',
-      row.valorTotal ?? '',
-      row.status ?? '',
-      rz ?? '',
-      lote ?? '',
-    ]);
-  }
-
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  const headerStyle = {
-    fill: { patternType: 'solid', fgColor: { rgb: 'FF7A1A' } },
-    font: { color: { rgb: 'FFFFFFFF' }, bold: true },
-    alignment: { vertical: 'center', horizontal: 'center' },
-  };
-
-  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
-  for (let c = range.s.c; c <= range.e.c; c++) {
-    const cell = XLSX.utils.encode_cell({ r: 0, c });
-    if (ws[cell]) ws[cell].s = headerStyle;
-  }
-
-  ws['!cols'] = [
-    { wch: 14 },
-    { wch: 50 },
-    { wch: 6 },
-    { wch: 12 },
-    { wch: 14 },
-    { wch: 12 },
-    { wch: 12 },
-    { wch: 20 },
-  ];
-  ws['!freeze'] = { xSplit: 0, ySplit: 1 };
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, sheetName || 'Conferidos');
-  return wb;
-}
-
-export function downloadWorkbook(wb, filename) {
-  XLSX.writeFile(wb, filename, { compression: true });
-}
+   

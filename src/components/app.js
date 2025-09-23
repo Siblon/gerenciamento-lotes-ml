@@ -99,7 +99,7 @@ function setupFileImport() {
     showBoot('Importando planilha...');
     try {
       const excel = await import('../utils/excel.js');
-      const processFn = excel.processarPlanilha; // <- usamos processarPlanilha
+      const processFn = excel.processarPlanilha;
 
       if (typeof processFn !== 'function') {
         throw new Error('processarPlanilha não encontrada em utils/excel.js');
@@ -126,7 +126,7 @@ export function initApp() {
   initRzBinding?.();
   initActionsPanel?.();
   setupAutoRzListener();
-  setupFileImport(); // agora o input #file é monitorado
+  setupFileImport();
   if (store?.state?.rzAuto) {
     applyAutoRzSelection(store.state.rzAuto);
   }
