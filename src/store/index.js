@@ -11,6 +11,7 @@ let __booted = false;
 const state = {
   currentRZ: null,
   rzAtual: null,
+  rzAuto: null,
 
   // listas e dados brutos
   rzList: [],
@@ -409,9 +410,9 @@ const store = (typeof window !== 'undefined' && window.__STORE_SINGLETON) || {
 if (typeof window !== 'undefined') window.__STORE_SINGLETON = store;
 
 // novos utilitários simples -------------------------------------------------
-export function emit(event){
+export function emit(event, payload){
   (state.__listeners[event] || []).forEach(fn => {
-    try { fn(); } catch (err) { console.error(err); }
+    try { fn(payload); } catch (err) { console.error(err); }
   });
 }
 

@@ -103,7 +103,8 @@ function findHeaderRow(rows, maxRows = 200) {
     const hasRZ = header.some((cell) => isRZHeader(cell));
     const hasSKU = header.some((cell) => isSkuHeader(cell));
     const hasDescricao = header.some((cell) => isDescricaoHeader(cell));
-    if ((hasRZ && hasSKU) || (hasRZ && hasDescricao)) {
+    const headerWithoutRZ = !hasRZ && hasSKU && hasDescricao;
+    if ((hasRZ && hasSKU) || (hasRZ && hasDescricao) || headerWithoutRZ) {
       return i;
     }
   }
@@ -232,7 +233,29 @@ function detectCentsMode(items) {
   return checked >= 3 && centsLike / checked > 0.8;
 }
 
-export async function parsePlanilha(input) {
+function deriveAutoRZ(input, options = {}) {
+  const rawName = options.fileName ?? input?.name ?? '';
+  const cleaned = String(rawName)
+    .split(/[\\/]/)
+    .pop()
+    .replace(/\.[^.]+$/, '')
+    .trim();
+  if (!cleaned) return 'RZ-AUTO';
+
+  const digitMatches = cleaned.match(/\d+/g);
+  if (digitMatches && digitMatches.length) {
+    return `RZ-${digitMatches.join('')}`;
+  }
+
+  const normalized = stripAccents(cleaned)
+    .replace(/[^0-9a-z]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .toUpperCase();
+  const withoutPrefix = normalized.startsWith('RZ-') ? normalized.slice(3) : normalized;
+  return `RZ-${withoutPrefix || 'AUTO'}`;
+}
+
+export async function parsePlanilha(input, options = {}) {
   const data = await toArrayBuffer(input);
   const wb = XLSX.read(data, { type: 'array' });
   DBG('Abas:', wb.SheetNames);
@@ -288,17 +311,12 @@ export async function parsePlanilha(input) {
     }
 
     let validItems = items.filter((item) => item.codigoRZ);
+    let rzAuto = null;
 
     // Se não existir RZ → gera automaticamente
-    if (validItems.length === 0) {
-      const fileName = input?.name || 'DEFAULT';
-      const baseNameRaw = fileName.replace(/\..+$/, '').trim();
-      const baseName = baseNameRaw || 'DEFAULT';
-      const rzAuto = `RZ-${baseName}`;
+    if (validItems.length === 0 && items.length) {
+      rzAuto = deriveAutoRZ(input, options);
       console.warn(`[IMPORT] Nenhuma coluna RZ encontrada, usando ${rzAuto}`);
-      if (typeof window !== 'undefined') {
-        window.alert(`⚠️ Nenhuma coluna RZ encontrada.\nFoi atribuído automaticamente: ${rzAuto}`);
-      }
 
       validItems = items.map((it, idx) => {
         // garante que tenha pelo menos SKU ou descrição
@@ -332,17 +350,20 @@ export async function parsePlanilha(input) {
     }
 
     const rzs = Array.from(new Set(validItems.map((item) => item.codigoRZ))).sort();
-    return { rzs, itens: validItems };
+    return { rzs, itens: validItems, rzAuto };
   }
 
   const rzs = bruteForceRZ(rows);
-  return { rzs, itens: [] };
+  return { rzs, itens: [], rzAuto: null };
 }
 
 export async function processarPlanilha(input, currentRZ) {
-  const { rzs, itens } = await parsePlanilha(input);
+  const fileName = typeof input?.name === 'string' ? input.name : undefined;
+  const { rzs, itens, rzAuto } = await parsePlanilha(input, { fileName });
   setRZs(rzs);
-  if (currentRZ) setCurrentRZ(currentRZ);
+  if (rzAuto) setCurrentRZ(rzAuto);
+  else if (currentRZ) setCurrentRZ(currentRZ);
+  store.state.rzAuto = rzAuto || null;
   const { itemsByRZ, totalByRZSku, metaByRZSku } = setItens(itens);
   const activeRZ = store.state.currentRZ || null;
   const withRz = itens.map((it, idx) => ({
@@ -352,7 +373,8 @@ export async function processarPlanilha(input, currentRZ) {
   }));
   await store.bulkUpsertItems(withRz);
   emit('refresh');
-  return { rzList: rzs, itemsByRZ, totalByRZSku, metaByRZSku };
+  emit('rz:auto', rzAuto || null);
+  return { rzList: rzs, itemsByRZ, totalByRZSku, metaByRZSku, rzAuto };
 }
 
 export function exportResult({

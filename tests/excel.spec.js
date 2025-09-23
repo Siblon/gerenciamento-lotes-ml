@@ -15,6 +15,8 @@ beforeEach(() => {
   store.state.rzList = [];
   store.state.itemsByRZ = {};
   store.state.metaByRZSku = {};
+  store.state.currentRZ = null;
+  store.state.rzAuto = null;
 });
 
 describe('processarPlanilha', () => {
@@ -70,6 +72,27 @@ describe('processarPlanilha', () => {
       const { itemsByRZ } = await processarPlanilha(buf);
       const item = itemsByRZ['RZ-1'][0];
       expect(item.__price_anomaly).toBe(true);
+    });
+
+    it('gera RZ automático quando a coluna está ausente', async () => {
+      const data = [
+        ['Codigo ML', 'Descricao', 'Qtd'],
+        ['AAA123', 'Produto A', 2],
+      ];
+      const buf = createXlsxBuffer(data);
+      const fakeFile = {
+        name: '66.xlsx',
+        async arrayBuffer() {
+          return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+        },
+      };
+
+      const { rzAuto, rzList, itemsByRZ } = await processarPlanilha(fakeFile);
+      expect(rzAuto).toBe('RZ-66');
+      expect(rzList).toEqual(['RZ-66']);
+      expect(Object.keys(itemsByRZ)).toEqual(['RZ-66']);
+      expect(store.state.currentRZ).toBe('RZ-66');
+      expect(store.state.rzAuto).toBe('RZ-66');
     });
 
   });

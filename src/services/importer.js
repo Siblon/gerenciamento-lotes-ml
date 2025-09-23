@@ -27,7 +27,7 @@ export async function importFile(file, rz) {
   if (!file) return null;
 
   const buffer = await file.arrayBuffer();
-  const { itens, rzs } = await parsePlanilha(buffer);
+  const { itens, rzs } = await parsePlanilha(buffer, { fileName: file?.name });
 
   if (rzs?.length) {
     await setRZs(rzs); // Atualiza store.state.rzList
