@@ -5,6 +5,7 @@ import {
   addItemsBulk,
   setRZs,
 } from '../store/db.js';
+import { setCurrentRZ, emit } from '../store/index.js';
 
 /**
  * Converte uma linha da planilha em um item do banco
@@ -27,22 +28,32 @@ export async function importFile(file, rz) {
   if (!file) return null;
 
   const buffer = await file.arrayBuffer();
-  const { itens, rzs } = await parsePlanilha(buffer, { fileName: file?.name });
+  const { itens, rzs, rzAuto } = await parsePlanilha(buffer, { fileName: file?.name });
 
+  // Atualiza lista de RZs disponíveis
   if (rzs?.length) {
-    await setRZs(rzs); // Atualiza store.state.rzList
+    await setRZs(rzs);
   }
 
-  const lotId = await addLot({ name: file.name, rz });
+  // Se gerou RZ automático → seta como atual e dispara evento
+  if (rzAuto) {
+    setCurrentRZ(rzAuto);
+    emit('rz:auto', rzAuto);
+  }
+
+  const lotId = await addLot({ name: file.name, rz: rzAuto || rz });
   setCurrentLotId(lotId);
 
-  const items = itens.map(it =>
-    mapRowToItem({
-      sku: it.codigoML,
-      descricao: it.descricao,
-      qtd: it.qtd,
-      preco: it.valorUnit,
-    }, lotId)
+  const items = itens.map((it) =>
+    mapRowToItem(
+      {
+        sku: it.codigoML,
+        descricao: it.descricao,
+        qtd: it.qtd,
+        preco: it.valorUnit,
+      },
+      lotId
+    )
   );
 
   if (items.length) {
