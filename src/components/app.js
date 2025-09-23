@@ -7,6 +7,7 @@ import { initRzBinding } from './RzBinding.js';
 import { hideBoot, showBoot } from '../utils/boot.js';
 import Alert from './ui/Alert.js';
 
+// store singleton
 const { init } = storeModule;
 const store = Object.prototype.hasOwnProperty.call(storeModule, 'default')
   ? storeModule.default
@@ -25,15 +26,10 @@ function ensureAutoRzAlertHost() {
   if (!host) {
     host = document.createElement('div');
     host.dataset.role = 'auto-rz-alert';
-    if (typeof container.insertAdjacentElement === 'function') {
-      container.insertAdjacentElement('afterbegin', host);
-    } else if (typeof container.prepend === 'function') {
-      container.prepend(host);
-    } else if (typeof container.insertBefore === 'function') {
-      container.insertBefore(host, container.firstChild ?? null);
-    } else {
+    container.insertAdjacentElement?.('afterbegin', host) ||
+      container.prepend?.(host) ||
+      container.insertBefore?.(host, container.firstChild ?? null) ||
       container.appendChild?.(host);
-    }
   }
   autoRzAlertHost = host;
   return host;
@@ -67,17 +63,12 @@ export function applyAutoRzSelection(rzAuto) {
       const opt = document.createElement('option');
       opt.value = rzAuto;
       opt.textContent = rzAuto;
-      if (typeof select.prepend === 'function') select.prepend(opt);
-      else select.appendChild(opt);
+      select.prepend?.(opt) || select.appendChild(opt);
     }
     const previous = select.value;
     select.value = rzAuto;
-    if (
-      previous !== rzAuto &&
-      typeof select.dispatchEvent === 'function' &&
-      typeof Event === 'function'
-    ) {
-      select.dispatchEvent(new Event('change', { bubbles: true }));
+    if (previous !== rzAuto) {
+      select.dispatchEvent?.(new Event('change', { bubbles: true }));
     }
   }
 
@@ -87,13 +78,44 @@ export function applyAutoRzSelection(rzAuto) {
 function setupAutoRzListener() {
   if (autoRzListenerBound) return;
   autoRzListenerBound = true;
-  const hasOn = store && Object.prototype.hasOwnProperty.call(store, 'on');
-  const subscribe = hasOn ? store.on : undefined;
-  if (typeof subscribe === 'function') {
-    subscribe('rz:auto', (value) => {
+  if (typeof store.on === 'function') {
+    store.on('rz:auto', (value) => {
       applyAutoRzSelection(value || null);
     });
   }
+}
+
+/**
+ * Captura o upload da planilha e alimenta o store
+ */
+function setupFileImport() {
+  const input = document.getElementById('file');
+  if (!input) return;
+
+  input.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    showBoot('Importando planilha...');
+    try {
+      const excel = await import('../utils/excel.js');
+      const processFn = excel.processarPlanilha; // <- usamos processarPlanilha
+
+      if (typeof processFn !== 'function') {
+        throw new Error('processarPlanilha não encontrada em utils/excel.js');
+      }
+
+      const result = await processFn(file);
+      if (result?.rzAuto) {
+        store.emit?.('rz:auto', result.rzAuto);
+      }
+    } catch (err) {
+      console.error('Erro ao importar planilha:', err);
+      mountAutoRzAlert('❌ Falha ao importar planilha');
+    } finally {
+      hideBoot();
+    }
+  });
 }
 
 export function initApp() {
@@ -104,10 +126,9 @@ export function initApp() {
   initRzBinding?.();
   initActionsPanel?.();
   setupAutoRzListener();
-  const hasState = store && Object.prototype.hasOwnProperty.call(store, 'state');
-  const autoRz = hasState ? store.state?.rzAuto : null;
-  if (autoRz) {
-    applyAutoRzSelection(autoRz);
+  setupFileImport(); // agora o input #file é monitorado
+  if (store?.state?.rzAuto) {
+    applyAutoRzSelection(store.state.rzAuto);
   }
   hideBoot();
 }
