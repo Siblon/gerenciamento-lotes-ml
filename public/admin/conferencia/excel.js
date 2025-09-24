@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { setRZs, setCurrentRZ, setItens } from './store/index.js';
 
 const REQUIRED_KEYS = ['codigo', 'descricao', 'rz', 'quantidade'];
 
@@ -235,6 +236,9 @@ export async function processarPlanilha(file) {
   console.log('[EXCEL] Iniciando processamento', file?.name ?? 'arquivo indefinido');
 
   if (!file) {
+    setRZs([]);
+    setCurrentRZ(null);
+    setItens([]);
     return { rzs: [], itens: [] };
   }
 
@@ -248,6 +252,9 @@ export async function processarPlanilha(file) {
   const primeiraAba = sheetNames[0];
   if (!primeiraAba) {
     console.warn('[EXCEL] Nenhuma aba encontrada no arquivo.');
+    setRZs([]);
+    setCurrentRZ(null);
+    setItens([]);
     return { rzs: [], itens: [] };
   }
 
@@ -257,6 +264,9 @@ export async function processarPlanilha(file) {
 
   if (!rows.length) {
     console.warn('[EXCEL] Planilha vazia.');
+    setRZs([]);
+    setCurrentRZ(null);
+    setItens([]);
     return { rzs: [], itens: [] };
   }
 
@@ -266,6 +276,8 @@ export async function processarPlanilha(file) {
 
   const headerRow = headerIndex >= 0 ? rows[headerIndex] : rows[0];
   const dataRows = headerIndex >= 0 ? rows.slice(headerIndex + 1) : rows.slice(1);
+
+  console.debug('[DEBUG] Planilha carregada com', dataRows.length, 'linhas');
 
   const colunas = detectarColunas(headerRow);
 
@@ -280,7 +292,17 @@ export async function processarPlanilha(file) {
 
   const rzs = extrairRzs(itens);
 
+  console.debug('[DEBUG] RZs detectados:', rzs);
+
   console.log('[EXCEL] Processamento concluído', { totalItens: itens.length, rzs });
+
+  setRZs(rzs);
+  if (Array.isArray(rzs) && rzs.length === 1) {
+    setCurrentRZ(rzs[0]);
+  } else {
+    setCurrentRZ(null);
+  }
+  setItens(itens);
 
   return { rzs, itens };
 }

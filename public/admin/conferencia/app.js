@@ -1,30 +1,19 @@
 import { processarPlanilha } from './excel.js';
-import { state, setRZs, setItens, setCurrentRZ, on } from './store/index.js';
+import { state, on } from './store/index.js';
 
 let initialized = false;
 
 function renderTabelaItens() {
-  const tabela = document.getElementById('tabela-itens');
-  if (!tabela) {
+  const tbody = document.getElementById('tabela-itens');
+  if (!tbody) {
     console.warn('[APP] Tabela #tabela-itens não encontrada');
     return;
   }
 
   const itens = Array.isArray(state.itens) ? state.itens : [];
 
-  tabela.innerHTML = '';
+  tbody.innerHTML = '';
 
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  ['Código', 'Descrição', 'RZ', 'Quantidade'].forEach((titulo) => {
-    const th = document.createElement('th');
-    th.textContent = titulo;
-    headerRow.appendChild(th);
-  });
-  thead.appendChild(headerRow);
-  tabela.appendChild(thead);
-
-  const tbody = document.createElement('tbody');
   itens.forEach((item) => {
     const tr = document.createElement('tr');
 
@@ -47,8 +36,6 @@ function renderTabelaItens() {
     tbody.appendChild(tr);
   });
 
-  tabela.appendChild(tbody);
-
   console.debug('[DEBUG] Tabela renderizada com', itens.length, 'linhas');
 }
 
@@ -69,14 +56,6 @@ async function handleFile(fileInput) {
   try {
     const { rzs, itens } = await processarPlanilha(file);
     console.log('[APP] Resultado do processamento', { rzs, totalItens: itens.length });
-
-    setRZs(rzs);
-    if (Array.isArray(rzs) && rzs.length === 1) {
-      setCurrentRZ(rzs[0]);
-    } else {
-      setCurrentRZ(null);
-    }
-    setItens(itens);
   } catch (error) {
     console.error('[APP] Erro ao processar planilha', error);
   } finally {
@@ -100,7 +79,7 @@ export function initApp() {
 
   initialized = true;
 
-  on('itens:update', () => renderTabelaItens());
+  on('itens:update', renderTabelaItens);
   renderTabelaItens();
 
   fileInput.addEventListener('change', (event) => {
