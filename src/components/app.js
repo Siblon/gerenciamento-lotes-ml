@@ -78,10 +78,14 @@ export function applyAutoRzSelection(rzAuto) {
 function setupAutoRzListener() {
   if (autoRzListenerBound) return;
   autoRzListenerBound = true;
-  if (typeof store.on === 'function') {
-    store.on('rz:auto', (value) => {
-      applyAutoRzSelection(value || null);
-    });
+  try {
+    if (typeof store.on === 'function') {
+      store.on('rz:auto', (value) => {
+        applyAutoRzSelection(value || null);
+      });
+    }
+  } catch (error) {
+    console.error('[DEBUG] Erro ao configurar listener automático de RZ:', error);
   }
 }
 
@@ -89,48 +93,74 @@ function setupAutoRzListener() {
  * Captura o upload da planilha e alimenta o store
  */
 function setupFileImport() {
-  const input = document.getElementById('file');
-  if (!input) return;
-
-  input.addEventListener('change', async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    showBoot('Importando planilha...');
-    try {
-      const excel = await import('../utils/excel.js');
-      const processFn = excel.processarPlanilha;
-
-      if (typeof processFn !== 'function') {
-        throw new Error('processarPlanilha não encontrada em utils/excel.js');
-      }
-
-      const result = await processFn(file);
-      if (result?.rzAuto) {
-        store.emit?.('rz:auto', result.rzAuto);
-      }
-    } catch (err) {
-      console.error('Erro ao importar planilha:', err);
-      mountAutoRzAlert('❌ Falha ao importar planilha');
-    } finally {
-      hideBoot();
+  try {
+    if (typeof document === 'undefined') {
+      console.warn('[DEBUG] setupFileImport ignorado: document não disponível');
+      return;
     }
-  });
+
+    const input = document.getElementById('file');
+    if (!input) {
+      console.warn('[DEBUG] Input de arquivo com id "file" não encontrado');
+      return;
+    }
+
+    console.log('[DEBUG] Listener de arquivo inicializado');
+
+    input.addEventListener('change', async (e) => {
+      try {
+        const file = e?.target?.files?.[0] || null;
+        console.log('[DEBUG] Arquivo selecionado:', file);
+        if (!file) return;
+
+        showBoot('Importando planilha...');
+        try {
+          const excel = await import('../utils/excel.js');
+          console.log('[DEBUG] excel.js carregado');
+          const processFn = excel.processarPlanilha;
+
+          if (typeof processFn !== 'function') {
+            throw new Error('processarPlanilha não encontrada em utils/excel.js');
+          }
+
+          const result = await processFn(file);
+          if (result?.rzAuto) {
+            store.emit?.('rz:auto', result.rzAuto);
+          }
+        } catch (err) {
+          console.error('Erro ao importar planilha:', err);
+          mountAutoRzAlert('❌ Falha ao importar planilha');
+        } finally {
+          hideBoot();
+        }
+      } catch (listenerError) {
+        console.error('[DEBUG] Erro no listener de importação de arquivo:', listenerError);
+      }
+    });
+  } catch (setupError) {
+    console.error('[DEBUG] Erro ao configurar importação de arquivo:', setupError);
+  }
 }
 
 export function initApp() {
+  console.log('[DEBUG] initApp chamado');
   showBoot('aguardando...');
-  init();
-  if (typeof window !== 'undefined') window.computeFinance = computeFinance;
-  initIndicators?.();
-  initRzBinding?.();
-  initActionsPanel?.();
-  setupAutoRzListener();
-  setupFileImport();
-  if (store?.state?.rzAuto) {
-    applyAutoRzSelection(store.state.rzAuto);
+  try {
+    init();
+    if (typeof window !== 'undefined') window.computeFinance = computeFinance;
+    initIndicators?.();
+    initRzBinding?.();
+    initActionsPanel?.();
+    setupAutoRzListener();
+    setupFileImport();
+    if (store?.state?.rzAuto) {
+      applyAutoRzSelection(store.state.rzAuto);
+    }
+  } catch (error) {
+    console.error('[DEBUG] Erro durante initApp:', error);
+  } finally {
+    hideBoot();
   }
-  hideBoot();
 }
 
 export default { initApp };

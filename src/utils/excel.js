@@ -358,23 +358,29 @@ export async function parsePlanilha(input, options = {}) {
 }
 
 export async function processarPlanilha(input, currentRZ) {
-  const fileName = typeof input?.name === 'string' ? input.name : undefined;
-  const { rzs, itens, rzAuto } = await parsePlanilha(input, { fileName });
-  setRZs(rzs);
-  if (rzAuto) setCurrentRZ(rzAuto);
-  else if (currentRZ) setCurrentRZ(currentRZ);
-  store.state.rzAuto = rzAuto || null;
-  const { itemsByRZ, totalByRZSku, metaByRZSku } = setItens(itens);
-  const activeRZ = store.state.currentRZ || null;
-  const withRz = itens.map((it, idx) => ({
-    id: it.id || crypto.randomUUID?.() || `tmp_${Date.now()}_${idx}`,
-    ...it,
-    rz: it.codigoRZ || activeRZ,
-  }));
-  await store.bulkUpsertItems(withRz);
-  emit('refresh');
-  emit('rz:auto', rzAuto || null);
-  return { rzList: rzs, itemsByRZ, totalByRZSku, metaByRZSku, rzAuto };
+  console.log('[DEBUG] processarPlanilha chamado com', input);
+  try {
+    const fileName = typeof input?.name === 'string' ? input.name : undefined;
+    const { rzs, itens, rzAuto } = await parsePlanilha(input, { fileName });
+    setRZs(rzs);
+    if (rzAuto) setCurrentRZ(rzAuto);
+    else if (currentRZ) setCurrentRZ(currentRZ);
+    store.state.rzAuto = rzAuto || null;
+    const { itemsByRZ, totalByRZSku, metaByRZSku } = setItens(itens);
+    const activeRZ = store.state.currentRZ || null;
+    const withRz = itens.map((it, idx) => ({
+      id: it.id || crypto.randomUUID?.() || `tmp_${Date.now()}_${idx}`,
+      ...it,
+      rz: it.codigoRZ || activeRZ,
+    }));
+    await store.bulkUpsertItems(withRz);
+    emit('refresh');
+    emit('rz:auto', rzAuto || null);
+    return { rzList: rzs, itemsByRZ, totalByRZSku, metaByRZSku, rzAuto };
+  } catch (error) {
+    console.error('[DEBUG] Erro em processarPlanilha:', error);
+    throw error;
+  }
 }
 
 export function exportResult({
