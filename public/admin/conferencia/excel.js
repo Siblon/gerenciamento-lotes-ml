@@ -1,159 +1,284 @@
 import * as XLSX from 'xlsx';
 
-const REQUIRED_COLUMNS = ['codigoML', 'descricao', 'qtd', 'valorUnit'];
+const REQUIRED_KEYS = ['codigo', 'descricao', 'rz', 'quantidade'];
 
 const COLUMN_ALIASES = {
-  codigoML: ['codigo ml', 'código ml', 'codigo', 'código', 'sku', 'mlb', 'id ml', 'item id'],
-  descricao: ['descricao', 'descrição', 'description', 'titulo', 'título', 'nome', 'produto'],
-  qtd: ['quantidade', 'qtd', 'qtde', 'qty', 'qtdade', 'quant.', 'qtd.'],
-  valorUnit: ['valor unitario', 'valor unitário', 'valor unit', 'preco unitario', 'preço unitário', 'preco', 'preço', 'unit price', 'vl unit'],
-  rz: ['rz', 'regiao', 'região', 'hub', 'centro', 'deposito', 'depósito'],
+  codigo: [
+    'sku',
+    'codigo',
+    'código',
+    'cod',
+    'cód',
+    'cod.',
+    'codigo produto',
+    'cod produto',
+    'codigo sku',
+    'referencia',
+    'referência',
+    'item id',
+  ],
+  descricao: [
+    'descricao',
+    'descrição',
+    'produto',
+    'nome',
+    'descricao do produto',
+    'descrição do produto',
+    'description',
+    'titulo',
+    'título',
+  ],
+  rz: [
+    'rz',
+    'palete',
+    'palet',
+    'paletizacao',
+    'paletização',
+    'regiao',
+    'região',
+    'hub',
+    'deposito',
+    'depósito',
+    'centro de distribuicao',
+    'centro de distribuição',
+    'cd',
+  ],
+  quantidade: [
+    'quantidade',
+    'qtd',
+    'qtde',
+    'qt',
+    'qtdade',
+    'quant',
+    'quant.',
+    'qty',
+    'quantidade total',
+    'saldo',
+  ],
 };
 
 function normalizeText(value) {
   return String(value ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9]+/g, ' ')
+    .replace(/[^a-z0-9]+/gi, ' ')
     .trim()
     .toLowerCase();
+}
+
+function matchesAlias(normalizedHeader, alias) {
+  const normalizedAlias = normalizeText(alias);
+  if (!normalizedAlias) return false;
+
+  return (
+    normalizedHeader === normalizedAlias ||
+    normalizedHeader.includes(normalizedAlias) ||
+    normalizedAlias.includes(normalizedHeader)
+  );
 }
 
 function detectarColunas(headerRow) {
   const map = {};
 
   headerRow.forEach((cell, index) => {
-    const normalized = normalizeText(cell);
-    if (!normalized) return;
+    const normalizedHeader = normalizeText(cell);
+    if (!normalizedHeader) return;
 
     Object.entries(COLUMN_ALIASES).forEach(([key, aliases]) => {
       if (map[key] != null) return;
-      if (aliases.some((alias) => normalized.includes(alias))) {
+
+      const hasMatch = aliases.some((alias) => matchesAlias(normalizedHeader, alias));
+      if (hasMatch) {
         map[key] = index;
       }
     });
   });
 
+  REQUIRED_KEYS.forEach((key) => {
+    if (map[key] == null) {
+      const index = headerRow.findIndex((cell) => normalizeText(cell) === key);
+      if (index >= 0) {
+        map[key] = index;
+      }
+    }
+  });
+
+  const missing = REQUIRED_KEYS.filter((key) => map[key] == null);
+  if (missing.length) {
+    console.warn('[EXCEL] Colunas não identificadas:', missing);
+  }
+
   return map;
 }
 
-function parseNumber(value) {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : null;
+function lerArquivoComoArrayBuffer(file) {
+  if (typeof FileReader === 'undefined' || typeof FileReader !== 'function') {
+    if (file && typeof file.arrayBuffer === 'function') {
+      return file.arrayBuffer();
+    }
+    return Promise.reject(new Error('FileReader não está disponível no ambiente.'));
   }
 
-  const stringValue = String(value ?? '').trim();
-  if (!stringValue) return null;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
 
-  const cleaned = stringValue.replace(/\s+/g, '').replace(/[^0-9,.-]/g, '');
-  if (!cleaned) return null;
+    reader.onload = (event) => {
+      const buffer = event?.target?.result;
+      if (buffer instanceof ArrayBuffer) {
+        resolve(buffer);
+        return;
+      }
 
-  const hasComma = cleaned.includes(',');
-  const hasDot = cleaned.includes('.');
+      if (buffer?.buffer instanceof ArrayBuffer) {
+        resolve(buffer.buffer);
+        return;
+      }
 
-  let normalized = cleaned;
-  if (hasComma && hasDot) {
-    normalized = cleaned.replace(/\./g, '').replace(/,/g, '.');
-  } else if (hasComma) {
-    normalized = cleaned.replace(/,/g, '.');
-  }
+      resolve(buffer);
+    };
 
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
+    reader.onerror = () => {
+      reject(reader.error ?? new Error('Não foi possível ler o arquivo.'));
+    };
+
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function sanitizeString(value) {
+  if (value == null) return '';
+  return String(value).trim();
 }
 
 function parseQuantidade(value) {
-  const parsed = parseNumber(value);
-  if (parsed == null) return 0;
-  return parsed;
-}
+  if (value == null || value === '') return '';
 
-function parseValorUnit(value) {
-  const parsed = parseNumber(value);
-  if (parsed == null) return 0;
-  return parsed;
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : '';
+  }
+
+  const texto = String(value).trim();
+  if (!texto) return '';
+
+  const cleaned = texto.replace(/\s+/g, '')
+    .replace(/[^0-9,.-]/g, '');
+
+  if (!cleaned) {
+    return texto;
+  }
+
+  let normalizado = cleaned;
+  const temVirgula = cleaned.includes(',');
+  const temPonto = cleaned.includes('.');
+
+  if (temVirgula && temPonto) {
+    normalizado = cleaned.replace(/\./g, '').replace(/,/g, '.');
+  } else if (temVirgula) {
+    normalizado = cleaned.replace(/,/g, '.');
+  }
+
+  const parsed = Number(normalizado);
+  if (Number.isFinite(parsed)) {
+    return parsed;
+  }
+
+  return texto;
 }
 
 function normalizarItem(row, colunas) {
   const getValue = (key) => {
     const index = colunas[key];
     if (index == null) return '';
-    return row[index] ?? '';
+    return row[index];
   };
 
-  const codigoML = String(getValue('codigoML')).trim();
-  const descricao = String(getValue('descricao')).trim();
-  const qtd = parseQuantidade(getValue('qtd'));
-  const valorUnit = parseValorUnit(getValue('valorUnit'));
-  const rzRaw = colunas.rz != null ? row[colunas.rz] : null;
-  const rz = typeof rzRaw === 'string' ? rzRaw.trim() : rzRaw ?? null;
+  const codigo = sanitizeString(getValue('codigo'));
+  const descricao = sanitizeString(getValue('descricao'));
+  const rz = sanitizeString(getValue('rz'));
+  const quantidade = parseQuantidade(getValue('quantidade'));
 
-  if (!codigoML && !descricao) return null;
+  const todosVazios =
+    !codigo &&
+    !descricao &&
+    !rz &&
+    (quantidade === '' || quantidade == null);
+
+  if (todosVazios) {
+    return null;
+  }
 
   return {
-    codigoML,
+    codigo,
     descricao,
-    qtd,
-    valorUnit,
-    ...(rz ? { rz } : {}),
+    rz,
+    quantidade,
   };
 }
 
-function validarColunas(colunas) {
-  const faltantes = REQUIRED_COLUMNS.filter((col) => colunas[col] == null);
-  if (faltantes.length) {
-    console.warn('[EXCEL] Colunas obrigatórias não encontradas:', faltantes);
-  }
+function extrairRzs(itens) {
+  const conjunto = new Set();
+
+  itens.forEach((item) => {
+    const valor = item?.rz;
+    if (valor == null) return;
+
+    const texto = typeof valor === 'string' ? valor.trim() : String(valor).trim();
+    if (texto) {
+      conjunto.add(texto);
+    }
+  });
+
+  return Array.from(conjunto);
 }
 
 export async function processarPlanilha(file) {
   console.log('[EXCEL] Iniciando processamento', file?.name ?? 'arquivo indefinido');
+
   if (!file) {
     return { rzs: [], itens: [] };
   }
 
-  const arrayBuffer = await file.arrayBuffer();
-  console.log('[EXCEL] Arquivo carregado, convertendo planilha');
+  const arrayBuffer = await lerArquivoComoArrayBuffer(file);
+  console.log('[EXCEL] Arquivo lido, iniciando parse.');
+
   const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-  const sheetName = workbook.SheetNames?.[0];
-  if (!sheetName) {
-    console.warn('[EXCEL] Nenhuma aba encontrada no arquivo');
+  const sheetNames = workbook.SheetNames ?? [];
+  console.debug('[DEBUG] Abas encontradas', sheetNames);
+
+  const primeiraAba = sheetNames[0];
+  if (!primeiraAba) {
+    console.warn('[EXCEL] Nenhuma aba encontrada no arquivo.');
     return { rzs: [], itens: [] };
   }
 
-  const worksheet = workbook.Sheets[sheetName];
+  const worksheet = workbook.Sheets[primeiraAba];
   const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+  console.debug('[DEBUG] Primeiras linhas da planilha', rows.slice(0, 3));
+
   if (!rows.length) {
-    console.warn('[EXCEL] Planilha vazia');
+    console.warn('[EXCEL] Planilha vazia.');
     return { rzs: [], itens: [] };
   }
 
-  const headerIndex = rows.findIndex((row) => Array.isArray(row) && row.some((cell) => String(cell).trim() !== ''));
+  const headerIndex = rows.findIndex((row) =>
+    Array.isArray(row) && row.some((cell) => String(cell).trim() !== '')
+  );
+
   const headerRow = headerIndex >= 0 ? rows[headerIndex] : rows[0];
   const dataRows = headerIndex >= 0 ? rows.slice(headerIndex + 1) : rows.slice(1);
 
   const colunas = detectarColunas(headerRow);
-  validarColunas(colunas);
 
   const itens = [];
-  dataRows.forEach((row, rowIndex) => {
+  dataRows.forEach((row) => {
     if (!Array.isArray(row)) return;
     const item = normalizarItem(row, colunas);
     if (item) {
       itens.push(item);
-    } else {
-      console.log('[EXCEL] Linha ignorada', headerIndex + 1 + rowIndex + 1, row);
     }
   });
 
-  const rzs = Array.from(
-    new Set(
-      itens
-        .map((item) => item.rz)
-        .filter((value) => value != null && value !== '')
-        .map((value) => (typeof value === 'string' ? value.trim() : value)),
-    ),
-  );
+  const rzs = extrairRzs(itens);
 
   console.log('[EXCEL] Processamento concluído', { totalItens: itens.length, rzs });
 

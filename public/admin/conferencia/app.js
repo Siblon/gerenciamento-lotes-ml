@@ -1,35 +1,22 @@
 import { processarPlanilha } from './excel.js';
-import { state, setRZs, setItens, setCurrentRZ } from './store/index.js';
+import { state, setRZs, setItens, setCurrentRZ, on } from './store/index.js';
 
 let initialized = false;
 
-function formatQuantidade(value) {
-  if (typeof value !== 'number' || Number.isNaN(value)) return '';
-  const formatter = Number.isInteger(value)
-    ? new Intl.NumberFormat('pt-BR')
-    : new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return formatter.format(value);
-}
-
-function formatValorUnitario(value) {
-  if (typeof value !== 'number' || Number.isNaN(value)) return '';
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
-
-function renderTabela(itens) {
+function renderTabelaItens() {
   const tabela = document.getElementById('tabela-itens');
   if (!tabela) {
     console.warn('[APP] Tabela #tabela-itens não encontrada');
     return;
   }
 
-  console.log('[APP] Renderizando tabela com', itens.length, 'itens');
+  const itens = Array.isArray(state.itens) ? state.itens : [];
 
   tabela.innerHTML = '';
 
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
-  ['SKU', 'Descrição', 'Qtd', 'Valor Unitário'].forEach((titulo) => {
+  ['Código', 'Descrição', 'RZ', 'Quantidade'].forEach((titulo) => {
     const th = document.createElement('th');
     th.textContent = titulo;
     headerRow.appendChild(th);
@@ -42,25 +29,27 @@ function renderTabela(itens) {
     const tr = document.createElement('tr');
 
     const tdCodigo = document.createElement('td');
-    tdCodigo.textContent = item.codigoML ?? '';
+    tdCodigo.textContent = item?.codigo ?? '';
     tr.appendChild(tdCodigo);
 
     const tdDescricao = document.createElement('td');
-    tdDescricao.textContent = item.descricao ?? '';
+    tdDescricao.textContent = item?.descricao ?? '';
     tr.appendChild(tdDescricao);
 
-    const tdQtd = document.createElement('td');
-    tdQtd.textContent = formatQuantidade(item.qtd);
-    tr.appendChild(tdQtd);
+    const tdRz = document.createElement('td');
+    tdRz.textContent = item?.rz ?? '';
+    tr.appendChild(tdRz);
 
-    const tdValor = document.createElement('td');
-    tdValor.textContent = formatValorUnitario(item.valorUnit);
-    tr.appendChild(tdValor);
+    const tdQuantidade = document.createElement('td');
+    tdQuantidade.textContent = item?.quantidade ?? '';
+    tr.appendChild(tdQuantidade);
 
     tbody.appendChild(tr);
   });
 
   tabela.appendChild(tbody);
+
+  console.debug('[DEBUG] Tabela renderizada com', itens.length, 'linhas');
 }
 
 async function handleFile(fileInput) {
@@ -82,10 +71,12 @@ async function handleFile(fileInput) {
     console.log('[APP] Resultado do processamento', { rzs, totalItens: itens.length });
 
     setRZs(rzs);
+    if (Array.isArray(rzs) && rzs.length === 1) {
+      setCurrentRZ(rzs[0]);
+    } else {
+      setCurrentRZ(null);
+    }
     setItens(itens);
-    setCurrentRZ(rzs[0] ?? null);
-
-    renderTabela(state.itens);
   } catch (error) {
     console.error('[APP] Erro ao processar planilha', error);
   } finally {
@@ -108,6 +99,9 @@ export function initApp() {
   }
 
   initialized = true;
+
+  on('itens:update', () => renderTabelaItens());
+  renderTabelaItens();
 
   fileInput.addEventListener('change', (event) => {
     console.log('[APP] Evento change recebido');
