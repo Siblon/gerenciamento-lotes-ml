@@ -112,6 +112,26 @@ function detectarColunas(headerRow) {
   return map;
 }
 
+function detalharColunas(headerRow, colunas) {
+  return REQUIRED_KEYS.reduce((detalhes, key) => {
+    const index = colunas[key];
+    if (index == null) {
+      detalhes[key] = null;
+      return detalhes;
+    }
+
+    const headerValue = headerRow[index];
+    detalhes[key] = {
+      indice: index,
+      header:
+        headerValue != null && String(headerValue).trim() !== ''
+          ? String(headerValue).trim()
+          : null,
+    };
+    return detalhes;
+  }, {});
+}
+
 function lerArquivoComoArrayBuffer(file) {
   if (typeof FileReader === 'undefined' || typeof FileReader !== 'function') {
     if (file && typeof file.arrayBuffer === 'function') {
@@ -161,8 +181,7 @@ function parseQuantidade(value) {
   const texto = String(value).trim();
   if (!texto) return '';
 
-  const cleaned = texto.replace(/\s+/g, '')
-    .replace(/[^0-9,.-]/g, '');
+  const cleaned = texto.replace(/\s+/g, '').replace(/[^0-9,.-]/g, '');
 
   if (!cleaned) {
     return texto;
@@ -243,7 +262,13 @@ export async function processarPlanilha(file) {
   }
 
   const arrayBuffer = await lerArquivoComoArrayBuffer(file);
-  console.log('[EXCEL] Arquivo lido, iniciando parse.');
+  const bytes =
+    arrayBuffer instanceof ArrayBuffer
+      ? arrayBuffer.byteLength
+      : ArrayBuffer.isView(arrayBuffer)
+        ? arrayBuffer.byteLength
+        : null;
+  console.log('[EXCEL] Arquivo carregado', { nome: file.name, bytes });
 
   const workbook = XLSX.read(arrayBuffer, { type: 'array' });
   const sheetNames = workbook.SheetNames ?? [];
@@ -270,16 +295,18 @@ export async function processarPlanilha(file) {
     return { rzs: [], itens: [] };
   }
 
-  const headerIndex = rows.findIndex((row) =>
-    Array.isArray(row) && row.some((cell) => String(cell).trim() !== '')
+  const headerIndex = rows.findIndex(
+    (row) => Array.isArray(row) && row.some((cell) => String(cell).trim() !== '')
   );
 
   const headerRow = headerIndex >= 0 ? rows[headerIndex] : rows[0];
   const dataRows = headerIndex >= 0 ? rows.slice(headerIndex + 1) : rows.slice(1);
 
-  console.debug('[DEBUG] Planilha carregada com', dataRows.length, 'linhas');
+  console.log('[EXCEL] Número de linhas parseadas', dataRows.length);
 
   const colunas = detectarColunas(headerRow);
+  const colunasMapeadas = detalharColunas(headerRow, colunas);
+  console.log('[EXCEL] Colunas mapeadas', colunasMapeadas);
 
   const itens = [];
   dataRows.forEach((row) => {
@@ -290,11 +317,10 @@ export async function processarPlanilha(file) {
     }
   });
 
+  console.log('[EXCEL] Total de itens carregados', itens.length);
+
   const rzs = extrairRzs(itens);
-
-  console.debug('[DEBUG] RZs detectados:', rzs);
-
-  console.log('[EXCEL] Processamento concluído', { totalItens: itens.length, rzs });
+  console.log('[EXCEL] RZs detectados', rzs);
 
   setRZs(rzs);
   if (Array.isArray(rzs) && rzs.length === 1) {
@@ -303,6 +329,8 @@ export async function processarPlanilha(file) {
     setCurrentRZ(null);
   }
   setItens(itens);
+
+  console.log('[EXCEL] Processamento concluído', { totalItens: itens.length, rzs });
 
   return { rzs, itens };
 }

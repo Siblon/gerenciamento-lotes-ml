@@ -14,12 +14,15 @@ function renderTabelaItens() {
 
   tbody.innerHTML = '';
 
+  if (itens.length === 0) {
+    console.log('[APP] Tabela atualizada', { totalLinhas: 0 });
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
   itens.forEach((item) => {
     const tr = document.createElement('tr');
-
-    const tdCodigo = document.createElement('td');
-    tdCodigo.textContent = item?.codigo ?? '';
-    tr.appendChild(tdCodigo);
 
     const tdDescricao = document.createElement('td');
     tdDescricao.textContent = item?.descricao ?? '';
@@ -30,13 +33,22 @@ function renderTabelaItens() {
     tr.appendChild(tdRz);
 
     const tdQuantidade = document.createElement('td');
-    tdQuantidade.textContent = item?.quantidade ?? '';
+    const quantidade = item?.quantidade;
+    if (quantidade === '' || quantidade == null) {
+      tdQuantidade.textContent = '';
+    } else if (typeof quantidade === 'number' && Number.isFinite(quantidade)) {
+      tdQuantidade.textContent = quantidade.toString();
+    } else {
+      tdQuantidade.textContent = String(quantidade);
+    }
     tr.appendChild(tdQuantidade);
 
-    tbody.appendChild(tr);
+    fragment.appendChild(tr);
   });
 
-  console.debug('[DEBUG] Tabela renderizada com', itens.length, 'linhas');
+  tbody.appendChild(fragment);
+
+  console.log('[APP] Tabela atualizada', { totalLinhas: itens.length });
 }
 
 async function handleFile(fileInput) {
